@@ -1,3 +1,5 @@
+> v5 implementation: fan setup and current limitations are documented in [docs/v5-fan.md](docs/v5-fan.md). Run `npm test` for the v5 test suite. The historical documentation below describes the legacy plugin.
+
 # Homebridge Broadlink RM Pro
 
 **After 7+ years of loyal service from this plugin, I'm an no longer using it. This makes maintaining it now impossible as I have no way to test changes.** 

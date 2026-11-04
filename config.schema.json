@@ -70,9 +70,30 @@
               "type": "string",
               "required": true,
               "oneOf": [
-                { "title": "Air Conditioner (Thermostat)", "enum": ["air-conditioner"] },
-                { "title": "Switch (On/Off/Stateless)", "enum": ["switch"] },
-                { "title": "Learn Code Button", "enum": ["learn-code"] }
+                {
+                  "title": "Air Conditioner (Thermostat)",
+                  "enum": [
+                    "air-conditioner"
+                  ]
+                },
+                {
+                  "title": "Fan",
+                  "enum": [
+                    "fan"
+                  ]
+                },
+                {
+                  "title": "Switch (On/Off/Stateless)",
+                  "enum": [
+                    "switch"
+                  ]
+                },
+                {
+                  "title": "Learn Code Button",
+                  "enum": [
+                    "learn-code"
+                  ]
+                }
               ]
             },
             "host": {
@@ -92,22 +113,22 @@
               "description": "For Air Conditioners: restricts available modes to Off and Cool only."
             },
             "minTemperature": {
-              "title": "Min Temperature (°C)",
+              "title": "Min Temperature (\u00b0C)",
               "type": "integer",
               "default": 16
             },
             "maxTemperature": {
-              "title": "Max Temperature (°C)",
+              "title": "Max Temperature (\u00b0C)",
               "type": "integer",
               "default": 30
             },
             "defaultCoolTemperature": {
-              "title": "Default Cool Temperature (°C)",
+              "title": "Default Cool Temperature (\u00b0C)",
               "type": "integer",
               "default": 24
             },
             "tempStepSize": {
-              "title": "Temperature Step Size (°C)",
+              "title": "Temperature Step Size (\u00b0C)",
               "type": "number",
               "default": 1
             },
@@ -115,6 +136,28 @@
               "title": "IR/RF Hex Data",
               "type": "object",
               "description": "Hex codes for on, off, and temperatures (e.g. temperature16..temperature30)."
+            },
+            "speedSteps": {
+              "title": "Number of Fan Speeds",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "stepSize": {
+              "title": "Fan Speed Step (%)",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "hideSwingMode": {
+              "title": "Hide Fan Swing Control",
+              "type": "boolean",
+              "default": false
+            },
+            "hideRotationDirection": {
+              "title": "Hide Fan Direction Control",
+              "type": "boolean",
+              "default": false
             }
           }
         }
@@ -122,4 +165,3 @@
     }
   }
 }
-
