@@ -1,0 +1,124 @@
+{
+  "pluginAlias": "BroadlinkRM",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Modern, zero-dependency Homebridge plugin for Broadlink RM devices with native RM4 support.",
+  "footerDisplay": "For issues or discussions, visit [GitHub](https://github.com/mrclmrvn/homebridge-broadlink-rm).",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "BroadlinkRM",
+        "required": true
+      },
+      "disableDiscovery": {
+        "title": "Disable UDP Auto-Discovery",
+        "type": "boolean",
+        "default": false,
+        "description": "Disable automatic local network broadcast discovery if all devices are defined in hosts."
+      },
+      "hosts": {
+        "title": "Configured Devices (Hosts)",
+        "type": "array",
+        "description": "Optional list of manually configured Broadlink RM devices by IP and MAC address.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "title": "IP Address",
+              "type": "string",
+              "format": "ipv4",
+              "required": true,
+              "placeholder": "192.168.1.164"
+            },
+            "mac": {
+              "title": "MAC Address",
+              "type": "string",
+              "required": true,
+              "placeholder": "ec:0b:ae:0c:a2:91"
+            },
+            "isRM4": {
+              "title": "Is RM4 Device",
+              "type": "boolean",
+              "default": true,
+              "description": "Set to true for RM4 Mini, RM4 Pro, RM4C devices."
+            },
+            "isRFSupported": {
+              "title": "Supports RF (433MHz / 315MHz)",
+              "type": "boolean",
+              "default": false,
+              "description": "Enable for RM Pro or RM4 Pro models."
+            }
+          }
+        }
+      },
+      "accessories": {
+        "title": "Accessories",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Accessory Name",
+              "type": "string",
+              "required": true
+            },
+            "type": {
+              "title": "Accessory Type",
+              "type": "string",
+              "required": true,
+              "oneOf": [
+                { "title": "Air Conditioner (Thermostat)", "enum": ["air-conditioner"] },
+                { "title": "Switch (On/Off/Stateless)", "enum": ["switch"] },
+                { "title": "Learn Code Button", "enum": ["learn-code"] }
+              ]
+            },
+            "host": {
+              "title": "Host (IP or MAC)",
+              "type": "string",
+              "description": "The IP or MAC address of the Broadlink device that controls this accessory."
+            },
+            "disabled": {
+              "title": "Disabled",
+              "type": "boolean",
+              "default": false
+            },
+            "coolOnly": {
+              "title": "Cool Only",
+              "type": "boolean",
+              "default": true,
+              "description": "For Air Conditioners: restricts available modes to Off and Cool only."
+            },
+            "minTemperature": {
+              "title": "Min Temperature (°C)",
+              "type": "integer",
+              "default": 16
+            },
+            "maxTemperature": {
+              "title": "Max Temperature (°C)",
+              "type": "integer",
+              "default": 30
+            },
+            "defaultCoolTemperature": {
+              "title": "Default Cool Temperature (°C)",
+              "type": "integer",
+              "default": 24
+            },
+            "tempStepSize": {
+              "title": "Temperature Step Size (°C)",
+              "type": "number",
+              "default": 1
+            },
+            "data": {
+              "title": "IR/RF Hex Data",
+              "type": "object",
+              "description": "Hex codes for on, off, and temperatures (e.g. temperature16..temperature30)."
+            }
+          }
+        }
+      }
+    }
+  }
+}
