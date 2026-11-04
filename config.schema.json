@@ -93,6 +93,12 @@
                   "enum": [
                     "learn-code"
                   ]
+                },
+                {
+                  "title": "Television (separately paired)",
+                  "enum": [
+                    "tv"
+                  ]
                 }
               ]
             },

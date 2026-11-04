@@ -77,6 +77,24 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
       // Generate a deterministic UUID based on accessory name and host
       const uuidKey = `${accConfig.name}:${accConfig.host || 'default'}`;
       const uuid = this.api.hap.uuid.generate(uuidKey);
+      if (['tv', 'television'].includes(String(accConfig.type).toLowerCase())) {
+        // External TVs are recreated each launch; remove any older bridged cache entry.
+        const cached = this.accessories.get(uuid);
+        if (cached) {
+          this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cached]);
+          this.accessories.delete(uuid);
+        }
+        const television = new this.api.platformAccessory(
+          accConfig.name, uuid, this.api.hap.Categories.TELEVISION,
+        );
+        television.context.config = accConfig;
+        const instance = createAccessoryInstance(this, television);
+        if (instance) {
+          this.api.publishExternalAccessories(PLUGIN_NAME, [television]);
+          this.instances.set(uuid, instance);
+        }
+        continue;
+      }
       activeUUIDs.add(uuid);
 
       let accessory = this.accessories.get(uuid);

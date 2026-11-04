@@ -5,8 +5,11 @@ import { AirConditionerAccessory } from './airConditioner';
 import { SwitchAccessory } from './switch';
 import { LearnCodeAccessory } from './learnCode';
 
+import { TelevisionAccessory } from './tv';
+
 import { FanAccessory } from './fan';
 
+export * from './tv';
 export * from './fan';
 export * from './base';
 export * from './airConditioner';
@@ -24,6 +27,10 @@ export function createAccessoryInstance(
     case 'airconditioner':
     case 'heater-cooler':
       return new AirConditionerAccessory(platform, accessory);
+
+    case 'tv':
+    case 'television':
+      return new TelevisionAccessory(platform, accessory);
 
     case 'fan':
       return new FanAccessory(platform, accessory);
