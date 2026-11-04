@@ -1,50 +1,93 @@
-> This repository contains the v5 TypeScript rebuild (`@mrclmrvn/homebridge-broadlink-rm`, alpha). The historical README below describes the legacy plugin.
->
-> v5 setup guides: [Fan](docs/v5-fan.md) · [TV](docs/v5-tv.md) · [Light](docs/v5-light.md) · [Window coverings, garage doors and locks](docs/v5-moving-accessories.md) · [Remaining types and compatibility](docs/v5-remaining-accessories.md).
->
-> Run `npm test` to build and run the v5 suite. All legacy accessory type names now resolve; advanced configuration compatibility and physical-device validation remain incomplete.
+# Homebridge Broadlink RM v5
 
-# Homebridge Broadlink RM Pro
+A TypeScript rebuild of the Broadlink RM Homebridge plugin, packaged as
+`@mrclmrvn/homebridge-broadlink-rm`. The plugin implements Broadlink UDP
+communication using Node.js standard libraries and has no runtime npm dependencies.
+The package entry point is `dist/index.js`; legacy JavaScript files remain in this
+repository for reference.
 
-**After 7+ years of loyal service from this plugin, I'm an no longer using it. This makes maintaining it now impossible as I have no way to test changes.** 
+**Alpha status:** every legacy accessory type name now has a v5 implementation,
+but full legacy configuration compatibility and physical-device validation remain
+incomplete. Existing hex codes can be reused; advanced options may need changes.
+Read the [migration guide](docs/v5-migration.md) before replacing an installation.
 
-**I hope that someone will pick this up and build on it, as I did from @lprhodes. If I'm completely honest, I think the next step on this should be a full re-build to smooth out some of the imperfections. That has been my hope for the last two years but unfortunately that remained a hope and I never found the time.**
+## Start here
 
-**Good luck to anyone that can add to this wonderful community and keep this plug in alive. I'm happy to help if I can.**
+1. From the v5 checkout you want to test, build and check the package:
 
-## Introduction
-Welcome to the Broadlink RM Mini and Broadlink RM Pro plugin for [Homebridge](https://github.com/nfarina/homebridge).
+   ```bash
+   npm ci
+   npm test
+   npm pack
+   ```
 
-This plugin allows you to control your RM Mini and RM Pro with HomeKit using the Home app and Siri.
+2. On the machine running Homebridge, install the resulting local tarball using
+   the same installation environment as your Homebridge service:
 
-## Like this plugin?
+   ```bash
+   npm install -g ./mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz
+   ```
 
-If you like this plugin and want to show your support then please star the Github repo, or better yet; buy me a drink using [Paypal](https://paypal.me/kiwicamRM).
+3. Add a `BroadlinkRM` platform block. Start with discovery and an IR learning
+   button, then add accessories with your actual codes:
 
-Thank you!
+   ```json
+   {
+     "platform": "BroadlinkRM",
+     "name": "Broadlink RM",
+     "disableDiscovery": false,
+     "accessories": [
+       { "name": "Learn IR", "type": "learn-code" }
+     ]
+   }
+   ```
 
-## Installation
+4. Restart Homebridge. Turn on Learn IR to capture a remote button and copy the
+   logged hex code into an accessory's data configuration. TVs require separate
+   HomeKit pairing; other types are bridged.
 
-This plugin can be added via the Web interface, or if you perfer the terminal:
-   `npm install -g homebridge-broadlink-rm-pro`
-For more information, refer to the [documentation](https://broadlink.kiwicam.nz/#installation).
+This is a source/tarball installation path, not confirmation that an npm release
+or alpha dist-tag has been published. Source development uses Node 22.12+ on the
+22.x line, or Node 24/26, matching the locked Homebridge development dependency.
+The broader Node/Homebridge ranges in package.json still need a compatibility
+audit before release.
 
-## Documentation
+See [installation and configuration](docs/v5-setup.md) for static hosts, multiple
+RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
 
-**Documentation can be found [here](https://broadlink.kiwicam.nz).** If you have any trouble after reading through the information please raise an issue and we'll help out as best we can.
+## Accessory guides
 
-If the plugin is unable to discover your device, it's likely you've locked the device with the cloud so it no longer accepts local connections. In this case, follow these steps:
-1. Open the [Broadlink app](https://apps.apple.com/us/app/broadlink/id1450257910)
-2. From the Home screen, tap on your Broadlink device
-3. Tap the ... in the top right
-4. Scroll down and toggle "Lock device" to Off
-5. Tap OK when prompted "Confirm to unlock the device"
+| Accessories | Configuration |
+| --- | --- |
+| Air conditioner / Thermostat, switches, IR learning | [Setup guide](docs/v5-setup.md) |
+| Fan / Fanv2 | [Fan](docs/v5-fan.md) |
+| Television, inputs, remote, volume | [TV and pairing](docs/v5-tv.md) |
+| Light, brightness, color presets | [Light](docs/v5-light.md) |
+| Window covering, garage door, lock | [Movement and lock controls](docs/v5-moving-accessories.md) |
+| Humidifier/dehumidifier, purifier, sensors, HeaterCooler | [Remaining types](docs/v5-remaining-accessories.md) |
+| Outlet, Window, Fan v1, switch variants | [Remaining types](docs/v5-remaining-accessories.md#type-coverage) |
 
-<img src="https://i.imgur.com/DMTUbDo.png" width="40%" height="40%">
+Reported power, movement, and lock state are generally inferred from successful
+commands and timers. Real sensor readings are available only from supported
+Broadlink hardware or the implemented file sources. See each guide for failure
+handling and unsupported options.
 
-This plugin should now be able to discover your device.
+## Diagnostics and development
 
-## Thanks
-Original: Thanks to @tattn (https://github.com/tattn/homebridge-rm-mini3), @PJCzx (https://github.com/PJCzx/homebridge-thermostat), @momodalo (https://github.com/momodalo/broadlinkjs), and @lprhodes (https://github.com/lprhodes/homebridge-broadlink-rm) whose time and effort got this started.
+- [CLI and troubleshooting](docs/v5-troubleshooting.md): discovery, authentication,
+  IR learning, sending codes, sensor checks, and useful issue details.
+- [Development and release](docs/v5-development.md): source layout, tests, CI,
+  packaging, and release validation still needed.
+- [Roadmap](docs/v5-roadmap.md): outstanding integrations, compatibility, testing,
+  and packaging work.
+- [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.
 
-In this fork: Thanks to @kiwi-cam (https://github.com/kiwi-cam), @Cloudore (https://github.com/Cloudore) and @Faisalthe01 (https://github.com/Faisalthe01) for your work!
+## Project history
+
+This rebuild continues work from @kiwi-cam, @lprhodes, and the original Broadlink
+plugin contributors. Their historical introduction and acknowledgments are
+preserved in [the legacy README](docs/legacy-readme.md). The root
+`config-sample.json`, `config-multiple-rm-devices-sample.json`, and
+`config-sample.json-W1` files are legacy references, not v5 compatibility examples.
+
+License: [ISC](LICENSE).

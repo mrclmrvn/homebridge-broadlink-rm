@@ -1,3 +1,5 @@
+> Historical HeaterCooler reference. For supported v5 behavior and examples, use [the v5 HeaterCooler guide](v5-remaining-accessories.md#heatercooler). Advanced options shown below are not all ported.
+
 # Heater Cooler
 
 ## Configuration keys and usage
