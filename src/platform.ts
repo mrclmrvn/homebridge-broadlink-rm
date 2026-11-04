@@ -117,3 +117,4 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
     this.log.info(`[${PLATFORM_NAME}] Platform ready with ${this.instances.size} active accessories.`);
   }
 }
+

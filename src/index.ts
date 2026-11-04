@@ -5,3 +5,4 @@ import { BroadlinkRMPlatform } from './platform';
 export = (api: API) => {
   api.registerPlatform(PLATFORM_NAME, BroadlinkRMPlatform);
 };
+

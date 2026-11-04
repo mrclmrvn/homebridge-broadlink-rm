@@ -57,3 +57,4 @@ export abstract class BaseAccessory {
     }
   }
 }
+
