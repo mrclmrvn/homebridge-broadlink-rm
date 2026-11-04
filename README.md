@@ -84,9 +84,23 @@ handling and unsupported options.
 
 ## Project history
 
-This rebuild continues work from @kiwi-cam, @lprhodes, and the original Broadlink
-plugin contributors. Their historical introduction and acknowledgments are
-preserved in [the legacy README](docs/legacy-readme.md). The root
+This fork continues the plugin with a TypeScript-based v5 rebuild maintained by
+[@mrclmrvn](https://github.com/mrclmrvn), following
+[@kiwi-cam](https://github.com/kiwi-cam)'s invitation for the community to carry it
+forward after more than seven years of maintenance.
+
+Thank you to previous maintainers [@kiwi-cam](https://github.com/kiwi-cam) and
+[@lprhodes](https://github.com/lprhodes), whose work made this continuation
+possible. Credit also goes to the earlier projects by
+[@tattn](https://github.com/tattn/homebridge-rm-mini3),
+[@PJCzx](https://github.com/PJCzx/homebridge-thermostat), and
+[@momodalo](https://github.com/momodalo/broadlinkjs), along with
+[@Cloudore](https://github.com/Cloudore),
+[@Faisalthe01](https://github.com/Faisalthe01), and everyone who contributed code,
+testing, documentation, and bug reports.
+
+The [legacy README](docs/legacy-readme.md) retains the v4 reference material and
+acknowledgments with an updated introduction explaining the continuation. The root
 `config-sample.json`, `config-multiple-rm-devices-sample.json`, and
 `config-sample.json-W1` files are legacy references, not v5 compatibility examples.
 

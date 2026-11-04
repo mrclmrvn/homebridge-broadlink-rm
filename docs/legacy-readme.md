@@ -2,11 +2,26 @@
 
 # Homebridge Broadlink RM Pro
 
-**After 7+ years of loyal service from this plugin, I'm an no longer using it. This makes maintaining it now impossible as I have no way to test changes.** 
+## Project continuation and credits
 
-**I hope that someone will pick this up and build on it, as I did from @lprhodes. If I'm completely honest, I think the next step on this should be a full re-build to smooth out some of the imperfections. That has been my hope for the last two years but unfortunately that remained a hope and I never found the time.**
+After more than seven years maintaining the previous plugin,
+[@kiwi-cam](https://github.com/kiwi-cam) stepped back when they could no longer
+test it with their own hardware. Their farewell encouraged the community to
+continue the project and consider a full rebuild.
 
-**Good luck to anyone that can add to this wonderful community and keep this plug in alive. I'm happy to help if I can.**
+This fork carries that work forward with a TypeScript-based v5 rebuild maintained
+by [@mrclmrvn](https://github.com/mrclmrvn). It is still in alpha; see the
+[current README](../README.md) for supported behavior and remaining limitations.
+The sections below describe the legacy plugin.
+
+Thank you to previous maintainers [@kiwi-cam](https://github.com/kiwi-cam) and
+[@lprhodes](https://github.com/lprhodes) for building and sustaining the project.
+Credit also goes to [@tattn](https://github.com/tattn/homebridge-rm-mini3),
+[@PJCzx](https://github.com/PJCzx/homebridge-thermostat), and
+[@momodalo](https://github.com/momodalo/broadlinkjs) for the earlier projects
+acknowledged by the plugin, and to [@Cloudore](https://github.com/Cloudore),
+[@Faisalthe01](https://github.com/Faisalthe01), and the wider community for their
+contributions, testing, and bug reports.
 
 ## Introduction
 Welcome to the Broadlink RM Mini and Broadlink RM Pro plugin for [Homebridge](https://github.com/nfarina/homebridge).
