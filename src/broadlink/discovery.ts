@@ -1,98 +1,85 @@
 import * as dgram from 'dgram';
 import * as os from 'os';
+import { isIPv4 } from 'node:net';
 import { BROADLINK_PORT, PacketCommand } from './constants';
+import { calculateChecksum, macBufferToString } from './crypto';
 import { RMDevice } from './rmDevice';
-import { macBufferToString } from './crypto';
 
 export interface DiscoveredDeviceInfo {
-  host: string;
-  port: number;
-  mac: Buffer;
-  macAddress: string;
-  devType: number;
-  device: RMDevice;
+  host: string; port: number; mac: Buffer; macAddress: string; devType: number; device: RMDevice;
+}
+
+function interfaces(): { address: string; broadcast: string }[] {
+  return Object.values(os.networkInterfaces()).flatMap(list => (list || []).flatMap(iface => {
+    if (iface.family !== 'IPv4' || iface.internal || !isIPv4(iface.address) || !isIPv4(iface.netmask)) return [];
+    const mask = iface.netmask.split('.').map(Number);
+    const broadcast = iface.address.split('.').map((part, index) => Number(part) | (~mask[index] & 255)).join('.');
+    return [{ address: iface.address, broadcast }];
+  }));
 }
 
 export function getLocalBroadcastAddresses(): string[] {
-  const broadcasts: string[] = ['255.255.255.255'];
-  const interfaces = os.networkInterfaces();
-
-  for (const name of Object.keys(interfaces)) {
-    const list = interfaces[name];
-    if (!list) continue;
-    for (const iface of list) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        // Compute broadcast address if netmask available
-        const ipParts = iface.address.split('.').map(Number);
-        const maskParts = iface.netmask.split('.').map(Number);
-        if (ipParts.length === 4 && maskParts.length === 4) {
-          const broadcastParts = ipParts.map((part, i) => (part | (~maskParts[i] & 255)) >>> 0);
-          broadcasts.push(broadcastParts.join('.'));
-        }
-      }
-    }
-  }
-
-  return Array.from(new Set(broadcasts));
+  return [...new Set(['255.255.255.255', ...interfaces().map(iface => iface.broadcast)])];
 }
 
-/**
- * Discover Broadlink devices on the local network
- * @param timeoutMs Maximum duration to listen for discovery responses
- */
-export async function discoverDevices(timeoutMs: number = 3000): Promise<DiscoveredDeviceInfo[]> {
-  return new Promise((resolve) => {
-    const discovered = new Map<string, DiscoveredDeviceInfo>();
+export function buildDiscoveryPacket(localAddress: string, port: number, date = new Date()): Buffer {
+  if (!isIPv4(localAddress) || !Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid discovery endpoint');
+  const packet = Buffer.alloc(0x30);
+  packet.writeInt32LE(Math.trunc(-date.getTimezoneOffset() / 60), 8);
+  packet.writeUInt16LE(date.getFullYear(), 0x0c);
+  packet[0x0e] = date.getMinutes(); packet[0x0f] = date.getHours();
+  packet[0x10] = date.getFullYear() % 100; packet[0x11] = date.getDay() || 7;
+  packet[0x12] = date.getDate(); packet[0x13] = date.getMonth() + 1;
+  Buffer.from(localAddress.split('.').map(Number).reverse()).copy(packet, 0x18);
+  packet.writeUInt16LE(port, 0x1c);
+  packet[0x26] = PacketCommand.DISCOVER;
+  packet.writeUInt16LE(calculateChecksum(packet), 0x20);
+  return packet;
+}
+
+export async function discoverDevices(timeoutMs = 3000): Promise<DiscoveredDeviceInfo[]> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2147483647) throw new Error('Invalid discovery timeout');
+  return new Promise((resolve, reject) => {
+    const found = new Map<string, DiscoveredDeviceInfo>();
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-
-    socket.on('message', (msg: Buffer, rinfo: dgram.RemoteInfo) => {
+    let finished = false;
+    const finish = (error?: Error) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { socket.close(); } catch { /* Failed or already closed. */ }
+      if (error) { for (const item of found.values()) item.device.close(); reject(error); }
+      else resolve([...found.values()]);
+    };
+    const timer = setTimeout(() => finish(), timeoutMs);
+    socket.on('error', error => finish(error));
+    socket.on('message', (message, remote) => {
+      if (finished || message.length < 0x40) return;
       try {
-        if (msg.length < 0x40) return;
-
-        // DevType at offset 0x34 (uint16 LE)
-        const devType = msg.readUInt16LE(0x34);
-
-        // MAC at offset 0x3a..0x40 (stored in reversed order)
-        const mac = Buffer.alloc(6);
-        for (let i = 0; i < 6; i++) {
-          mac[i] = msg[0x3a + (5 - i)];
-        }
+        const devType = message.readUInt16LE(0x34);
+        const mac = Buffer.from(message.subarray(0x3a, 0x40)).reverse();
         const macAddress = macBufferToString(mac);
-
-        if (!discovered.has(macAddress)) {
-          const device = new RMDevice(rinfo.address, mac, devType, rinfo.port || BROADLINK_PORT);
-          discovered.set(macAddress, {
-            host: rinfo.address,
-            port: rinfo.port || BROADLINK_PORT,
-            mac,
-            macAddress,
-            devType,
-            device,
-          });
+        if (!found.has(macAddress)) {
+          const device = new RMDevice(remote.address, mac, devType, remote.port || BROADLINK_PORT);
+          found.set(macAddress, { host: remote.address, port: remote.port || BROADLINK_PORT, mac, macAddress, devType, device });
         }
-      } catch {
-        // ignore malformed packets
-      }
+      } catch { /* Ignore malformed datagrams. */ }
     });
-
-    socket.bind(0, () => {
-      socket.setBroadcast(true);
-
-      const packet = Buffer.alloc(0x30, 0);
-      packet[0x26] = PacketCommand.DISCOVER;
-
-      const broadcastAddresses = getLocalBroadcastAddresses();
-      for (const target of broadcastAddresses) {
-        socket.send(packet, 0, packet.length, BROADLINK_PORT, target, () => {});
-      }
-    });
-
-    setTimeout(() => {
+    try { socket.bind(0, () => {
+      if (finished) return;
       try {
-        socket.close();
-      } catch {}
-      resolve(Array.from(discovered.values()));
-    }, timeoutMs);
+        socket.setBroadcast(true);
+        const port = socket.address().port;
+        const local = interfaces();
+        const targets = [{ address: local[0]?.address || '0.0.0.0', broadcast: '255.255.255.255' }, ...local];
+        const sent = new Set<string>();
+        for (const target of targets) {
+          if (sent.has(target.broadcast)) continue;
+          sent.add(target.broadcast);
+          const packet = buildDiscoveryPacket(target.address, port);
+          socket.send(packet, 0, packet.length, BROADLINK_PORT, target.broadcast, error => { if (error) finish(error); });
+        }
+      } catch (error) { finish(error as Error); }
+    }); } catch (error) { finish(error as Error); }
   });
 }
-

@@ -10,8 +10,10 @@ export function calculateChecksum(buf: Buffer, initial = 0xbeaf): number {
 
 export function encryptPayload(key: Buffer, iv: Buffer, payload: Buffer): Buffer {
   const cipher = crypto.createCipheriv('aes-128-cbc', key, iv);
-  cipher.setAutoPadding(true);
-  return Buffer.concat([cipher.update(payload), cipher.final()]);
+  cipher.setAutoPadding(false);
+  const padded = Buffer.alloc(Math.ceil(payload.length / 16) * 16);
+  payload.copy(padded);
+  return Buffer.concat([cipher.update(padded), cipher.final()]);
 }
 
 export function decryptPayload(key: Buffer, iv: Buffer, encrypted: Buffer): Buffer {
@@ -21,8 +23,8 @@ export function decryptPayload(key: Buffer, iv: Buffer, encrypted: Buffer): Buff
 }
 
 export function macStringToBuffer(mac: string): Buffer {
-  const clean = mac.replace(/[^0-9a-fA-F]/g, '');
-  if (clean.length !== 12) {
+  const clean = mac.replace(/[:.\-]/g, '');
+  if (!/^[0-9a-f]{12}$/i.test(clean)) {
     throw new Error(`Invalid MAC address format: "${mac}". Expected 6 hexadecimal bytes.`);
   }
   return Buffer.from(clean, 'hex');

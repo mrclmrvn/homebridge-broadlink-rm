@@ -15,8 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v5 unit tests, real HAP service-construction checks, and GitHub Actions across Node 22/24/26 on Linux, Windows, and Intel macOS.
 - v5 setup, migration, troubleshooting, accessory, development/release, and roadmap documentation plus a dedicated sample configuration.
 
+- RF learning with cancellation and stage prompts, raw Pronto conversion, an installed CLI, and packet-level regression tests.
+- Exact static host device IDs/ports and discovery address refresh.
+
+### Fixed
+
+- Authentication queue deadlock, session-key offsets, AES padding, sensor subcommands, discovery fields, and pending socket cleanup.
+- CLI operational failures now return nonzero status; learned-code polling preserves authorization and transport errors.
+
 ### Changed
 
+- Node engines now match the locked development dependency and CI majors; package files are allowlisted and packing builds automatically.
 - Package identity to `@mrclmrvn/homebridge-broadlink-rm` with `dist/index.js` as the entry point.
 - `heater-cooler` now uses HeaterCooler instead of the earlier v5 Thermostat alias.
 - README now introduces v5; the historical README is preserved under docs/legacy-readme.md.
@@ -24,8 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known limitations
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
-- RF learning, MQTT/1-wire integrations, ping/ARP, Pronto conversion, history, and several advanced per-accessory behaviors remain outstanding.
-- Engine compatibility, driver/hardware validation, packaging cleanup, release publication, and Homebridge verification remain pending; see docs/v5-roadmap.md.
+- MQTT/1-wire integrations, ping/ARP, history, and several advanced per-accessory behaviors remain outstanding.
+- Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/v5-roadmap.md.
 
 ## [4.4.21 - 2026-05-10]
 ### Fixed

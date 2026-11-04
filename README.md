@@ -49,8 +49,8 @@ Read the [migration guide](docs/v5-migration.md) before replacing an installatio
 This is a source/tarball installation path, not confirmation that an npm release
 or alpha dist-tag has been published. Source development uses Node 22.12+ on the
 22.x line, or Node 24/26, matching the locked Homebridge development dependency.
-The broader Node/Homebridge ranges in package.json still need a compatibility
-audit before release.
+The declared Homebridge range still needs a compatibility audit beyond the
+current development dependency before release.
 
 See [installation and configuration](docs/v5-setup.md) for static hosts, multiple
 RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
@@ -73,6 +73,9 @@ Broadlink hardware or the implemented file sources. See each guide for failure
 handling and unsupported options.
 
 ## Diagnostics and development
+
+- [Driver and protocol update](docs/v5-protocol.md): RF learning, Pronto conversion,
+  corrected authentication/framing, exact device IDs, and packaging changes.
 
 - [CLI and troubleshooting](docs/v5-troubleshooting.md): discovery, authentication,
   IR learning, sending codes, sensor checks, and useful issue details.

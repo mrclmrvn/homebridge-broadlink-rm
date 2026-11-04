@@ -8,8 +8,8 @@ validation remain outstanding.
 ## Build and install a local package
 
 Use Node 22.12+ within 22.x, or Node 24/26, for the locked development dependency
-set. package.json still advertises broader runtime compatibility that has not
-been validated by this suite. From your selected v5 checkout:
+set. The Node engine declaration now matches that range; the declared Homebridge
+range still needs validation beyond the current development dependency. From your selected v5 checkout:
 
 ```bash
 npm ci
@@ -17,8 +17,8 @@ npm test
 npm pack
 ```
 
-`npm test` compiles TypeScript and runs `test/v5/*.test.js`. Build before packing:
-`npm pack` does not run the package's prepublishOnly script. The current version
+`npm test` compiles TypeScript and runs `test/v5/*.test.js`. The prepack script
+also builds automatically before `npm pack`. The current version
 produces `mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz`.
 
 Transfer that tarball to the Homebridge host if you built elsewhere. Install it
@@ -74,17 +74,16 @@ MAC with your device's values:
 }
 ```
 
-Host entries require `address` and `mac`. `isRM4` selects RM4 framing, and
-`isRFSupported` identifies an RF-capable model. These flags currently select
-representative device IDs rather than allowing an exact device ID in config.
-Discovery reads the ID reported by hardware; the CLI accepts an exact hexadecimal
-ID for diagnostics. Model-specific static host selection still needs hardware
-validation. There is no configurable UDP port or exact devType host field yet.
+Host entries require `address` (IPv4) and `mac`. Set `devType`, for example
+`"0x520c"`, for the exact ID reported by discovery; it takes precedence over
+`isRM4`/`isRFSupported`. Without devType those flags select representative
+Mini/Pro models. Optional `port` defaults to UDP 80. Model-specific operation
+still needs hardware validation.
 
-If hosts and discovery are both enabled, static entries are registered first;
-devices are deduplicated by MAC. The current manager does not refresh the address
-or type of an already registered MAC from a later discovery response. Use the
-correct static address or remove a stale static entry before restarting.
+If hosts and discovery are both enabled, static entries are registered first.
+Discovery refreshes a device when the same MAC appears at a different address,
+type or port, closing the old socket. Exact duplicates are discarded and their
+unused sockets are closed.
 
 ## Shared accessory options
 
@@ -149,14 +148,16 @@ for stateless buttons, automatic actions, repeat counts, and array data.
 
 Add `type: "learn-code"` or `"learn-ir"` to expose a learning switch. Turn it on,
 press one IR remote button toward the RM, and copy the logged hex code. The
-Homebridge button waits up to 20 seconds and resets off when done. Capture one
-button at a time. Turning the switch off resets its displayed state but does not
-currently cancel an already running device learning operation. RF frequency-sweep
-learning and the legacy scan-frequency button are not implemented.
+Homebridge IR button waits up to 20 seconds and resets off when done. Capture
+one button at a time. Writes acknowledge immediately; Off and shutdown abort the
+operation. `learn-rf` performs a Pro model's RF learning workflow with stage
+prompts and a 60-second default deadline. The legacy separate scan-frequency
+button is not recreated; see [RF learning](v5-protocol.md#rf-learning).
 
 Existing learned IR/RF hex can be sent without converting it. Actual RF
 transmission depends on the device hardware and code frequency; accepting the
-configuration is not hardware verification. Pronto conversion is not implemented.
+configuration is not hardware verification. Raw modulated Pronto strings are
+converted automatically; see [Pronto support](v5-protocol.md#pronto).
 
 ## Pairing and next steps
 

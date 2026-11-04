@@ -15,14 +15,13 @@ node dist/cli.js send 192.0.2.10 02:00:00:00:00:01 YOUR_LEARNED_HEX 0x520c
 ```
 
 `send` transmits a real command and can change an appliance's state. Learn captures
-an IR code, not an RF frequency sweep. Do not run learning and other commands
+an IR code; use `learn-rf` for a Pro model's frequency-sweep workflow. Do not run learning and other commands
 concurrently while diagnosing a device.
 
 The development form is also available, for example `npm run cli -- discover`.
 The compiled CLI does not need ts-node. Use the exact device ID from discovery
 when possible; the default when omitted is 0x520b. The examples use 0x520c for an
-RM4 Mini, not a universal device ID. There is no installed command-line binary
-alias in package.json yet.
+RM4 Mini, not a universal device ID. The installed CLI command is `broadlink-rm`.
 
 ## What each command establishes
 
@@ -35,9 +34,10 @@ alias in package.json yet.
 | send | Authenticates as needed and transmits the supplied hex |
 
 The Homebridge learning switch has a 20-second window, unlike the CLI's 30
-seconds. CLI operational errors are printed inside catch blocks and do not
-reliably set a nonzero exit code. Check the actual output; do not use the current
-CLI's exit status alone as an automated health check.
+seconds. Operational failures and invalid commands return nonzero status.
+A zero status for send/auth confirms the command result, not physical appliance
+feedback. SIGINT aborts learning. See [the protocol update](v5-protocol.md) for
+RF prompts and the offline convert-pronto command.
 
 ## Discovery finds nothing
 
@@ -50,8 +50,8 @@ that exchange; adding a static host does not bypass those requirements.
 Try a static host with the correct IP/MAC and framing flags, or use the CLI with
 the actual device ID. A static host appearing as registered only means a device
 object exists; it is not proof of authentication. If a device moves addresses,
-update/remove the static entry and restart: current deduplication does not refresh
-an existing MAC from later discovery.
+update it or enable discovery and restart: a later response for the same MAC
+now refreshes its address/type and closes the replaced socket.
 
 ## Authentication or sends fail
 
@@ -64,8 +64,8 @@ settings rather than relying on the historical screenshot.
 
 A successful UDP transmission is not appliance feedback. Test that the IR emitter
 can reach the appliance, that the code matches the intended button, and, for RF,
-that the hardware supports the code's frequency. RF learning is not implemented
-yet; a normal IR learning session is not an RF diagnostic.
+that the hardware supports the code's frequency. Use learn-rf with a supported
+Pro model for RF learning; a normal IR learning session is not an RF diagnostic.
 
 ## Missing or incorrect HomeKit controls
 

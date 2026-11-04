@@ -21,8 +21,8 @@ have been ported. Existing learned hex codes can be reused.
 
 The new npm package is `@mrclmrvn/homebridge-broadlink-rm`; the platform alias
 remains `BroadlinkRM`. The old package name is not an installation alias for v5.
-The package manifest still advertises wider Node/Homebridge support than current
-CI validates; source development uses the locked dependency's Node range.
+The Node engine range matches the locked dependency and CI majors. The declared
+Homebridge range still needs validation beyond the development dependency.
 
 ## Configuration differences to review
 
@@ -38,8 +38,8 @@ CI validates; source development uses the locked dependency's Node range.
 | MQTT, 1-wire, pseudo-device sensors | Not implemented in the new sensor reader; configuring them there is an error |
 | Ping/ARP state detection | Not implemented |
 | Eve/fakegato history, battery alerts | Not implemented in new sensor ports |
-| RF scan/learn buttons | RF learning is pending; use existing RF hex if compatible with the hardware |
-| Pronto strings | No automatic conversion yet |
+| RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
+| Pronto strings | Raw modulated 0000 strings with whitespace are converted before transmission |
 | Fan speedCycle/default-reset/timers, light exclusives | Still pending |
 | hideLearnButton/hideScanFrequencyButton | No automatic legacy helper-button creation; explicitly configure an IR learning accessory |
 

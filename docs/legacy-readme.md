@@ -30,7 +30,7 @@ This plugin allows you to control your RM Mini and RM Pro with HomeKit using the
 
 ## Like this plugin?
 
-If you like this plugin and want to show your support then please star the Github repo, or better yet; buy me a drink using [Paypal](https://paypal.me/kiwicamRM).
+If you would like to support the project, please star the repository, report bugs, or contribute improvements.
 
 Thank you!
 

@@ -49,8 +49,10 @@ setImmediate callback on a loaded CI runner; increasing a delay only hides that
 race. The suite also constructs remaining services with real HAP classes to
 check initial values and characteristic warnings.
 
-These tests do not establish packet correctness, RF performance, physical state,
-or live HomeKit pairing. Driver-focused tests and hardware checks remain on the
+Driver-focused tests now exercise authentication, AES vectors, packet checksums,
+response handling, discovery, RF sequencing, and cancellation using in-memory
+sockets. They do not establish real firmware compatibility, RF performance,
+physical state or live HomeKit pairing. Hardware checks remain on the
 [roadmap](v5-roadmap.md). When changing public options, update the relevant v5
 guide and schema alongside the implementation.
 
@@ -75,10 +77,11 @@ npm pack --dry-run
 npm pack
 ```
 
-Build first: prepublishOnly runs before npm publish, not before npm pack. Check
-the dry-run inventory and tarball, including dist/index.js, declarations, schema,
-README, and license. There is not yet an explicit files allowlist, so legacy and
-test files may also be included. Packaging cleanup is still outstanding.
+prepack builds automatically for packing; prepublishOnly runs npm test before
+publication. Check the dry-run inventory and tarball, including dist/index.js,
+declarations, schema, README, license, and the CLI bin entry. An explicit files
+allowlist excludes legacy source and tests. Review the resulting artifact before
+any release; no publication is performed by these inspection commands.
 
 Install the tarball into an isolated Homebridge environment. Test startup,
 restored cache, each used accessory type, missing hardware, command failures,
@@ -87,9 +90,9 @@ mocked service tests for this validation.
 
 ## Release work still required
 
-Before publishing an alpha for others, reconcile package.json's broader declared
-Node/Homebridge engines with actual tested compatibility, review the tarball
-inventory, complete driver tests and a recorded hardware test pass, and check
+Before publishing an alpha for others, validate the declared Homebridge range
+beyond the development dependency, review the tarball inventory, expand driver
+coverage with real-device fixtures and a recorded hardware test pass, and check
 migration documentation. Verify the package version and final changelog, and
 confirm the npm scope/account and dist-tag intended for that release.
 

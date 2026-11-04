@@ -1,177 +1,181 @@
 import * as dgram from 'dgram';
-import {
-  BROADLINK_PORT,
-  INIT_KEY,
-  INIT_IV,
-  PACKET_HEADER_MAGIC,
-  PacketCommand,
-  getDeviceInfo,
-  DeviceTypeInfo,
-} from './constants';
-import {
-  calculateChecksum,
-  encryptPayload,
-  decryptPayload,
-  macStringToBuffer,
-  macBufferToString,
-} from './crypto';
+import { isIPv4 } from 'node:net';
+import { BROADLINK_PORT, INIT_KEY, INIT_IV, PACKET_HEADER_MAGIC, PacketCommand, getDeviceInfo, DeviceTypeInfo } from './constants';
+import { calculateChecksum, encryptPayload, decryptPayload, macStringToBuffer, macBufferToString } from './crypto';
+
+export class BroadlinkError extends Error {
+  public readonly signedCode: number;
+  constructor(public readonly code: number, host: string) {
+    const signed = code >= 0x8000 ? code - 0x10000 : code;
+    super(`Device ${host} returned 0x${code.toString(16)} (${signed})${code === 0xfff9 ? ': control authorization failed; check session key and device lock settings' : ''}`);
+    this.name = 'BroadlinkError';
+    this.signedCode = signed;
+  }
+}
 
 export class BroadlinkDevice {
-  public readonly host: string;
-  public readonly port: number;
   public readonly mac: Buffer;
   public readonly macAddress: string;
-  public readonly devType: number;
   public readonly typeInfo: DeviceTypeInfo;
+  protected key = Buffer.from(INIT_KEY);
+  protected iv = Buffer.from(INIT_IV);
+  protected id = 0;
+  protected count = Math.floor(Math.random() * 0xffff);
+  protected readonly socket: dgram.Socket;
+  protected isAuthenticated = false;
+  protected readonly shutdown = new AbortController();
+  private queue: Promise<unknown> = Promise.resolve();
+  private packetQueue: Promise<unknown> = Promise.resolve();
+  private readonly ready: Promise<void>;
+  private socketError?: Error;
+  private readonly pending = new Set<(error: Error) => void>();
 
-  protected key: Buffer = Buffer.from(INIT_KEY);
-  protected iv: Buffer = Buffer.from(INIT_IV);
-  protected id: number = 0;
-  protected count: number = Math.floor(Math.random() * 0xffff);
-  protected socket: dgram.Socket;
-  protected isAuthenticated: boolean = false;
-  private queue: Promise<any> = Promise.resolve();
-
-  constructor(host: string, mac: string | Buffer, devType: number = 0x520b, port: number = BROADLINK_PORT) {
-    this.host = host;
-    this.port = port;
-    this.mac = typeof mac === 'string' ? macStringToBuffer(mac) : mac;
+  constructor(public readonly host: string, mac: string | Buffer, public readonly devType = 0x520b, public readonly port = BROADLINK_PORT) {
+    if (!isIPv4(host)) throw new Error('Broadlink host must be an IPv4 address');
+    this.mac = typeof mac === 'string' ? macStringToBuffer(mac) : Buffer.from(mac);
     this.macAddress = macBufferToString(this.mac);
-    this.devType = devType;
+    if (!Number.isInteger(devType) || devType < 0 || devType > 0xffff) throw new Error('Invalid Broadlink device type');
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid Broadlink UDP port');
     this.typeInfo = getDeviceInfo(devType);
-
     this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    this.socket.bind(0);
+    this.socket.on('error', error => {
+      this.socketError = error;
+      for (const reject of this.pending) reject(error);
+    });
+    this.ready = new Promise<void>((resolve, reject) => {
+      const cleanup = () => { this.socket.removeListener('listening', onReady); this.socket.removeListener('error', onError); this.socket.removeListener('close', onClose); };
+      const onError = (error: Error) => { cleanup(); reject(error); };
+      const onClose = () => onError(new Error('Broadlink device is closed'));
+      const onReady = () => { cleanup(); resolve(); };
+      this.socket.once('close', onClose);
+      this.socket.once('error', onError);
+      this.socket.once('listening', onReady);
+      this.socket.bind(0);
+    });
+    // Binding can fail before the first command is submitted.
+    void this.ready.catch(() => {});
   }
 
-  /**
-   * Serialize commands so only one UDP packet is in flight at a time to this device
-   */
   public synchronized<T>(task: () => Promise<T>): Promise<T> {
-    const next = this.queue.then(task, task);
+    const next = this.queue.then(async () => { this.assertOpen(); return task(); });
     this.queue = next.catch(() => {});
     return next;
   }
 
-  /**
-   * Send a raw Broadlink packet and wait for decrypted response
-   */
-  public async sendPacket(packetType: number, payload: Buffer, timeoutMs: number = 5000): Promise<Buffer> {
+  protected assertOpen(): void {
+    if (this.shutdown.signal.aborted) throw new Error('Broadlink device is closed');
+    if (this.socketError) throw this.socketError;
+  }
+
+  /** Called only from inside the command queue; never enqueue auth recursively. */
+  protected async ensureAuthenticated(signal?: AbortSignal): Promise<void> {
+    if (!this.isAuthenticated) await this.authenticate(signal);
+  }
+
+  public sendPacket(packetType: number, payload: Buffer, timeoutMs = 5000, signal?: AbortSignal): Promise<Buffer> {
+    const result = this.packetQueue.then(() => this.exchange(packetType, payload, timeoutMs, signal));
+    this.packetQueue = result.catch(() => {});
+    return result;
+  }
+
+  private async exchange(packetType: number, payload: Buffer, timeoutMs: number, signal?: AbortSignal): Promise<Buffer> {
+    this.assertOpen();
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2147483647) throw new Error('Invalid packet timeout');
+    if (signal?.aborted) throw new Error('Broadlink command aborted');
+    await this.ready;
+    this.assertOpen();
+    if (signal?.aborted) throw new Error('Broadlink command aborted');
+    const sequence = this.count = ((this.count + 1) | 0x8000) & 0xffff;
+    const encrypted = encryptPayload(this.key, this.iv, payload);
+    const packet = Buffer.alloc(0x38 + encrypted.length);
+    PACKET_HEADER_MAGIC.copy(packet);
+    packet.writeUInt16LE(this.devType, 0x24);
+    packet.writeUInt16LE(packetType, 0x26);
+    packet.writeUInt16LE(sequence, 0x28);
+    Buffer.from(this.mac).reverse().copy(packet, 0x2a);
+    packet.writeUInt32LE(this.id, 0x30);
+    packet.writeUInt16LE(calculateChecksum(payload), 0x34);
+    encrypted.copy(packet, 0x38);
+    packet.writeUInt16LE(calculateChecksum(packet), 0x20);
+
     return new Promise<Buffer>((resolve, reject) => {
-      this.count = ((this.count + 1) | 0x8000) & 0xffff;
-
-      const pChecksum = calculateChecksum(payload);
-      const encryptedPayload = encryptPayload(this.key, this.iv, payload);
-
-      const packet = Buffer.alloc(0x38 + encryptedPayload.length);
-      PACKET_HEADER_MAGIC.copy(packet, 0x00);
-
-      packet.writeUInt16LE(this.devType, 0x24);
-      packet.writeUInt16LE(packetType, 0x26);
-      packet.writeUInt16LE(this.count, 0x28);
-
-      // MAC reversed: byte 5 down to 0
-      for (let i = 0; i < 6; i++) {
-        packet[0x2a + i] = this.mac[5 - i];
-      }
-
-      packet.writeUInt32LE(this.id, 0x30);
-      packet.writeUInt16LE(pChecksum, 0x34);
-
-      encryptedPayload.copy(packet, 0x38);
-
-      packet.writeUInt16LE(0, 0x20);
-      const fullChecksum = calculateChecksum(packet);
-      packet.writeUInt16LE(fullChecksum, 0x20);
-
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(
-          new Error(
-            `Timeout waiting for response from ${this.host} (${this.macAddress}) for command 0x${packetType.toString(16)}`,
-          ),
-        );
-      }, timeoutMs);
-
-      const onMessage = (msg: Buffer, rinfo: dgram.RemoteInfo) => {
-        if (rinfo.address !== this.host) return;
-        cleanup();
-
-        const errCode = msg.readUInt16LE(0x22);
-        if (errCode !== 0) {
-          const signedErr = -(0x10000 - errCode);
-          return reject(
-            new Error(
-              `Device ${this.host} returned error code: 0x${errCode.toString(16)} (${signedErr}). Check device lock or key status.`,
-            ),
-          );
-        }
-
-        const encryptedResp = msg.slice(0x38);
-        if (encryptedResp.length > 0) {
-          try {
-            const decrypted = decryptPayload(this.key, this.iv, encryptedResp);
-            resolve(decrypted);
-          } catch (err: any) {
-            reject(new Error(`Failed to decrypt response from ${this.host}: ${err.message}`));
-          }
-        } else {
-          resolve(Buffer.alloc(0));
-        }
-      };
-
+      let timer: NodeJS.Timeout;
+      let settled = false;
       const cleanup = () => {
         clearTimeout(timer);
         this.socket.removeListener('message', onMessage);
+        signal?.removeEventListener('abort', onAbort);
+        this.pending.delete(fail);
       };
-
-      this.socket.on('message', onMessage);
-      this.socket.send(packet, 0, packet.length, this.port, this.host, (err) => {
-        if (err) {
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const onAbort = () => fail(new Error('Broadlink command aborted'));
+      const onMessage = (message: Buffer, remote: dgram.RemoteInfo) => {
+        // Unrelated, stale, and truncated datagrams must not finish this request.
+        if (remote.address !== this.host || remote.port !== this.port || message.length < 0x38) return;
+        if (!message.subarray(0, 8).equals(PACKET_HEADER_MAGIC) || message.readUInt16LE(0x28) !== sequence) return;
+        const expectedCommand = packetType === PacketCommand.AUTH ? 0xe9 : packetType === PacketCommand.COMMAND ? 0xee : undefined;
+        if (expectedCommand !== undefined && message.readUInt16LE(0x26) !== expectedCommand) return;
+        try {
+          const checked = Buffer.from(message);
+          const checksum = checked.readUInt16LE(0x20);
+          checked.writeUInt16LE(0, 0x20);
+          if (calculateChecksum(checked) !== checksum) throw new Error('Broadlink response checksum mismatch');
+          const code = message.readUInt16LE(0x22);
+          if (code) {
+            if (code === 0xffff || code === 0xfffe || code === 0xfff9) this.isAuthenticated = false;
+            throw new BroadlinkError(code, this.host);
+          }
+          const ciphertext = message.subarray(0x38);
+          if (ciphertext.length % 16) throw new Error('Invalid encrypted Broadlink response length');
+          const decoded = decryptPayload(this.key, this.iv, ciphertext);
+          if (calculateChecksum(decoded) !== message.readUInt16LE(0x34)) throw new Error('Broadlink payload checksum mismatch');
+          settled = true;
           cleanup();
-          reject(err);
-        }
-      });
+          resolve(decoded);
+        } catch (error) { fail(error instanceof Error ? error : new Error(String(error))); }
+      };
+      timer = setTimeout(() => fail(new Error(`Timeout waiting for response from ${this.host}`)), timeoutMs);
+      this.pending.add(fail);
+      signal?.addEventListener('abort', onAbort, { once: true });
+      this.socket.on('message', onMessage);
+      try {
+        this.socket.send(packet, 0, packet.length, this.port, this.host, error => { if (error) fail(error); });
+      } catch (error) { fail(error as Error); }
     });
   }
 
-  /**
-   * Authenticate with the Broadlink device to establish session keys
-   */
-  public async auth(): Promise<boolean> {
-    return this.synchronized(async () => {
-      this.id = 0;
-      this.key = Buffer.from(INIT_KEY);
-      this.iv = Buffer.from(INIT_IV);
-
-      const payload = Buffer.alloc(0x50, 0);
-      for (let i = 0x04; i < 0x14; i++) {
-        payload[i] = 0x31;
-      }
-      payload[0x1e] = 0x01;
-      payload[0x2d] = 0x01;
-      payload.write('Homebridge', 0x30, 'ascii');
-
-      const response = await this.sendPacket(PacketCommand.AUTH, payload);
-
-      this.id = response.readUInt32LE(0x00);
-      this.iv = Buffer.from(response.slice(0x04, 0x14));
-      this.key = Buffer.from(response.slice(0x14, 0x24));
-      this.isAuthenticated = true;
-
-      return true;
-    });
+  public auth(signal?: AbortSignal): Promise<boolean> {
+    return this.synchronized(() => this.authenticate(signal));
   }
 
-  /**
-   * Close the UDP socket
-   */
+  private async authenticate(signal?: AbortSignal): Promise<boolean> {
+    this.isAuthenticated = false;
+    this.id = 0;
+    this.key = Buffer.from(INIT_KEY);
+    this.iv = Buffer.from(INIT_IV);
+    const payload = Buffer.alloc(0x50);
+    payload.fill(0x31, 4, 0x14);
+    payload[0x1e] = 1;
+    payload[0x2d] = 1;
+    payload.write('Homebridge', 0x30, 'ascii');
+    const response = await this.sendPacket(PacketCommand.AUTH, payload, 5000, signal);
+    if (response.length < 0x14) throw new Error('Truncated Broadlink authentication response');
+    this.id = response.readUInt32LE(0);
+    this.key = Buffer.from(response.subarray(4, 0x14));
+    // The IV remains the protocol's fixed IV; the response carries ID + key.
+    this.isAuthenticated = true;
+    return true;
+  }
+
   public close(): void {
-    try {
-      this.socket.close();
-    } catch {
-      // ignore
-    }
+    if (this.shutdown.signal.aborted) return;
+    this.shutdown.abort();
+    for (const reject of this.pending) reject(new Error('Broadlink device is closed'));
+    try { this.socket.close(); } catch { /* Already closed or failed to bind. */ }
   }
 }
-

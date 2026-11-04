@@ -1,58 +1,56 @@
-import { Service, CharacteristicValue } from 'homebridge';
-import { BaseAccessory } from './base';
+import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
-import { PlatformAccessory } from 'homebridge';
+import { BaseAccessory } from './base';
 
 export class LearnCodeAccessory extends BaseAccessory {
-  private service: Service;
-  private learning: boolean = false;
+  private readonly service: Service;
+  private controller?: AbortController;
+  private disposed = false;
+  private start?: NodeJS.Immediate;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
-
-    this.service =
-      this.accessory.getService(this.platform.Service.Switch) ||
-      this.accessory.addService(this.platform.Service.Switch, this.name);
-
-    this.service
-      .getCharacteristic(this.platform.Characteristic.On)
-      .onGet(this.getOn.bind(this))
-      .onSet(this.setOn.bind(this));
+    this.service = accessory.getService(platform.Service.Switch) || accessory.addService(platform.Service.Switch, this.name);
+    this.service.getCharacteristic(platform.Characteristic.On).onGet(() => Boolean(this.controller))
+      .onSet(value => {
+        if (!value) {
+          this.controller?.abort();
+          if (this.start) { clearImmediate(this.start); this.start = undefined; this.controller = undefined; }
+          return;
+        }
+        if (this.disposed) throw new Error('Accessory has shut down');
+        if (!this.controller) {
+          const controller = this.controller = new AbortController();
+          // Let HomeKit acknowledge On before any immediate learning failure resets it.
+          this.start = setImmediate(() => {
+            this.start = undefined;
+            if (!this.disposed) void this.learn(controller);
+          });
+        }
+      });
   }
 
-  private getOn(): CharacteristicValue {
-    return this.learning;
-  }
-
-  private async setOn(value: CharacteristicValue): Promise<void> {
-    const shouldLearn = value as boolean;
-    if (!shouldLearn) {
-      this.learning = false;
-      return;
-    }
-
-    const device = this.getDevice();
-    if (!device) {
-      this.log.error(`[${this.name}] Cannot learn code: Device not found for host: ${this.config.host}`);
-      setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, false), 500);
-      return;
-    }
-
-    this.learning = true;
-    this.log.info(`[${this.name}] 🔴 ENTERED LEARN MODE (${device.host}) - Press a button on your remote now...`);
-
+  private async learn(controller: AbortController): Promise<void> {
     try {
-      const hexCode = await device.learnData(20000, 1000);
-      this.log.info(`\n****************************************************************`);
-      this.log.info(`[${this.name}] 🎉 LEARNED HEX CODE:`);
-      this.log.info(`"${hexCode}"`);
-      this.log.info(`****************************************************************\n`);
-    } catch (err: any) {
-      this.log.warn(`[${this.name}] Learning stopped: ${err.message}`);
+      const device = this.getDevice();
+      if (!device) throw new Error('No Broadlink device is available');
+      const rf = String(this.config.type).toLowerCase() === 'learn-rf';
+      const code = rf ? await device.learnRFData({ signal: controller.signal, onProgress: stage =>
+        this.log.info(`[${this.name}] ${stage === 'frequency' ? 'Hold the RF remote button for frequency detection' : 'Release and press the button again to capture the RF code'}`) })
+        : await device.learnData(20000, 1000, controller.signal);
+      if (!this.disposed) this.log.info(`[${this.name}] Learned hex code: ${code}`);
+    } catch (error) {
+      if (!this.disposed) this.log.warn(`[${this.name}] Learning stopped: ${error instanceof Error ? error.message : error}`);
     } finally {
-      this.learning = false;
-      this.service.updateCharacteristic(this.platform.Characteristic.On, false);
+      this.controller = undefined;
+      if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.On, false);
     }
+  }
+
+  public override dispose(): void {
+    this.disposed = true;
+    this.controller?.abort();
+    if (this.start) clearImmediate(this.start);
+    this.start = undefined;
   }
 }
-

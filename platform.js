@@ -168,8 +168,6 @@ const BroadlinkRMPlatform = class extends HomebridgePlatform {
       log('** ')
       log(`** Find out what's in the latest release here: \x1b[4mhttps://github.com/kiwi-cam/homebridge-broadlink-rm/blob/master/CHANGELOG.md\x1b[0m`)
       log(`** `)
-      log(`** If you like this plugin then please star it on GitHub or better yet`)
-      log(`** buy me a drink using Paypal \x1b[4mhttps://paypal.me/kiwicamRM\x1b[0m.`)
       log(`**`)
       log(`** You can disable this message by adding "hideWelcomeMessage": true to the config (see config-sample.json).`)
       log(`**`)

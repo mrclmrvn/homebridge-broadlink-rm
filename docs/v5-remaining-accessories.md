@@ -261,6 +261,6 @@ for characteristic warnings. Live Homebridge pairing and physical operation
 remain unvalidated.
 
 All legacy type names now resolve, but advanced options remain incomplete.
-Sensor integrations, history, RF learning, shared structured-code support outside
-switch/outlet, Pronto conversion, and complete legacy accessory behavior remain
+Sensor integrations, history, shared structured-code support outside
+switch/outlet, and complete legacy accessory behavior remain
 separate roadmap work. These ports add no runtime dependencies.
