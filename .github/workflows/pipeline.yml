@@ -1,27 +1,35 @@
-name: Build
-"on":
-  - push
+name: Build and Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   build:
-    name: "Build and Test on Node ${{ matrix.node_version }} and ${{ matrix.os }}"
-    runs-on: "${{ matrix.os }}"
+    name: Node ${{ matrix.node_version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        node_version:
-          - 18
-          - 20
-          - 22
-        os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
+        # Match the engines of the Homebridge version in package-lock.json.
+        node_version: [22, 24, 26]
+        # Use Intel macOS while hosted ARM64 runners have capacity constraints.
+        os: [ubuntu-latest, macos-15-intel, windows-latest]
     steps:
-      - uses: actions/checkout@v3
-      - name: "Use Node.js ${{ matrix.node_version }}"
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v7
         with:
-          node-version: "${{ matrix.node_version }}"
-      - name: npm build and test
-        run: |
-          npm ci
-          npm run lint
+          persist-credentials: false
+      - name: Set up Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and run v5 tests
+        run: npm test

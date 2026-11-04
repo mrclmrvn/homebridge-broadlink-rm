@@ -1,10 +1,32 @@
 import { PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { BaseAccessory } from './base';
+import { HeaterCoolerAccessory } from './heaterCooler';
+import { AirPurifierAccessory } from './airPurifier';
+import { HumidifierDehumidifierAccessory } from './humidifierDehumidifier';
+import { SensorAccessory } from './sensor';
 import { AirConditionerAccessory } from './airConditioner';
 import { SwitchAccessory } from './switch';
 import { LearnCodeAccessory } from './learnCode';
 
+import { WindowCoveringAccessory } from './windowCovering';
+import { GarageDoorOpenerAccessory } from './garageDoorOpener';
+import { LockAccessory } from './lock';
+import { LightAccessory } from './light';
+import { TelevisionAccessory } from './tv';
+
+import { FanAccessory } from './fan';
+
+export * from './heaterCooler';
+export * from './airPurifier';
+export * from './humidifierDehumidifier';
+export * from './sensor';
+export * from './windowCovering';
+export * from './garageDoorOpener';
+export * from './lock';
+export * from './light';
+export * from './tv';
+export * from './fan';
 export * from './base';
 export * from './airConditioner';
 export * from './switch';
@@ -19,9 +41,46 @@ export function createAccessoryInstance(
   switch (type) {
     case 'air-conditioner':
     case 'airconditioner':
-    case 'heater-cooler':
       return new AirConditionerAccessory(platform, accessory);
 
+    case 'heater-cooler':
+      return new HeaterCoolerAccessory(platform, accessory);
+
+    case 'air-purifier':
+      return new AirPurifierAccessory(platform, accessory);
+
+    case 'humidifier-dehumidifier':
+      return new HumidifierDehumidifierAccessory(platform, accessory);
+
+    case 'temperaturesensor':
+    case 'temperature-sensor':
+    case 'humiditysensor':
+    case 'humidity-sensor':
+      return new SensorAccessory(platform, accessory);
+
+    case 'window':
+    case 'window-covering':
+      return new WindowCoveringAccessory(platform, accessory);
+
+    case 'garage-door-opener':
+      return new GarageDoorOpenerAccessory(platform, accessory);
+
+    case 'lock':
+      return new LockAccessory(platform, accessory);
+
+    case 'light':
+      return new LightAccessory(platform, accessory);
+
+    case 'tv':
+    case 'television':
+      return new TelevisionAccessory(platform, accessory);
+
+    case 'fanv1':
+    case 'fan':
+      return new FanAccessory(platform, accessory);
+
+    case 'outlet':
+    case 'switch-multi-repeat':
     case 'switch':
     case 'switch-multi':
     case 'switch-repeat':
