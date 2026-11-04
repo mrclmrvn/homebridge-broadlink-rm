@@ -1,56 +1,42 @@
 {
-  "name": "homebridge-broadlink-rm-pro",
-  "displayName": "Homebridge Broadlink RM Pro",
-  "version": "4.4.21",
-  "description": "Broadlink RM plugin (including the mini and pro) for homebridge with AC Pro and TV features",
+  "name": "@mrclmrvn/homebridge-broadlink-rm",
+  "displayName": "Homebridge Broadlink RM",
+  "version": "5.0.0-alpha.1",
+  "description": "Modern Broadlink RM plugin for Homebridge with native RM4 support, zero native compilation dependencies, and TypeScript architecture",
   "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "release": "release-it",
-    "lint": "eslint .",
-    "lint-fix": "eslint --fix ."
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cli": "ts-node src/cli.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "homebridge-plugin",
     "broadlink",
-    "rm pro 3",
-    "rm mini 3",
-    "rm4"
+    "rm pro",
+    "rm mini",
+    "rm4",
+    "rm4 pro",
+    "rm4 mini"
   ],
   "engines": {
-    "node": ">=7.6.0",
-    "homebridge": "^1.4.1 || ^2.0.0"
+    "node": ">=18.0.0",
+    "homebridge": "^1.6.0 || ^2.0.0"
   },
   "author": {
-    "name": "kiwi-cam"
+    "name": "mrclmrvn"
   },
-  "funding": "https://paypal.me/kiwicamRM",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/kiwi-cam/homebridge-broadlink-rm.git"
+    "url": "git+https://github.com/mrclmrvn/homebridge-broadlink-rm.git"
   },
-  "dependencies": {
-    "await-semaphore": "^0.1.3",
-    "chai": "^4.3.7",
-    "fakegato-history": "^0.6.5",
-    "find-key": "^2.1.3",
-    "github-version-checker": "^2.3.0",
-    "js": "^0.1.0",
-    "kiwicam-broadlinkjs-rm": "^0.9.22",
-    "mqtt": "^5.14.0",
-    "node-arp": "^1.0.6",
-    "node-persist": ">=2.1.0 <3.0.0",
-    "ping": "^0.4.4",
-    "semver": "^7.5.4",
-    "uuid": "^9.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.34.0",
-    "eslint": "^9.34.0",
-    "eslint-plugin-no-autofix": "^1.2.3",
-    "globals": "^16.3.0",
-    "hap-nodejs": "^0.12.2",
-    "mocha": "^11.7.1",
-    "release-it": "^19.0.4"
+    "@types/node": "^22.8.7",
+    "homebridge": "^2.0.0-beta.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
   }
 }
