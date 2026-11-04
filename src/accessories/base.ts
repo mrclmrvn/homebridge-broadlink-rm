@@ -28,6 +28,9 @@ export abstract class BaseAccessory {
       .setCharacteristic(this.platform.Characteristic.FirmwareRevision, '5.0.0');
   }
 
+  /** Release accessory-owned resources on platform shutdown or removal. */
+  public dispose(): void {}
+
   /**
    * Resolve the Broadlink RM device for this accessory
    */

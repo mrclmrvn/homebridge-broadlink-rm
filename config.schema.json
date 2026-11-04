@@ -105,6 +105,24 @@
                   "enum": [
                     "light"
                   ]
+                },
+                {
+                  "title": "Window Covering / Blinds",
+                  "enum": [
+                    "window-covering"
+                  ]
+                },
+                {
+                  "title": "Garage Door Opener",
+                  "enum": [
+                    "garage-door-opener"
+                  ]
+                },
+                {
+                  "title": "Lock",
+                  "enum": [
+                    "lock"
+                  ]
                 }
               ]
             },
@@ -186,6 +204,94 @@
               "title": "Light Power-on Delay (seconds)",
               "type": "number",
               "minimum": 0
+            },
+            "totalDurationOpen": {
+              "title": "Covering Full Open Travel (seconds)",
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 2147483.647
+            },
+            "totalDurationClose": {
+              "title": "Covering Full Close Travel (seconds)",
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 2147483.647
+            },
+            "openDuration": {
+              "title": "Garage Open Travel (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "closeDuration": {
+              "title": "Garage Close Travel (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "openCloseDuration": {
+              "title": "Garage Shared Travel Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "lockDuration": {
+              "title": "Lock Travel Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "unlockDuration": {
+              "title": "Unlock Travel Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "lockUnlockDuration": {
+              "title": "Shared Lock/Unlock Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "autoCloseDelay": {
+              "title": "Garage Automatic Close Delay (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "autoLockDelay": {
+              "title": "Automatic Lock Delay (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "initialPosition": {
+              "title": "Covering Initial Position (%)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Assumed startup position; no position sensor is read. Defaults to 0."
+            },
+            "sendStopAt0": {
+              "title": "Covering: Send Stop at Fully Closed",
+              "type": "boolean",
+              "default": false
+            },
+            "sendStopAt100": {
+              "title": "Covering: Send Stop at Fully Open",
+              "type": "boolean",
+              "default": false
+            },
+            "allowResend": {
+              "title": "Covering: Allow Repeated Target Commands",
+              "type": "boolean",
+              "default": false
+            },
+            "initialDelay": {
+              "title": "Covering Command Delay (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
             }
           }
         }
