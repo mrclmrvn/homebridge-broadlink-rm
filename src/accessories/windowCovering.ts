@@ -23,8 +23,9 @@ export class WindowCoveringAccessory extends TimedAccessory {
     this.target = this.position;
     const C = platform.Characteristic;
     this.positionState = C.PositionState.STOPPED;
-    this.service = accessory.getService(platform.Service.WindowCovering)
-      || accessory.addService(platform.Service.WindowCovering, this.name);
+    const serviceType = String(this.config.type).toLowerCase() === 'window'
+      ? platform.Service.Window : platform.Service.WindowCovering;
+    this.service = accessory.getService(serviceType) || accessory.addService(serviceType, this.name);
     this.service.getCharacteristic(C.CurrentPosition).onGet(() => Math.round(this.estimatePosition()));
     this.service.getCharacteristic(C.PositionState).onGet(() => this.positionState);
     this.service.getCharacteristic(C.TargetPosition).onGet(() => this.target)

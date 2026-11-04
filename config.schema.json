@@ -123,6 +123,72 @@
                   "enum": [
                     "lock"
                   ]
+                },
+                {
+                  "title": "Heater / Cooler",
+                  "enum": [
+                    "heater-cooler"
+                  ]
+                },
+                {
+                  "title": "Air Purifier",
+                  "enum": [
+                    "air-purifier"
+                  ]
+                },
+                {
+                  "title": "Humidifier / Dehumidifier",
+                  "enum": [
+                    "humidifier-dehumidifier"
+                  ]
+                },
+                {
+                  "title": "Temperature Sensor",
+                  "enum": [
+                    "temperatureSensor"
+                  ]
+                },
+                {
+                  "title": "Humidity Sensor",
+                  "enum": [
+                    "humiditySensor"
+                  ]
+                },
+                {
+                  "title": "Outlet",
+                  "enum": [
+                    "outlet"
+                  ]
+                },
+                {
+                  "title": "Window",
+                  "enum": [
+                    "window"
+                  ]
+                },
+                {
+                  "title": "Fan (legacy On control)",
+                  "enum": [
+                    "fanv1"
+                  ]
+                },
+                {
+                  "title": "Switch Sequence",
+                  "enum": [
+                    "switch-multi"
+                  ]
+                },
+                {
+                  "title": "Switch Repeated Code",
+                  "enum": [
+                    "switch-repeat"
+                  ]
+                },
+                {
+                  "title": "Switch Repeated Sequence",
+                  "enum": [
+                    "switch-multi-repeat"
+                  ]
                 }
               ]
             },
@@ -164,8 +230,12 @@
             },
             "data": {
               "title": "IR/RF Hex Data",
-              "type": "object",
-              "description": "Hex codes for on, off, and temperatures (e.g. temperature16..temperature30)."
+              "type": [
+                "object",
+                "array",
+                "string"
+              ],
+              "description": "Accessory codes; switch variants also accept a single hex string or a sequence array. See the v5 setup guides for each type."
             },
             "speedSteps": {
               "title": "Number of Fan Speeds",
@@ -292,6 +362,164 @@
               "type": "number",
               "minimum": 0,
               "maximum": 2147483.647
+            },
+            "sensorPollInterval": {
+              "title": "Sensor Poll Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "temperatureUpdateFrequency": {
+              "title": "Temperature Update Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "humidityUpdateFrequency": {
+              "title": "Humidity Update Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "interval": {
+              "title": "Switch Sequence / Repeat Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "onDuration": {
+              "title": "Switch On Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "offDuration": {
+              "title": "Switch Off Duration (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "sendCount": {
+              "title": "Switch Repeat Count",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "onSendCount": {
+              "title": "Switch On Repeat Count",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "offSendCount": {
+              "title": "Switch Off Repeat Count",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "humidifierOnly": {
+              "title": "Humidifier Only",
+              "type": "boolean"
+            },
+            "deHumidifierOnly": {
+              "title": "Dehumidifier Only",
+              "type": "boolean"
+            },
+            "noHumidity": {
+              "title": "Disable Humidity Automation / Secondary Sensor",
+              "type": "boolean"
+            },
+            "showLockPhysicalControls": {
+              "title": "Show Appliance Control Lock",
+              "type": "boolean"
+            },
+            "turnOnWhenOff": {
+              "title": "HeaterCooler: Activate When Changing Settings",
+              "type": "boolean"
+            },
+            "stateless": {
+              "title": "Stateless Switch Button",
+              "type": "boolean"
+            },
+            "enableAutoOff": {
+              "title": "Switch: Send Off Automatically",
+              "type": "boolean"
+            },
+            "enableAutoOn": {
+              "title": "Switch: Send On Automatically",
+              "type": "boolean"
+            },
+            "temperatureFilePath": {
+              "title": "Temperature Sensor File",
+              "type": "string"
+            },
+            "humidityFilePath": {
+              "title": "Humidity Sensor File",
+              "type": "string"
+            },
+            "temperatureAdjustment": {
+              "title": "Temperature Adjustment (\u00b0C)",
+              "type": "number"
+            },
+            "humidityAdjustment": {
+              "title": "Humidity Adjustment (%)",
+              "type": "number"
+            },
+            "humidifierThreshold": {
+              "title": "Humidify Below (%)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "dehumidifierThreshold": {
+              "title": "Dehumidify Above (%)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "heatingThresholdTemperature": {
+              "title": "HeaterCooler Heating Threshold",
+              "type": "number"
+            },
+            "coolingThresholdTemperature": {
+              "title": "HeaterCooler Cooling Threshold",
+              "type": "number"
+            },
+            "temperatureUnits": {
+              "title": "HeaterCooler Configuration Units",
+              "type": "string",
+              "enum": [
+                "c",
+                "f"
+              ]
+            },
+            "tempSourceUnits": {
+              "title": "Temperature File Units",
+              "type": "string",
+              "enum": [
+                "c",
+                "f"
+              ]
+            },
+            "defaultMode": {
+              "title": "HeaterCooler Default Mode",
+              "type": "string",
+              "enum": [
+                "heat",
+                "cool"
+              ]
+            },
+            "defaultRotationSpeed": {
+              "title": "HeaterCooler Default Fan Speed (%)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "fanStepSize": {
+              "title": "HeaterCooler Fan Speed Step (%)",
+              "type": "number",
+              "minimum": 1,
+              "maximum": 100
             }
           }
         }

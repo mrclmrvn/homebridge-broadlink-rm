@@ -1,4 +1,8 @@
-> v5 implementation: fan setup is documented in [docs/v5-fan.md](docs/v5-fan.md), and television setup and pairing in [docs/v5-tv.md](docs/v5-tv.md). Light setup is in [docs/v5-light.md](docs/v5-light.md). Window coverings, garage doors, and locks are covered in [docs/v5-moving-accessories.md](docs/v5-moving-accessories.md). These guides describe current limitations. Run `npm test` for the v5 test suite. The historical documentation below describes the legacy plugin.
+> This repository contains the v5 TypeScript rebuild (`@mrclmrvn/homebridge-broadlink-rm`, alpha). The historical README below describes the legacy plugin.
+>
+> v5 setup guides: [Fan](docs/v5-fan.md) · [TV](docs/v5-tv.md) · [Light](docs/v5-light.md) · [Window coverings, garage doors and locks](docs/v5-moving-accessories.md) · [Remaining types and compatibility](docs/v5-remaining-accessories.md).
+>
+> Run `npm test` to build and run the v5 suite. All legacy accessory type names now resolve; advanced configuration compatibility and physical-device validation remain incomplete.
 
 # Homebridge Broadlink RM Pro
 
