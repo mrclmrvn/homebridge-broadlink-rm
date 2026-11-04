@@ -99,6 +99,12 @@
                   "enum": [
                     "tv"
                   ]
+                },
+                {
+                  "title": "Light",
+                  "enum": [
+                    "light"
+                  ]
                 }
               ]
             },
@@ -164,6 +170,22 @@
               "title": "Hide Fan Direction Control",
               "type": "boolean",
               "default": false
+            },
+            "defaultBrightness": {
+              "title": "Default Light Brightness (%)",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "useLastKnownBrightness": {
+              "title": "Restore Last Light Brightness",
+              "type": "boolean",
+              "default": false
+            },
+            "onDelay": {
+              "title": "Light Power-on Delay (seconds)",
+              "type": "number",
+              "minimum": 0
             }
           }
         }
