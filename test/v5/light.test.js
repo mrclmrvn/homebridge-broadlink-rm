@@ -101,14 +101,30 @@ test('discrete saturation codes map to the nearest configured preset', async () 
   assert.equal(c.get('On').get(), true);
 });
 
-test('power-on delay holds subsequent writes until the first command finishes', async () => {
+test('power-on delay holds subsequent writes until the first command finishes', async t => {
   const { controls: c, sent } = setup({ onDelay: 0.01 });
+  let finishDelay;
+  let delayMs;
+  let timerScheduled;
+  const scheduled = new Promise(resolve => { timerScheduled = resolve; });
+  // Hold the actual power-on timer until assertions finish. Runner load and
+  // event-loop ordering cannot expire it before we inspect the queued writes.
+  t.mock.method(global, 'setTimeout', (callback, milliseconds) => {
+    finishDelay = callback;
+    delayMs = milliseconds;
+    timerScheduled();
+  });
   const first = c.get('Brightness').set(25);
   const second = c.get('On').set(false);
-  await new Promise(resolve => setImmediate(resolve));
+  await scheduled;
+  assert.equal(delayMs, 10);
   assert.deepEqual(sent, ['on']);
+  assert.equal(c.get('On').get(), true);
+  assert.equal(c.get('Brightness').get(), 0);
+  finishDelay();
   await Promise.all([first, second]);
   assert.deepEqual(sent, ['on', 'dim', 'off']);
+  assert.equal(c.get('On').get(), false);
 });
 
 test('a failed saturation command retains the successfully sent hue', async () => {
