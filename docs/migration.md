@@ -12,7 +12,7 @@ have been ported. Existing learned hex codes can be reused.
    v4 and v5 against the same appliances simultaneously: both can send commands
    and register overlapping HomeKit controls.
 3. Build the selected v5 revision and a local tarball using the
-   [setup guide](v5-setup.md). Test in a separate Homebridge environment where
+   [setup guide](setup.md). Test in a separate Homebridge environment where
    possible; physical hardware validation is still outstanding.
 4. Start with one RM and one accessory. Test discovery or explicit hosts, basic
    power, code selection, failures, and restart behavior before adding the rest.
@@ -35,7 +35,8 @@ Homebridge range still needs validation beyond the development dependency.
 | `air-conditioner` | Thermostat service with temperatureXX codes; advanced legacy mode logic is incomplete |
 | `temperatureSensor`, `humiditySensor` | Accepted with original casing; kebab-case aliases also available |
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
-| MQTT, 1-wire, pseudo-device sensors | Not implemented in the new sensor reader; configuring them there is an error |
+| MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
+| 1-wire, pseudo-device sensors | Not implemented in the new sensor reader; configuring them there is an error |
 | Ping/ARP state detection | Not implemented |
 | Eve/fakegato history, battery alerts | Not implemented in new sensor ports |
 | RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
@@ -44,7 +45,7 @@ Homebridge range still needs validation beyond the development dependency.
 | hideLearnButton/hideScanFrequencyButton | No automatic legacy helper-button creation; explicitly configure an IR learning accessory |
 
 See the type-specific guides for exact options. The old sample configs at the
-repository root and [historical HeaterCooler guide](heater-cooler.md) contain
+repository root and [historical HeaterCooler guide](v4-heater-cooler.md) contain
 unported features; use [config-v5-sample.json](../config-v5-sample.json) and the v5
 guides for a new trial configuration.
 
@@ -61,7 +62,7 @@ rebuilding HomeKit assignments manually.
 
 TVs are published as external accessories and require separate pairing. An older
 bridged TV cache entry with the same v5 identity is removed during migration.
-See [TV setup](v5-tv.md) before changing an existing TV installation.
+See [TV setup](tv.md) before changing an existing TV installation.
 
 ## State differences
 
@@ -72,10 +73,11 @@ physical-state representations. Window position starts from initialPosition
 (default 0), not a position sensor. Contact, obstruction, and jam detection are
 not integrated in those ports.
 
-New sensor readers report invalid/missing readings as errors rather than
-inventing zero values. The older Thermostat implementation still starts its
-current temperature at the default target; it has not yet been aligned with the
-new readers. This distinction matters when evaluating HomeKit status.
+Sensor readers, including the Thermostat, report invalid/missing readings as
+errors rather than inventing zero values or displaying the AC target as measured
+temperature. MQTT disconnects and expired readings are unavailable until a new
+valid message arrives. MQTT measurements take precedence over file/native values;
+see [MQTT migration details](mqtt.md) before combining source options.
 
 ## Rollback
 

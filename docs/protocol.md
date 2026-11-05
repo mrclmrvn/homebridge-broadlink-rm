@@ -106,5 +106,5 @@ runtime source and test trees. No npm publication has been performed.
 
 The Node engine range is now `^22.12.0 || ^24 || ^26`, matching the development
 dependency and CI majors. The declared Homebridge range still needs testing
-beyond the current development dependency. Hardware validation, MQTT, ping/ARP,
+beyond the current development dependency. Hardware validation, ping/ARP,
 Eve history and the other compatibility gaps remain on the roadmap.

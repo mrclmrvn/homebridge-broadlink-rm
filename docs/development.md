@@ -37,8 +37,9 @@ presence as evidence that their behaviors are supported by the new code.
 | accessories/, helpers/, base/, index.js, platform.js | Legacy reference implementation |
 
 The package entry point is dist/index.js, not the root legacy index.js. Dist is
-generated and gitignored. Runtime npm dependencies are empty; development tools
-and the Homebridge test dependency have their own dependency trees.
+generated and gitignored. MQTT.js is a runtime dependency for configured MQTT
+sources and is loaded lazily. The Broadlink driver uses standard libraries.
+Development tools and the Homebridge test dependency have their own trees.
 
 ## Test expectations
 
@@ -53,7 +54,7 @@ Driver-focused tests now exercise authentication, AES vectors, packet checksums,
 response handling, discovery, RF sequencing, and cancellation using in-memory
 sockets. They do not establish real firmware compatibility, RF performance,
 physical state or live HomeKit pairing. Hardware checks remain on the
-[roadmap](v5-roadmap.md). When changing public options, update the relevant v5
+[roadmap](roadmap.md). When changing public options, update the relevant v5
 guide and schema alongside the implementation.
 
 ## GitHub Actions

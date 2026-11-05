@@ -75,7 +75,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
 
     for (const accConfig of configuredAccessories) {
       if (!accConfig.name || !accConfig.type) {
-        this.log.warn(`[${PLATFORM_NAME}] Skipping accessory missing "name" or "type":`, accConfig);
+        this.log.warn(`[${PLATFORM_NAME}] Skipping accessory missing "name" or "type"`);
         continue;
       }
 

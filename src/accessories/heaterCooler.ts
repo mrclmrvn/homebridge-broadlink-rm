@@ -80,6 +80,7 @@ export class HeaterCoolerAccessory extends TimedAccessory {
       this.service.removeCharacteristic(this.service.getCharacteristic(C.SwingMode));
     }
     this.publish();
+    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.poll()));
     if (this.interval > 0) this.schedule('temperature', 0, () => this.poll());
   }
 
@@ -201,7 +202,13 @@ export class HeaterCoolerAccessory extends TimedAccessory {
       if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, error as Error);
       throw error;
     } finally {
-      this.schedule('temperature', this.interval * 1000, () => this.poll());
+      if (this.interval > 0) this.schedule('temperature', this.interval * 1000, () => this.poll());
     }
   }
+
+  public override dispose(): void {
+    super.dispose();
+    this.source.dispose();
+  }
+
 }

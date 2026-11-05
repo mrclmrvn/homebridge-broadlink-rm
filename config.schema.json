@@ -511,7 +511,7 @@
               ]
             },
             "tempSourceUnits": {
-              "title": "Temperature File Units",
+              "title": "Temperature File / MQTT Units",
               "type": "string",
               "enum": [
                 "c",
@@ -537,6 +537,62 @@
               "type": "number",
               "minimum": 1,
               "maximum": 100
+            },
+            "mqttURL": {
+              "title": "MQTT Broker URL",
+              "type": "string",
+              "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+            },
+            "mqttUsername": {
+              "title": "MQTT Username",
+              "type": "string"
+            },
+            "mqttPassword": {
+              "title": "MQTT Password",
+              "type": "string",
+              "format": "password"
+            },
+            "mqttMaxAge": {
+              "title": "MQTT Maximum Reading Age (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483,
+              "default": 300,
+              "description": "Local receipt age; 0 disables expiry while connected. Retained payload timestamps are not interpreted."
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic(s)",
+              "type": [
+                "string",
+                "array"
+              ],
+              "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "enum": [
+                      "temperature",
+                      "humidity",
+                      "combined",
+                      "unknown",
+                      "battery"
+                    ]
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "Optional dot-separated field path for explicit temperature/humidity entries."
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "topic"
+                ]
+              }
             }
           }
         }

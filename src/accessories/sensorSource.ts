@@ -1,20 +1,31 @@
 import { readFile } from 'node:fs/promises';
+import { MQTTSensor, type Quantity } from '../sensors/mqtt';
 import type { RMDevice } from '../broadlink';
 
-type Quantity = 'temperature' | 'humidity';
-
-/** File or native Broadlink measurements, without invented fallback readings. */
+/** MQTT, file or native Broadlink measurements, without invented fallback readings. */
 export class SensorSource {
+  private readonly mqtt?: MQTTSensor;
+  private disposed = false;
   constructor(private readonly config: Record<string, any>, private readonly device: () => RMDevice | undefined) {
-    if (config.mqttURL || config.w1DeviceID || config.w1Device || config.pseudoDeviceTemperature) {
-      throw new Error('MQTT, 1-wire and pseudo-device sensor sources are not implemented in v5 yet');
+    if (config.w1DeviceID || config.w1Device || config.pseudoDeviceTemperature) {
+      throw new Error('1-wire and pseudo-device sensor sources are not implemented in v5 yet');
     }
+    if (config.mqttURL || config.mqttTopic) this.mqtt = new MQTTSensor(config);
   }
 
+  public onUpdate(listener: (quantity?: Quantity) => void): () => void {
+    return this.mqtt?.onUpdate(listener) || (() => {});
+  }
+
+  public dispose(): void { this.disposed = true; this.mqtt?.dispose(); }
+
   public async read(quantity: Quantity): Promise<number> {
+    if (this.disposed) throw new Error('Sensor source is closed');
     const path = this.config[`${quantity}FilePath`] || (quantity === 'humidity' ? this.config.temperatureFilePath : undefined);
     let value: unknown;
-    if (path) {
+    if (this.mqtt) {
+      value = this.mqtt.read(quantity);
+    } else if (path) {
       const contents = (await readFile(path, 'utf8')).trim();
       if (!contents) throw new Error(`Empty ${quantity} sensor file`);
       try {
@@ -34,9 +45,10 @@ export class SensorSource {
       const reading = await device.checkSensors();
       value = reading[quantity];
     }
+    if (this.disposed) throw new Error('Sensor source is closed');
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`No valid ${quantity} reading`);
-    // Native Broadlink temperature is always Celsius; file readings may use F.
-    if (quantity === 'temperature' && path && String(this.config.tempSourceUnits || 'c').toLowerCase() === 'f') {
+    // Native Broadlink temperature is Celsius; configured file/MQTT readings may use F.
+    if (quantity === 'temperature' && (this.mqtt || path) && String(this.config.tempSourceUnits || 'c').toLowerCase() === 'f') {
       value = (value - 32) * 5 / 9;
     }
     const adjustment = this.config[`${quantity}Adjustment`] ?? 0;

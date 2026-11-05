@@ -3,6 +3,9 @@ const { createAccessoryInstance } = require('../../../dist/accessories');
 
 function fixture(t, type, options = {}) {
   const constants = {
+    TargetHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2, AUTO: 3 },
+    CurrentHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2 },
+    TemperatureDisplayUnits: { CELSIUS: 0, FAHRENHEIT: 1 },
     Active: { INACTIVE: 0, ACTIVE: 1 },
     RotationDirection: { CLOCKWISE: 0, COUNTER_CLOCKWISE: 1 },
     SwingMode: { SWING_DISABLED: 0, SWING_ENABLED: 1 },
@@ -21,7 +24,7 @@ function fixture(t, type, options = {}) {
   const names = ['Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
     'TargetPosition', 'HoldPosition', 'ObstructionDetected', 'On', 'OutletInUse', 'RotationSpeed', 'LockPhysicalControls',
     'CurrentTemperature', 'CurrentRelativeHumidity', 'RelativeHumidityHumidifierThreshold', 'RelativeHumidityDehumidifierThreshold',
-    'CoolingThresholdTemperature', 'HeatingThresholdTemperature', ...Object.keys(constants)];
+    'CoolingThresholdTemperature', 'HeatingThresholdTemperature', 'TargetTemperature', ...Object.keys(constants)];
   const C = Object.fromEntries(names.map(name => [name, { ...constants[name] }]));
   const S = Object.fromEntries(['AccessoryInformation', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
   class Accessory {
@@ -36,6 +39,7 @@ function fixture(t, type, options = {}) {
           if (!controls.has(key)) controls.set(key, {
             onGet(fn) { this.get = fn; return this; },
             onSet(fn) { this.set = fn; return this; },
+            setValue(value) { this.value = value; return this; },
             updateValue(value) { this.value = value; return this; },
             setProps(props) { this.props = props; return this; },
           });

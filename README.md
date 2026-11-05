@@ -2,14 +2,15 @@
 
 A TypeScript rebuild of the Broadlink RM Homebridge plugin, packaged as
 `@mrclmrvn/homebridge-broadlink-rm`. The plugin implements Broadlink UDP
-communication using Node.js standard libraries and has no runtime npm dependencies.
+communication using Node.js standard libraries. MQTT sensor integration uses
+MQTT.js, without mandatory native compilation.
 The package entry point is `dist/index.js`; legacy JavaScript files remain in this
 repository for reference.
 
 **Alpha status:** every legacy accessory type name now has a v5 implementation,
 but full legacy configuration compatibility and physical-device validation remain
 incomplete. Existing hex codes can be reused; advanced options may need changes.
-Read the [migration guide](docs/v5-migration.md) before replacing an installation.
+Read the [migration guide](docs/migration.md) before replacing an installation.
 
 ## Start here
 
@@ -52,20 +53,20 @@ or alpha dist-tag has been published. Source development uses Node 22.12+ on the
 The declared Homebridge range still needs a compatibility audit beyond the
 current development dependency before release.
 
-See [installation and configuration](docs/v5-setup.md) for static hosts, multiple
+See [installation and configuration](docs/setup.md) for static hosts, multiple
 RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
 
 ## Accessory guides
 
 | Accessories | Configuration |
 | --- | --- |
-| Air conditioner / Thermostat, switches, IR learning | [Setup guide](docs/v5-setup.md) |
-| Fan / Fanv2 | [Fan](docs/v5-fan.md) |
-| Television, inputs, remote, volume | [TV and pairing](docs/v5-tv.md) |
-| Light, brightness, color presets | [Light](docs/v5-light.md) |
-| Window covering, garage door, lock | [Movement and lock controls](docs/v5-moving-accessories.md) |
-| Humidifier/dehumidifier, purifier, sensors, HeaterCooler | [Remaining types](docs/v5-remaining-accessories.md) |
-| Outlet, Window, Fan v1, switch variants | [Remaining types](docs/v5-remaining-accessories.md#type-coverage) |
+| Air conditioner / Thermostat, switches, IR learning | [Setup guide](docs/setup.md) |
+| Fan / Fanv2 | [Fan](docs/fan.md) |
+| Television, inputs, remote, volume | [TV and pairing](docs/tv.md) |
+| Light, brightness, color presets | [Light](docs/light.md) |
+| Window covering, garage door, lock | [Movement and lock controls](docs/moving-accessories.md) |
+| Humidifier/dehumidifier, purifier, sensors, HeaterCooler | [Remaining types](docs/remaining-accessories.md) |
+| Outlet, Window, Fan v1, switch variants | [Remaining types](docs/remaining-accessories.md#type-coverage) |
 
 Reported power, movement, and lock state are generally inferred from successful
 commands and timers. Real sensor readings are available only from supported
@@ -74,14 +75,17 @@ handling and unsupported options.
 
 ## Diagnostics and development
 
-- [Driver and protocol update](docs/v5-protocol.md): RF learning, Pronto conversion,
+- [MQTT sensors](docs/mqtt.md): legacy topics, Zigbee2MQTT JSON, credentials,
+  freshness, and integration with AC, HeaterCooler and humidity controllers.
+
+- [Driver and protocol update](docs/protocol.md): RF learning, Pronto conversion,
   corrected authentication/framing, exact device IDs, and packaging changes.
 
-- [CLI and troubleshooting](docs/v5-troubleshooting.md): discovery, authentication,
+- [CLI and troubleshooting](docs/troubleshooting.md): discovery, authentication,
   IR learning, sending codes, sensor checks, and useful issue details.
-- [Development and release](docs/v5-development.md): source layout, tests, CI,
+- [Development and release](docs/development.md): source layout, tests, CI,
   packaging, and release validation still needed.
-- [Roadmap](docs/v5-roadmap.md): outstanding integrations, compatibility, testing,
+- [Roadmap](docs/roadmap.md): outstanding integrations, compatibility, testing,
   and packaging work.
 - [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.
 
@@ -102,7 +106,7 @@ possible. Credit also goes to the earlier projects by
 [@Faisalthe01](https://github.com/Faisalthe01), and everyone who contributed code,
 testing, documentation, and bug reports.
 
-The [legacy README](docs/legacy-readme.md) retains the v4 reference material and
+The [legacy README](docs/v4-readme.md) retains the v4 reference material and
 acknowledgments with an updated introduction explaining the continuation. The root
 `config-sample.json`, `config-multiple-rm-devices-sample.json`, and
 `config-sample.json-W1` files are legacy references, not v5 compatibility examples.

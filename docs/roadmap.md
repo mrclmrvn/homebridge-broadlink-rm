@@ -14,7 +14,9 @@ configuration parity remains a goal.
 - Core service mappings for every legacy accessory type, external TV publishing,
   timed movement and lock controls, humidity automation, and standalone sensors.
 - Switch/outlet code sequences and repeat support; native/file sources for the
-  newer sensor, humidity and HeaterCooler implementations.
+  sensor, humidity, HeaterCooler and Thermostat implementations.
+- MQTT subscriptions with legacy config support, validated messages, receipt-age
+  expiry, reconnect handling, push updates and connection cleanup.
 - v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
 - Setup, migration, diagnostics, accessory, and development/release documentation.
 
@@ -28,20 +30,20 @@ not verify Broadlink packets or real devices.
 - Validate RF learning and Pronto output on actual hardware; frequency support
   remains device-dependent. Expand coverage for uncommon device IDs.
 - Port shared structured command support beyond switch/outlet.
-- Port ping/ARP state detection, external MQTT/1-wire/pseudo sensors, battery data,
+- Port ping/ARP state detection, 1-wire/pseudo sensors, battery data,
   and optional Eve history.
 - Close remaining per-type gaps: fan cycling/default resets/timers, light
   exclusives and advanced options, contact/obstruction/jam feedback, and advanced
   legacy air-conditioner behavior.
-- Align the older Thermostat's sensor/state/error handling and lifecycle cleanup
-  with the newer controllers; complete consistent accessory-owned resource teardown.
+- Align the older Thermostat's command/state/error handling with newer controllers;
+  its sensor source and polling cleanup now use the shared implementation.
 
 ## Validation and release work
 
 - Audit the declared Homebridge range beyond the development dependency.
   Node engines now match the locked dependency/CI majors (22.12+ in 22.x, 24, 26).
 - Validate configuration schema behavior in a live Homebridge UI, especially
-  scalar/array switch data and options shared across accessory forms.
+  scalar/array switch data, MQTT topic forms and options shared across accessories.
 - Exercise hardware across device families and record actual auth, send, IR learn,
   sensor, RF, and reachability results. Confirm appliance responses, not only logs.
 - Validate live Homebridge cache restoration/removal, restart, shutdown, TV pairing,

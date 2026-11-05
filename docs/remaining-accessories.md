@@ -142,10 +142,11 @@ out-of-range data reports an error. Native temperature is Celsius; use
 is applied in Celsius after conversion, while humidity adjustment is in
 percentage points. Native Broadlink readings are never converted as Fahrenheit.
 
-MQTT, 1-wire and pseudo-device sources are not implemented by this new source
-reader; their options report a configuration error. Battery data and Eve history
-are not yet exposed. These limitations also apply to the new humidity and
-HeaterCooler source readers, not the older Thermostat implementation.
+MQTT is supported through the legacy broker/topic options; see the
+[MQTT guide](mqtt.md). 1-wire and pseudo-device sources are not implemented
+by this source reader; their options report a configuration error. Battery data and Eve history
+are not yet exposed. The same sensor reader now supplies humidity controllers, HeaterCooler and the
+Thermostat-style AC.
 
 ## HeaterCooler
 
@@ -208,12 +209,12 @@ mirrors inferred power, not measured electrical load. Ping/ARP use detection is
 not implemented.
 
 Window uses `type: "window"` and the timing/code options from
-[v5-moving-accessories.md](v5-moving-accessories.md), with Service.Window.
+[moving-accessories.md](moving-accessories.md), with Service.Window.
 
 Fan v1 uses `type: "fanv1"` and the fan's on/off, `fanSpeedXX`, stepSize/speedSteps,
 and clockwise/counterClockwise codes. It exposes Service.Fan with On instead of
 Active and no swing control. Legacy fan speed cycling, reset defaults and power
-timers remain pending as documented in [v5-fan.md](v5-fan.md).
+timers remain pending as documented in [fan.md](fan.md).
 
 ## Switch variants and sequences
 
@@ -261,6 +262,7 @@ for characteristic warnings. Live Homebridge pairing and physical operation
 remain unvalidated.
 
 All legacy type names now resolve, but advanced options remain incomplete.
-Sensor integrations, history, shared structured-code support outside
-switch/outlet, and complete legacy accessory behavior remain
-separate roadmap work. These ports add no runtime dependencies.
+1-wire/pseudo-device integrations, history, shared structured-code support outside
+switch/outlet, and complete legacy accessory behavior remain separate roadmap
+work. MQTT support adds MQTT.js as a runtime dependency; the core Broadlink
+driver remains based on Node standard libraries.

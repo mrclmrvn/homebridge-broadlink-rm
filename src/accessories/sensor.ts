@@ -33,6 +33,7 @@ export class SensorAccessory extends TimedAccessory {
         if (stale) accessory.removeService(stale);
       }
     }
+    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.poll()));
     if (this.pollInterval > 0) this.schedule('sensors', 0, () => this.poll());
   }
 
@@ -56,7 +57,13 @@ export class SensorAccessory extends TimedAccessory {
         }
       }
     } finally {
-      this.schedule('sensors', this.pollInterval * 1000, () => this.poll());
+      if (this.pollInterval > 0) this.schedule('sensors', this.pollInterval * 1000, () => this.poll());
     }
   }
+
+  public override dispose(): void {
+    super.dispose();
+    this.source.dispose();
+  }
+
 }

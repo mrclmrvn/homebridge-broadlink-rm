@@ -36,7 +36,7 @@ RM4 Mini, not a universal device ID. The installed CLI command is `broadlink-rm`
 The Homebridge learning switch has a 20-second window, unlike the CLI's 30
 seconds. Operational failures and invalid commands return nonzero status.
 A zero status for send/auth confirms the command result, not physical appliance
-feedback. SIGINT aborts learning. See [the protocol update](v5-protocol.md) for
+feedback. SIGINT aborts learning. See [the protocol update](protocol.md) for
 RF prompts and the offline convert-pronto command.
 
 ## Discovery finds nothing
@@ -78,7 +78,7 @@ accessory types; consult the matching guide for meaningful options.
 Restart after changing config. An accessory's name and host determine its v5
 identity. A newly configured host can also select a different physical device;
 without a host, the first registered RM is used. With multiple RMs, set host
-explicitly. TVs require [external pairing](v5-tv.md), while ordinary accessories
+explicitly. TVs require [external pairing](tv.md), while ordinary accessories
 appear through the Homebridge bridge.
 
 ## Sensor readings fail or seem wrong
@@ -91,13 +91,15 @@ as errors; confirm hardware support or configure a file source.
 For files, confirm the path is accessible to the Homebridge service and the
 content matches the documented format. Use tempSourceUnits for Fahrenheit file
 values; native Broadlink temperature is already Celsius. Adjustments are applied
-after file conversion. See [sensor formats](v5-remaining-accessories.md#sensors).
-MQTT/1-wire/pseudo sources remain unported in the new reader.
+after file conversion. See [sensor formats](remaining-accessories.md#sensors).
+MQTT sources are supported; see the [MQTT guide](mqtt.md) for missing-message,
+subscription, reconnect and age-expiry behavior. 1-wire/pseudo sources remain
+unported.
 
 Humidity Auto mode needs actual measurements. noHumidity disables Auto, not the
 required HomeKit current-humidity characteristic; its getter reports an error
-when no real source is available. The old Thermostat's initial temperature is an
-assumption until polling succeeds, not a native measurement.
+when no real source is available. The Thermostat now also waits for a real
+measurement; it does not substitute its target temperature at startup.
 
 ## Details for a useful bug report
 

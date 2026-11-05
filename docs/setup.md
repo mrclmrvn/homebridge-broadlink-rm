@@ -1,7 +1,7 @@
 # v5 installation and configuration
 
 The plugin is an alpha rebuild. Use a backup of your existing configuration and
-review [migration limits](v5-migration.md) before replacing a working v4 setup.
+review [migration limits](migration.md) before replacing a working v4 setup.
 This guide describes the code in this repository; live hardware and Homebridge
 validation remain outstanding.
 
@@ -131,19 +131,21 @@ Set bounds and supply all temperature codes you intend to expose.
 `coolOnly` restricts modes to Off/Cool. It defaults to false in code, while the
 visual schema defaults to true; set it explicitly. The current port does not
 select separate heat/cool code trees. Current activity is inferred from requests,
-and current temperature initially uses the default target until sensor polling
-succeeds. Polling uses the RM sensor when its model metadata advertises sensors;
-0 disables it. This older Thermostat implementation does not use the new file
-sensor reader and has less strict transmission/state handling than the newer
-controllers. Full legacy AC options remain pending.
+and temperature waits for a real reading instead of displaying the target as a
+measurement. The shared source reader supports MQTT, files and native RM sensors;
+see [MQTT configuration](mqtt.md). Polling starts immediately; 0 disables
+background polls, while MQTT messages still push updates. Poll timers and MQTT
+connections are disposed on shutdown. The older Thermostat command/state handling
+is still less strict than the newer controllers; full legacy AC options remain
+pending.
 
 For distinct mode-specific `data.heat` / `data.cool`, use
-[HeaterCooler](v5-remaining-accessories.md#heatercooler).
+[HeaterCooler](remaining-accessories.md#heatercooler).
 
 ## Switches and IR learning
 
 A normal switch uses `data.on` and `data.off`. See
-[switch variants and sequences](v5-remaining-accessories.md#switch-variants-and-sequences)
+[switch variants and sequences](remaining-accessories.md#switch-variants-and-sequences)
 for stateless buttons, automatic actions, repeat counts, and array data.
 
 Add `type: "learn-code"` or `"learn-ir"` to expose a learning switch. Turn it on,
@@ -152,16 +154,16 @@ Homebridge IR button waits up to 20 seconds and resets off when done. Capture
 one button at a time. Writes acknowledge immediately; Off and shutdown abort the
 operation. `learn-rf` performs a Pro model's RF learning workflow with stage
 prompts and a 60-second default deadline. The legacy separate scan-frequency
-button is not recreated; see [RF learning](v5-protocol.md#rf-learning).
+button is not recreated; see [RF learning](protocol.md#rf-learning).
 
 Existing learned IR/RF hex can be sent without converting it. Actual RF
 transmission depends on the device hardware and code frequency; accepting the
 configuration is not hardware verification. Raw modulated Pronto strings are
-converted automatically; see [Pronto support](v5-protocol.md#pronto).
+converted automatically; see [Pronto support](protocol.md#pronto).
 
 ## Pairing and next steps
 
 Ordinary accessories are bridged. TV accessories are external and must be added
-separately in HomeKit; see [TV pairing](v5-tv.md). v5 does not promise to preserve
-v4 UUIDs or room/automation assignments. See [migration](v5-migration.md) and
-[troubleshooting](v5-troubleshooting.md) for the next checks.
+separately in HomeKit; see [TV pairing](tv.md). v5 does not promise to preserve
+v4 UUIDs or room/automation assignments. See [migration](migration.md) and
+[troubleshooting](troubleshooting.md) for the next checks.

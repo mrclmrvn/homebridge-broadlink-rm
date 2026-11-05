@@ -34,10 +34,13 @@
     "type": "git",
     "url": "git+https://github.com/mrclmrvn/homebridge-broadlink-rm.git"
   },
-  "dependencies": {},
+  "dependencies": {
+    "mqtt": "^5.16.1"
+  },
   "devDependencies": {
     "@types/node": "^22.8.7",
     "homebridge": "^2.0.0-beta.0",
+    "mqtt-packet": "^9.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
   },
