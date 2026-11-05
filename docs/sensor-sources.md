@@ -79,6 +79,20 @@ Do not use this value as evidence of physical temperature when evaluating
 heating/cooling behavior. Thermostat-style AC still infers activity from commands
 and does not regulate the appliance using this constant.
 
+## Native read deadlines
+
+Native sensor reads have a two-second deadline covering the device command queue,
+authentication and sensor response together. Concurrent native reads from the
+same accessory share an in-flight request. On timeout, the request is cancelled
+and HomeKit receives an unavailable reading; no stale measurement or default
+temperature is substituted. A later read can recover normally. Shutdown cancels
+pending reads and clears their deadlines. File, 1-wire and MQTT source behavior
+is unchanged; the two-second deadline applies only to native RM reads through
+the accessory source reader, not standalone CLI sensor queries.
+
+The deadline leaves room before Homebridge's usual slow-handler warning. It is
+not a guarantee against warnings if the Node event loop itself is blocked.
+
 ## Optional battery status
 
 ```json

@@ -12,10 +12,10 @@ The following exact releases were selected from npm on November 5, 2026:
 
 | Homebridge | Role | Selected HAP dependency | Local Node 24.14.1 result |
 | --- | --- | --- | --- |
-| 1.6.0 | Declared lower boundary | hap-nodejs 0.11.2 | Build and 169 tests pass |
-| 1.11.4 | Latest stable 1.x at this checkpoint | hap-nodejs 0.14.3 | Build and 169 tests pass |
-| 2.0.0 | Declared 2.x lower boundary | @homebridge/hap-nodejs 2.1.4 | Build and 169 tests pass |
-| 2.5.0 | Locked development release | @homebridge/hap-nodejs 2.3.0 | Build and 169 tests pass |
+| 1.6.0 | Declared lower boundary | hap-nodejs 0.11.2 | Build and 192 tests pass |
+| 1.11.4 | Latest stable 1.x at this checkpoint | hap-nodejs 0.14.3 | Build and 192 tests pass |
+| 2.0.0 | Declared 2.x lower boundary | @homebridge/hap-nodejs 2.1.4 | Build and 192 tests pass |
+| 2.5.0 | Locked development release | @homebridge/hap-nodejs 2.3.0 | Build and 192 tests pass |
 
 Alternate versions were installed in isolated temporary copies; the project's
 development installation and committed lockfile were preserved. These are

@@ -6,8 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v5 rebuild
 
+### Fixed
+
+- Bound native accessory sensor reads to two seconds including queue wait and
+  authentication, share concurrent reads per accessory, cancel timed-out work,
+  and reject pending reads on shutdown without substituting stale measurements.
+- Skip duplicate accessory identities before registration or external TV
+  publication, avoiding duplicate HomeKit address publication.
+- Add lost-authentication/response, queue-delay, recovery, real HAP climate-getter,
+  MAC rediscovery and external TV identity regression coverage.
+
 ### Added
 
+- Scheduled UDP rediscovery with a default 60-minute interval, explicit disable
+  settings, late-device/MAC-address recovery, unusable-socket replacement,
+  overlap prevention, link-local diagnostics and shutdown cancellation.
+- Rediscovery regression coverage for late devices, address changes, overlap,
+  unusable sockets and shutdown; physical network recovery still needs validation.
+- Restored Broadlink app unlock instructions and the original screenshot.
 - Exact Homebridge 1.6.0/1.11.4/2.0.0 compatibility jobs on Node 22/24 alongside
   locked 2.5.0's existing Node/OS matrix, with version/engine preflight checks.
 - Real Homebridge registration, external TV publication and serialized cache

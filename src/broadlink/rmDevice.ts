@@ -143,9 +143,9 @@ export class RMDevice extends BroadlinkDevice {
     }
   }
 
-  public async checkSensors(): Promise<{ temperature?: number; humidity?: number }> {
+  public async checkSensors(signal?: AbortSignal): Promise<{ temperature?: number; humidity?: number }> {
     if (this.learning) throw new Error('Sensor polling is paused while learning');
-    const body = await this.command(this.typeInfo.isRM4 ? RMSubCommand.CHECK_SENSORS_RM4 : RMSubCommand.CHECK_SENSORS);
+    const body = await this.command(this.typeInfo.isRM4 ? RMSubCommand.CHECK_SENSORS_RM4 : RMSubCommand.CHECK_SENSORS, undefined, signal);
     if (this.typeInfo.isRM4) {
       if (body.length < 4) throw new Error('Truncated RM4 sensor response');
       return { temperature: body.readInt8(0) + body.readInt8(1) / 100, humidity: body[2] + body[3] / 100 };

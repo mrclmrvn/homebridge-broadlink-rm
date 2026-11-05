@@ -43,6 +43,18 @@ TV separately in the Home app using Add Accessory / More Options and the
 Homebridge pairing code. An older bridged TV cache entry with the same name and
 host is removed during migration. Renaming the TV or changing its host changes
 its accessory identity. Restart Homebridge after configuration changes.
+Entries resolving to the same name/host identity are duplicates, even when one
+uses `tv` and another uses `television`. The first enabled entry is used and later
+duplicates are skipped with a warning, preventing repeated external publication.
+
+If the TV is absent from More Options, first confirm that its configuration loaded
+without errors and check Homebridge's external-accessory publication/listening
+logs. Publication through the plugin API alone does not establish that mDNS is
+advertising successfully. Record the running Homebridge/Node/iOS versions, whether
+a child bridge is used, and any network, advertiser or host-migration changes.
+Capture redacted logs before changing pairing or cache state. Follow the
+[validation runbook](validation.md#upstream-reliability-checks) when checking a
+migration; the original upstream pairing report remains unverified on hardware.
 
 Power and mute state are inferred from successful sends and reset on startup.
 Repeated identical power or mute requests do not resend toggle codes. Volume

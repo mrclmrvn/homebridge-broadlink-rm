@@ -17,6 +17,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   public readonly accessories: Map<string, PlatformAccessory> = new Map();
   public readonly instances: Map<string, BaseAccessory> = new Map();
   public readonly deviceManager: DeviceManager;
+  private stopped = false;
 
   constructor(
     public readonly log: Logging,
@@ -34,6 +35,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
     });
 
     this.api.on('shutdown', () => {
+      this.stopped = true;
       for (const instance of this.instances.values()) instance.dispose();
       this.deviceManager.closeAll();
     });
@@ -77,10 +79,13 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
       this.log.info(`[${PLATFORM_NAME}] Discovering Broadlink devices on local network...`);
       await this.deviceManager.discover(3000);
     }
+    if (this.stopped) return;
+    if (!disableDiscovery) this.deviceManager.startRediscovery(this.config.rediscoveryInterval);
 
     // 3. Register and bind accessories from config
     const configuredAccessories = this.config.accessories || [];
     const activeUUIDs = new Set<string>();
+    const configuredUUIDs = new Set<string>();
 
     for (const accConfig of configuredAccessories) {
       if (!accConfig.name || !accConfig.type) {
@@ -96,6 +101,13 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
       // Generate a deterministic UUID based on accessory name and host
       const uuidKey = `${accConfig.name}:${accConfig.host || 'default'}`;
       const uuid = this.api.hap.uuid.generate(uuidKey);
+      // An external TV's UUID also determines its advertised HomeKit address.
+      // Publishing it twice can reject asynchronously inside Homebridge.
+      if (configuredUUIDs.has(uuid)) {
+        this.log.warn(`[${PLATFORM_NAME}] Skipping duplicate accessory identity for "${accConfig.name}"; name and host must be unique.`);
+        continue;
+      }
+      configuredUUIDs.add(uuid);
       if (['tv', 'television'].includes(String(accConfig.type).toLowerCase())) {
         // External TVs are recreated each launch; remove any older bridged cache entry.
         const cached = this.accessories.get(uuid);

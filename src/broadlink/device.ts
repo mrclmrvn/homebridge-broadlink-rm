@@ -62,6 +62,8 @@ export class BroadlinkDevice {
     return next;
   }
 
+  public get isUsable(): boolean { return !this.socketError && !this.shutdown.signal.aborted; }
+
   protected assertOpen(): void {
     if (this.shutdown.signal.aborted) throw new Error('Broadlink device is closed');
     if (this.socketError) throw this.socketError;

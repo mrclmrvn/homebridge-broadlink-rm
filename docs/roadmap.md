@@ -4,6 +4,10 @@ This list reflects the current implementation, not a release or hardware
 certification. All legacy accessory type names are recognized, but full legacy
 configuration parity remains a goal.
 
+The [upstream issue checkpoint](upstream-issue-checkpoint.md) tracks the original
+open reports separately from this migration plan, including unresolved fan
+direction/speed maps, IR group scheduling, RM Max support and HeaterCooler Auto.
+
 ## Implemented foundation
 
 - TypeScript dynamic platform and native Node.js UDP/crypto driver.
@@ -11,6 +15,12 @@ configuration parity remains a goal.
   sensor queries, and raw modulated Pronto conversion.
 - Exact static device IDs, address refresh, reliable CLI error status, and an
   explicit package allowlist with automatic prepack builds.
+- Scheduled rediscovery, late-device recovery, unusable-socket replacement,
+  link-local diagnostics and cancellation on shutdown; see [rediscovery](rediscovery.md).
+- Two-second native accessory sensor deadlines covering queue/authentication,
+  shared in-flight reads, timeout/shutdown cancellation and recovery tests.
+- Duplicate accessory identity guards before bridged registration or external TV
+  publication, plus MAC rediscovery and TV restart identity regression checks.
 - Core service mappings for every legacy accessory type, external TV publishing,
   timed movement and lock controls, humidity automation, and standalone sensors.
 - Shared structured command leaves with bounded expansion and cancellation;
@@ -50,6 +60,10 @@ not verify Broadlink packets or real devices.
 
 ## Compatibility and protocol work
 
+- Validate scheduled discovery through real DHCP/network changes and late boot;
+  optional failure-triggered sweeps and per-device health summaries from
+  [upstream PR #786](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/786)
+  remain unimplemented.
 - Extend the new in-memory driver tests with real-device fixtures for packet
   framing, error parsing, and discovery across firmware/device families.
 - Validate RF learning and Pronto output on actual hardware; frequency support
@@ -85,6 +99,18 @@ not verify Broadlink packets or real devices.
   release tooling/changelog, and explicitly publish the scoped alpha when ready.
 - Complete any Homebridge verification requirements before claiming a verified
   plugin badge.
+
+## Deferred custom configuration UI
+
+The custom scan/learn/test editor is preserved on the local branch
+`feat/custom-configuration-ui` at checkpoint `24dc8ed`, together with the core
+rediscovery changes it was developed alongside. It is excluded from this upgrade
+branch, its runtime dependencies and release requirements. The existing schema,
+JSON configuration, CLI and learning accessories remain the configuration tools.
+
+Resume the UI as a separate feature after the core upgrade. Its mocked browser
+and IPC checks do not establish live Homebridge UI hosting, save/restart behavior
+or physical capture. Those checks belong to that feature's validation scope.
 
 ## Documentation follow-up after validation
 

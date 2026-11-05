@@ -2,7 +2,7 @@
   "pluginAlias": "BroadlinkRM",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Modern, zero-dependency Homebridge plugin for Broadlink RM devices with native RM4 support.",
+  "headerDisplay": "Broadlink RM plugin with native device support and no native compilation dependencies.",
   "footerDisplay": "For issues or discussions, visit [GitHub](https://github.com/mrclmrvn/homebridge-broadlink-rm).",
   "schema": {
     "type": "object",
@@ -1265,6 +1265,14 @@
             }
           }
         }
+      },
+      "rediscoveryInterval": {
+        "title": "Rediscovery interval (minutes)",
+        "type": "number",
+        "default": 60,
+        "minimum": 0,
+        "maximum": 35791.39411666667,
+        "description": "Repeat UDP discovery after each interval, including with configured hosts. 0 disables scheduled scans. disableDiscovery disables all automatic scans."
       }
     }
   }

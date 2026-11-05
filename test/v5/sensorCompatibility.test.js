@@ -8,6 +8,79 @@ const { fixture } = require('./helpers/timedFixture');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const w1 = (temperature, crc = 'YES') => `aa bb cc dd ee ff 00 11 22 : crc=22 ${crc}\naa bb cc dd ee ff 00 11 22 t=${temperature}\n`;
 
+test('native sensor reads share a request, fault within two seconds after loss and recover without stale values', async t => {
+  const f = fixture(t, 'temperatureSensor', { sensorPollInterval: 0 });
+  let calls = 0, signal, release;
+  f.device.checkSensors = nextSignal => {
+    calls++; signal = nextSignal;
+    return new Promise(resolve => { release = resolve; });
+  };
+  const temperature = assert.rejects(f.get('CurrentTemperature'), /Sensor read timed out/);
+  const humidity = assert.rejects(f.accessory.getService(f.S.HumiditySensor)
+    .getCharacteristic(f.C.CurrentRelativeHumidity).get(), /Sensor read timed out/);
+  assert.equal(calls, 1);
+  await f.clock.tick(1999);
+  assert.equal(signal.aborted, false);
+  await f.clock.tick(1);
+  await Promise.all([temperature, humidity]);
+  assert.equal(signal.aborted, true);
+  assert.equal(f.clock.timers.size, 0);
+  // A late packet cannot become a successful or cached measurement.
+  release({ temperature: 99, humidity: 99 }); await flush();
+  f.device.checkSensors = async () => ({ temperature: 22, humidity: 40 });
+  assert.equal(await f.get('CurrentTemperature'), 22);
+  f.device.checkSensors = async () => { throw new Error('device offline'); };
+  await assert.rejects(f.get('CurrentTemperature'), /device offline/);
+  assert.equal(f.clock.timers.size, 0);
+});
+
+test('shutdown promptly rejects a native sensor read and cancels its deadline', async t => {
+  const f = fixture(t, 'temperatureSensor', { sensorPollInterval: 0 });
+  let signal;
+  f.device.checkSensors = nextSignal => { signal = nextSignal; return new Promise(() => {}); };
+  const pending = assert.rejects(f.get('CurrentTemperature'), /closed/);
+  f.instance.dispose();
+  await pending;
+  assert.equal(signal.aborted, true);
+  assert.equal(f.clock.timers.size, 0);
+});
+
+test('real HAP sensor and climate getters report bounded failures and recover after a lost native response', async t => {
+  const hap = require('./helpers/homebridgeRuntime').hap;
+  const { createAccessoryInstance } = require('../../dist/accessories');
+  for (const type of ['temperatureSensor', 'air-conditioner', 'heater-cooler', 'humidifier-dehumidifier']) {
+    await t.test(type, async t => {
+      const accessory = new hap.Accessory('Room', hap.uuid.generate(`lost-native-${type}`));
+      accessory.context = { config: { type, sensorPollInterval: 0, noHumidity: true, coolOnly: true,
+        data: { cool: { on: '260002000102', off: '260002000102' }, temperature24: '260002000102' } } };
+      const warnings = [];
+      accessory.on('characteristic-warning', warning => warnings.push(warning.message));
+      const device = { checkSensors: () => new Promise(() => {}) };
+      const platform = { Service: hap.Service, Characteristic: hap.Characteristic, log: {},
+        deviceManager: { getDevice: () => device } };
+      const instance = createAccessoryInstance(platform, accessory); t.after(() => instance.dispose());
+      const serviceType = { temperatureSensor: hap.Service.TemperatureSensor, 'air-conditioner': hap.Service.Thermostat,
+        'heater-cooler': hap.Service.HeaterCooler, 'humidifier-dehumidifier': hap.Service.HumidifierDehumidifier }[type];
+      const characteristic = accessory.getService(serviceType).getCharacteristic(type === 'humidifier-dehumidifier'
+        ? hap.Characteristic.CurrentRelativeHumidity : hap.Characteristic.CurrentTemperature);
+      const timers = new Map();
+      t.mock.method(global, 'setTimeout', (callback, delay) => {
+        const handle = {}; timers.set(handle, { callback, delay }); return handle;
+      });
+      t.mock.method(global, 'clearTimeout', handle => timers.delete(handle));
+      const pending = assert.rejects(characteristic.handleGetRequest(), error => error === hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      [...timers.values()].find(timer => timer.delay === 2000).callback();
+      await pending;
+      assert.equal(timers.size, 0);
+      device.checkSensors = async () => ({ temperature: 23, humidity: 45 });
+      assert.equal(await characteristic.handleGetRequest(), type === 'humidifier-dehumidifier' ? 45 : 23);
+      assert.equal(warnings.length, 1);
+      assert.match(warnings[0], /Sensor read timed out/);
+      assert.ok(warnings.every(message => !/slow to respond|didn't respond at all/i.test(message)));
+    });
+  }
+});
+
 test('1-wire validates CRC, signed millidegrees and source units without falling back to the RM', async t => {
   let contents = w1(-12500);
   const paths = [];
