@@ -49,7 +49,8 @@ sent first if configured, followed by `onDelay` seconds (default 0.1). Without
 per light to keep power delays and multi-command color changes in order.
 
 State reflects successful sends, starts off after restart, and cannot detect
-changes from another remote. Missing codes and failed sends report errors to
+changes from another remote. Legacy light Ping/ARP monitoring is not ported;
+setting pingIPAddress on a light does not enable it. Missing codes and failed sends report errors to
 HomeKit. If power-on succeeds but a later preset fails, the light remains on in
 the reported state. Similarly, a successful hue send is retained when a later
 saturation send fails. Color temperature and hue/saturation are separate inferred

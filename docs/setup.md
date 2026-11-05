@@ -149,7 +149,8 @@ and repeated identical commands are suppressed unless `allowResend` is true.
 Full legacy AC options remain pending.
 
 Accepted target-temperature changes are saved in the accessory's Homebridge cache,
-including changes made while Off. After a normal restart with the same accessory
+including changes made while Off, unless `persistState: false` disables target
+restore/cache updates. After a normal restart with the same accessory
 identity/cache, the last target is restored without sending IR. Startup starts
 Off; explicitly configured ambient automation can subsequently act on a fresh
 reading when its optional gate allows it.

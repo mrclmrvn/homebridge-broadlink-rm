@@ -92,6 +92,8 @@ handling and unsupported options.
   packaging, and release validation still needed.
 - [Validation runbook](docs/validation.md) and [report template](docs/validation-report-template.md):
   reproducible hardware, Homebridge, MQTT, and rollback checks.
+- [Legacy compatibility audit](docs/legacy-compatibility-audit.md): fallback rules,
+  configuration differences and remaining concrete gaps.
 - [Roadmap](docs/roadmap.md): outstanding integrations, compatibility, testing,
   and packaging work.
 - [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.

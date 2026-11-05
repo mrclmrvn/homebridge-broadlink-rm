@@ -34,7 +34,8 @@ presence as evidence that their behaviors are supported by the new code.
 | src/accessories/battery.ts | Optional battery telemetry and low-battery service |
 | src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
 | src/sensors/power.ts, feedback.ts | Power probes and explicit file/MQTT binary feedback |
-| src/helpers/commands.ts | Bounded structured command compilation |
+| src/helpers/commands.ts | Bounded structured command and composite plan compilation |
+| src/helpers/thermostatCodes.ts | Exact and explicit sparse/default AC code selection |
 | src/cli.ts | Standalone diagnostics |
 | config.schema.json | Shared Homebridge visual configuration schema |
 | test/v5/ | New tests, controlled clocks and service fixtures |

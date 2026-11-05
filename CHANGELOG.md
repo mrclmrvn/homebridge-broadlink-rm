@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in legacy AC sparse-map fallback using heatTemperature and generic default
+  keys, Thermostat display units, and persistState false for target persistence.
+
 - Appliance Auto commands/temperature maps and auto metadata without fabricated
   compressor activity; fixed Auto replacement remains available.
 - Opt-in measured ambient AC thresholds, minimum action intervals, manual ownership,
@@ -50,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Enabled but missing AC fallback codes now reject before On/mode transmissions.
+- AC composite plans preserve nested user sequence gaps independently of controller
+  delays, with one aggregate expansion limit checked before any stage sends.
 - Thermostat rejects unsupported modes and invalid temperatures, preserves structured
   temperature commands, and commits requested state only after successful sends.
 - Thermostat measurements no longer substitute the target temperature; shared MQTT/file/native reads and polling resources are cleaned up on shutdown.

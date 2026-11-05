@@ -31,7 +31,9 @@ for its separate nested `data.heat` / `data.cool` hierarchy.
 
 Supply every temperature you intend to expose or explicitly enable the fallback
 below. Each command accepts strings and [structured sequences](power-and-feedback.md#shared-structured-commands).
-The complete selected command plan is validated before any transmission.
+The complete selected command plan is validated before any transmission, with
+one aggregate 10000-step limit. User-defined arrays retain their default 0.1-second
+gaps inside each command leaf, independently of On/mode stage delays.
 
 ## Mode and temperature selection
 
@@ -94,7 +96,22 @@ entering that mode, including from Off. Without that option, 18°C → Off → r
 the selected mode's configured default code. The target reports the temperature
 actually selected; it never sends a default code while claiming the unavailable
 request succeeded. Without a configured mode default, the current target is the
-fallback candidate. Missing fallback codes still fail.
+fallback candidate. Missing fallback codes fail before any On/mode command;
+they do not downgrade to a plain activation fallback.
+
+`fallbackToDefaultTemperature: "legacy"` selects the original sparse-map rule:
+first try the exact mode/generic entry; if missing, compare the requested target
+to `heatTemperature` (default 22°C). At or above the boundary, retry only generic
+`temperature<defaultHeatTemperature>` (default 30°C); below it, retry only generic
+`temperature<defaultCoolTemperature>` (default 16°C). The selected mode does not
+choose that fallback. Range/step checks and pseudo-mode restrictions still apply. Configured startup
+and mode defaults must also align with the configured minimum/step.
+See the [compatibility audit](legacy-compatibility-audit.md) for concrete examples.
+
+By default the accepted target persists. Explicit `persistState: false` ignores
+saved targets and skips their cache updates, so the configured startup default
+is used after restart. Existing saved data is not deleted and can be restored if
+persistence is later re-enabled. Power mode is never restored by this option.
 
 ## Startup, Off and automatic commands
 
@@ -192,6 +209,12 @@ not from restoring the saved target.
 Tests cover command order, failures/cancellation, defaults/fallback, metadata,
 HomeKit values, timers, persisted targets, device Auto, thresholds, minimum
 intervals, manual ownership, missing/ambiguous/virtual gates and MQTT expiry.
-Complete legacy fallback heuristics and arbitrary third-party HomeKit switch
-linking remain outside this implementation; linked gates belong to this platform.
-Live sensor/appliance and Homebridge validation remain required.
+Strict, mode-default and legacy sparse fallback policies are documented above.
+Other migration differences are recorded in the [compatibility audit](legacy-compatibility-audit.md).
+Linked gates belong to this platform; arbitrary third-party HomeKit linking is
+outside this implementation. Live sensor/appliance and Homebridge validation
+remain required.
+
+`units: "c"` / `"f"` (case insensitive) selects the Thermostat display preference.
+It does not convert temperature command keys, saved targets or ambient thresholds;
+those remain Celsius. Input measurement conversion still uses `tempSourceUnits`.

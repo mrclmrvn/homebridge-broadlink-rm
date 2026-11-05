@@ -572,7 +572,9 @@
               "type": "string",
               "enum": [
                 "c",
-                "f"
+                "f",
+                "C",
+                "F"
               ]
             },
             "tempSourceUnits": {
@@ -580,7 +582,9 @@
               "type": "string",
               "enum": [
                 "c",
-                "f"
+                "f",
+                "C",
+                "F"
               ]
             },
             "defaultMode": {
@@ -1086,8 +1090,16 @@
             },
             "fallbackToDefaultTemperature": {
               "title": "Thermostat: Allow Missing-Code Fallback",
-              "type": "boolean",
-              "description": "Opt-in: uses the selected mode default and reports the temperature actually selected."
+              "type": [
+                "boolean",
+                "string"
+              ],
+              "description": "False disables fallback; true uses mode defaults; legacy uses heatTemperature and generic temperature defaults. Missing selected fallback codes fail before any send.",
+              "enum": [
+                false,
+                true,
+                "legacy"
+              ]
             },
             "ignoreTemperatureWhenOff": {
               "title": "Thermostat: Defer Temperature While Off",
@@ -1227,6 +1239,29 @@
               "title": "Virtual Switch / Outlet",
               "type": "boolean",
               "description": "Local state only, useful as an ambient automation gate. Omit data and pingIPAddress. Starts Off after restart."
+            },
+            "heatTemperature": {
+              "title": "Thermostat Legacy Fallback Boundary (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Used only by fallbackToDefaultTemperature: legacy. Defaults to 22; requests at/above it choose the heat default, lower requests choose the cool default."
+            },
+            "units": {
+              "title": "Thermostat Display Units",
+              "type": "string",
+              "enum": [
+                "c",
+                "f",
+                "C",
+                "F"
+              ],
+              "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius."
+            },
+            "persistState": {
+              "title": "Thermostat: Persist Target Temperature",
+              "type": "boolean",
+              "description": "Defaults to true. Explicit false ignores saved targets and skips target cache updates. Power mode always starts Off."
             }
           }
         }

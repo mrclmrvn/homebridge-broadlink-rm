@@ -6,7 +6,9 @@ have been ported. Existing learned hex codes can be reused.
 
 The [contributed cooling configuration review](legacy-config-coverage.md) records
 which paths are covered by anonymized regression tests and which mode/default
-differences still need attention. This is software evidence, not a hardware pass.
+differences still need attention. The [source audit](legacy-compatibility-audit.md)
+records additional fallback/layout findings and remaining concrete gaps.
+This is software evidence, not a hardware pass.
 
 ## Prepare an isolated trial
 
@@ -35,6 +37,8 @@ Homebridge range still needs validation beyond the development dependency.
 | Existing configuration | Current v5 behavior |
 | --- | --- |
 | Ordinary hex strings | Reused as accessory data; no re-learning required just for the rebuild |
+| AC sparse-map fallback | Disabled by default; true selects mode defaults, legacy selects the heatTemperature boundary/generic-default rule |
+| AC units / persistState | Display units supported; persistState false disables target persistence, not a general restoration of legacy power/movement state |
 | Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |

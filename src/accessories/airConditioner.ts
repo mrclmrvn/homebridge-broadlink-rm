@@ -4,9 +4,10 @@ import { SensorSource } from './sensorSource';
 import { BatteryStatus } from './battery';
 import type { BroadlinkRMPlatform } from '../platform';
 import { PlatformAccessory } from 'homebridge';
-import { compileCommands } from '../helpers/commands';
+import { compileCommandPlan } from '../helpers/commands';
 import { performance } from 'node:perf_hooks';
 import { SwitchAccessory } from './switch';
+import { selectTemperatureCode } from '../helpers/thermostatCodes';
 
 export class AirConditionerAccessory extends TimedAccessory {
   private service: Service;
@@ -38,11 +39,13 @@ export class AirConditionerAccessory extends TimedAccessory {
       ? this.config.defaultHeatTemperature ?? 24 : this.config.defaultMode === 'auto'
         ? this.config.defaultAutoTemperature ?? this.config.defaultCoolTemperature ?? 24 : this.config.defaultCoolTemperature ?? 24;
     const step = this.config.tempStepSize ?? 1;
+    const aligned = (value: number) => Math.abs((value - this.minTemperature) / step - Math.round((value - this.minTemperature) / step)) < 0.000001;
     if (![this.minTemperature, this.maxTemperature, this.targetTemperature, step].every(value => typeof value === 'number' && Number.isFinite(value))
       || this.minTemperature < -270 || this.maxTemperature > 100 || this.minTemperature >= this.maxTemperature
       || step <= 0 || step > this.maxTemperature - this.minTemperature
-      || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature) throw new Error('Invalid Thermostat temperature configuration');
-    const saved = accessory.context.broadlinkRMState?.targetTemperature;
+      || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature || !aligned(this.targetTemperature)) throw new Error('Invalid Thermostat temperature configuration');
+    if (this.config.persistState !== undefined && typeof this.config.persistState !== 'boolean') throw new Error('persistState must be a boolean');
+    const saved = this.config.persistState === false ? undefined : accessory.context.broadlinkRMState?.targetTemperature;
     if (typeof saved === 'number' && Number.isFinite(saved) && saved >= this.minTemperature && saved <= this.maxTemperature
       && Math.abs((saved - this.minTemperature) / step - Math.round((saved - this.minTemperature) / step)) < 0.000001) {
       this.targetTemperature = saved;
@@ -65,7 +68,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     if (this.lastMode === 3 && this.config.replaceAutoMode) this.lastMode = this.config.replaceAutoMode === 'heat' ? 1 : 2;
     for (const key of ['defaultHeatTemperature', 'defaultCoolTemperature', 'defaultAutoTemperature']) {
       const value = this.config[key];
-      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < this.minTemperature || value > this.maxTemperature)) throw new Error(`Invalid ${key}`);
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < this.minTemperature || value > this.maxTemperature || !aligned(value))) throw new Error(`Invalid ${key}`);
     }
     this.autoHeat = this.config.autoHeatTemperature;
     this.autoCool = this.config.autoCoolTemperature;
@@ -78,6 +81,11 @@ export class AirConditionerAccessory extends TimedAccessory {
     this.ambientMinimum = this.seconds(this.config.minimumAutoOnOffDuration ?? this.config.autoMinimumDuration, 120) * 1000;
     this.autoSwitchName = this.config.autoSwitchName ?? this.config.autoSwitch;
     if (this.autoSwitchName !== undefined && (typeof this.autoSwitchName !== 'string' || !this.autoSwitchName.trim())) throw new Error('Invalid autoSwitchName');
+    if (this.config.fallbackToDefaultTemperature !== undefined && ![false, true, 'legacy'].includes(this.config.fallbackToDefaultTemperature)) throw new Error('Invalid fallbackToDefaultTemperature policy');
+    if (this.config.heatTemperature !== undefined && (typeof this.config.heatTemperature !== 'number' || !Number.isFinite(this.config.heatTemperature)
+      || this.config.heatTemperature < -270 || this.config.heatTemperature > 100)) throw new Error('Invalid heatTemperature');
+    const displayUnits = String(this.config.units ?? 'c').toLowerCase();
+    if (!['c', 'f'].includes(displayUnits)) throw new Error('units must be c or f');
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
 
@@ -124,7 +132,8 @@ export class AirConditionerAccessory extends TimedAccessory {
     // Temperature Display Units
     this.service
       .getCharacteristic(this.platform.Characteristic.TemperatureDisplayUnits)
-      .setValue(this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
+      .setValue(displayUnits === 'f' ? this.platform.Characteristic.TemperatureDisplayUnits.FAHRENHEIT : this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS)
+      .onGet(() => displayUnits === 'f' ? this.platform.Characteristic.TemperatureDisplayUnits.FAHRENHEIT : this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
 
     // Initial values
     this.publishActivity();
@@ -216,15 +225,12 @@ export class AirConditionerAccessory extends TimedAccessory {
   private async applyTemperature(state: number, temperature: number, entering: boolean, ambient = false): Promise<void> {
     const data = this.config.data || {};
     const name = state === 1 ? 'heat' : state === 3 ? 'auto' : 'cool';
-    let temp = temperature;
-    let entry = data[`${name}${temp}`] ?? data[`temperature${temp}`];
-    if (entry === undefined && this.config.fallbackToDefaultTemperature) {
-      temp = this.modeDefault(state);
-      entry = data[`${name}${temp}`] ?? data[`temperature${temp}`];
-    }
-    const mode = entry?.['pseudo-mode'];
+    const selected = selectTemperatureCode(this.config, name, temperature, this.targetTemperature);
+    const temp = selected?.temperature ?? temperature;
+    const entry = selected?.code;
+    const mode = entry && typeof entry === 'object' ? (entry as Record<string, unknown>)['pseudo-mode'] : undefined;
     if (mode !== undefined) {
-      if (!['heat', 'cool', 'auto'].includes(mode) || !this.allowedModes.includes(mode === 'heat' ? 1 : mode === 'auto' ? 3 : 2)) throw new Error('Unsupported temperature pseudo-mode');
+      if (typeof mode !== 'string' || !['heat', 'cool', 'auto'].includes(mode) || !this.allowedModes.includes(mode === 'heat' ? 1 : mode === 'auto' ? 3 : 2)) throw new Error('Unsupported temperature pseudo-mode');
       if (ambient && (mode === 'heat' ? 1 : mode === 'auto' ? 3 : 2) !== state) throw new Error('Ambient command metadata conflicts with the requested mode');
     }
     const commands: unknown[] = [];
@@ -239,8 +245,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       // A plain On command is the existing fallback when no temperature entry exists.
       if (!commands.length) commands.push(data.on);
     }
-    compileCommands(commands, 0);
-    await this.sendCode(commands, 0);
+    await this.sendCommands(compileCommandPlan(commands));
     this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : mode === 'auto' ? 3 : state);
     const changed = this.targetTemperature !== temp;
     this.targetTemperature = temp;
@@ -253,6 +258,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private saveTargetTemperature(): void {
+    if (this.config.persistState === false) return;
     this.accessory.context.broadlinkRMState = { targetTemperature: this.targetTemperature };
     this.platform.updateAccessoryContext(this.accessory);
   }

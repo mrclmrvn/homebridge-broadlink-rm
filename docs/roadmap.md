@@ -36,6 +36,8 @@ configuration parity remains a goal.
   expiry, reconnect handling, push updates and connection cleanup.
 - v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
 - Setup, migration, diagnostics, accessory, and development/release documentation.
+- Explicit legacy sparse-map fallback, display-unit preference and AC target
+  persistence opt-out, with independent nested sequence timing and aggregate limits.
 - Anonymized regression coverage for a contributed two-host legacy cooling config,
   including all 16–30°C mappings, disabled fan handling and host routing; see the
   [compatibility review](legacy-config-coverage.md) for remaining behavior differences.
@@ -51,10 +53,13 @@ not verify Broadlink packets or real devices.
   remains device-dependent. Expand coverage for uncommon device IDs.
 - Validate 1-wire CRC behavior, file access and container mounts on a real Linux
   host; validate battery producers, units and HomeKit presentation in live use.
-- Audit additional concrete legacy migration cases, including complete fallback
-  heuristics and command layouts not represented by current fixtures; see
-  [Thermostat scope](air-conditioner.md). Third-party HomeKit switch gates are
-  outside the platform-local linking implementation.
+- Audit further real migration cases beyond current fixtures; see the
+  [source compatibility audit](legacy-compatibility-audit.md) for supported fallback
+  policies and intentional differences.
+- Port legacy light Ping/ARP monitoring if required by migration cases; current
+  light power state remains inferred. General legacy accessory-state persistence
+  and non-switch ambient gate types are not reproduced. External HomeKit gates
+  remain outside platform-local linking.
 - Validate explicit jam producers and physical recovery. Feedback faults/cancels
   software actions; it does not transmit motor stop/reversal or supply an interlock.
 - Validate power utilities, cycle reset assumptions and feedback polarity/freshness

@@ -114,6 +114,12 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
 | Sensors | Native/file/MQTT/1-wire readings, explicit pseudo constants, offsets, CRC failures, battery telemetry, missing values and shutdown cleanup |
 
+For sparse AC maps, test the explicitly selected fallback policy at/below/above
+its boundary; confirm the physical command and reported accepted target agree.
+Verify units changes affect presentation only, and persistState false ignores
+saved targets without restoring power. Validate user sequence gaps separately
+from controller On/mode delays.
+
 ## AC automation checks
 
 On an isolated appliance, validate device Auto codes and the selected setpoint;
