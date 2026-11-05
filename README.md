@@ -101,6 +101,11 @@ handling and unsupported options.
   and packaging work.
 - [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.
 
+## Support the project
+
+If you find this plugin useful, you can [buy me a drink on PayPal](http://paypal.me/mrclmrvn)
+to support its continued development.
+
 ## Project history
 
 This fork continues the plugin with a TypeScript-based v5 rebuild maintained by
