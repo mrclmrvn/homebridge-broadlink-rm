@@ -71,7 +71,10 @@ IR learning, transmission, Homebridge deployment or pairing is performed.
 
 The original review added four cases. Follow-up tests cover persisted targets
 across serialized cache restoration, startup without sends, invalid saved values,
-failed command handling and cache-update errors. `npm test` now passes 119 tests.
+failed command handling and cache-update errors. An additional regression changes
+an active AC from 25°C to 18°C, turns it Off, restores snapshots captured by the
+cache API and checks that two ACs retain independent targets without startup
+commands. `npm test` now passes 120 tests.
 This exercises Homebridge's cache API boundary, not live on-disk crash recovery.
 Record actual installation, discovery/authentication, sensor capabilities,
 temperature-code appliance responses, startup/pairing and Off/On flow using the

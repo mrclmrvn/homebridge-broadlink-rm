@@ -162,3 +162,52 @@ test('cache persistence failure warns without undoing a successful setpoint chan
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /Could not persist state/);
 });
+
+test('active AC reduced to 18 then turned Off restores 18 after restart, independently of another AC', async t => {
+  const f = await setup(t);
+  const cache = new Map();
+  // Capture only what the plugin actually submits to Homebridge's cache API.
+  // Copy at write time so later context mutations cannot change the snapshot.
+  t.mock.method(f.api, 'updatePlatformAccessories', accessories => {
+    for (const accessory of accessories) cache.set(accessory.UUID, JSON.stringify({
+      name: accessory.displayName, UUID: accessory.UUID, context: accessory.context,
+    }));
+  });
+  const units = f.registered.filter(accessory => accessory.getService(hap.Service.Thermostat));
+  const targets = [18, 27];
+  for (const [index, accessory] of units.entries()) {
+    const service = accessory.getService(hap.Service.Thermostat);
+    const power = service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
+    const temperature = service.getCharacteristic(hap.Characteristic.TargetTemperature);
+    assert.equal(await temperature.handleGetRequest(), 25);
+    await power.handleSetRequest(2);
+    await temperature.handleSetRequest(targets[index]);
+    await power.handleSetRequest(0);
+    assert.equal(await power.handleGetRequest(), 0);
+    assert.equal(await temperature.handleGetRequest(), targets[index]);
+  }
+  assert.equal(cache.size, 2);
+  f.handlers.shutdown();
+
+  const restarted = await setup(t, [...cache.values()].map(record => JSON.parse(record)));
+  assert.deepEqual(restarted.sent, []);
+  for (const [index, previous] of units.entries()) {
+    const accessory = restarted.platform.accessories.get(previous.UUID);
+    const service = accessory.getService(hap.Service.Thermostat);
+    assert.equal(await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleGetRequest(), targets[index]);
+    assert.equal(await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleGetRequest(), 0);
+    assert.equal(await service.getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState).handleGetRequest(), 0);
+  }
+  for (const [index, previous] of units.entries()) {
+    const accessory = restarted.platform.accessories.get(previous.UUID);
+    await accessory.getService(hap.Service.Thermostat)
+      .getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(2);
+    assert.deepEqual(restarted.sent.at(-1), {
+      host: restarted.platform.deviceManager.getDevice(accessory.context.config.host).host,
+      code: accessory.context.config.data[`temperature${targets[index]}`].data,
+    });
+  }
+  assert.equal(restarted.sent.length, 2);
+  assert.deepEqual(f.warnings, []);
+  assert.deepEqual(restarted.warnings, []);
+});
