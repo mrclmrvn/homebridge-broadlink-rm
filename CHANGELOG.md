@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Anonymized legacy cooling-config fixture and real HAP regression coverage for
+  complete temperature maps, per-host routing, deferred writes and a disabled fan.
 - TypeScript dynamic platform and a Node.js standard-library Broadlink driver.
 - IR diagnostic CLI, native sensor queries, and core implementations for all legacy accessory type names.
 - Fan, external television, light, window covering/window, garage door, lock, purifier, humidifier/dehumidifier, standalone sensor, outlet, and switch sequence/repeat controls.

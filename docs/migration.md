@@ -4,6 +4,10 @@ v5 is a rebuild, not a drop-in compatibility release yet. All legacy accessory
 type names resolve, but a recognized type does not mean all of its old options
 have been ported. Existing learned hex codes can be reused.
 
+The [contributed cooling configuration review](legacy-config-coverage.md) records
+which paths are covered by anonymized regression tests and which mode/default
+differences still need attention. This is software evidence, not a hardware pass.
+
 ## Prepare an isolated trial
 
 1. Back up the Homebridge configuration and cached accessory data, and record the

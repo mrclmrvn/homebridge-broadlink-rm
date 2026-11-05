@@ -26,6 +26,9 @@ configuration parity remains a goal.
   expiry, reconnect handling, push updates and connection cleanup.
 - v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
 - Setup, migration, diagnostics, accessory, and development/release documentation.
+- Anonymized regression coverage for a contributed two-host legacy cooling config,
+  including all 16–30°C mappings, disabled fan handling and host routing; see the
+  [compatibility review](legacy-config-coverage.md) for remaining behavior differences.
 
 Implementation is distinct from validation: mock-backed accessory coverage does
 not verify Broadlink packets or real devices.
