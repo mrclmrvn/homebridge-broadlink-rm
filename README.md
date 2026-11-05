@@ -75,6 +75,8 @@ handling and unsupported options.
 
 ## Diagnostics and development
 
+- [Sensor sources](docs/sensor-sources.md): 1-wire, explicit pseudo temperatures,
+  source precedence and optional battery telemetry.
 - [Power and feedback](docs/power-and-feedback.md): Ping/ARP estimates, shared
   command sequences, garage endpoints/obstruction and lock-bolt sensors.
 - [MQTT sensors](docs/mqtt.md): legacy topics, Zigbee2MQTT JSON, credentials,

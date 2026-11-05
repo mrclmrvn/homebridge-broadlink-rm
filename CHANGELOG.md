@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fan speed cycling/default resets/power timers, and light exclusives/power timers.
 - Explicit file/MQTT garage endpoint/obstruction and standalone lock-bolt feedback.
 
+- Linux 1-wire temperature readings with CRC validation, signed millidegrees and
+  cancellable reads; explicit Celsius pseudo-temperature configuration.
+- Optional battery percentage/low-battery telemetry from files and MQTT across
+  sensor and climate accessories, with independent freshness and no assumed full battery.
+
 ### Fixed
 
 - Thermostat rejects unsupported modes and invalid temperatures, preserves structured
@@ -46,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known limitations
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
-- 1-wire/pseudo-device integrations, battery data, and several advanced per-accessory behaviors remain outstanding. Optional Eve history is excluded from the current scope.
+- Several advanced per-accessory behaviors remain outstanding. 1-wire, pseudo and battery sources still require live validation. Optional Eve history is excluded from the current scope.
 - Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/roadmap.md.
 
 ## [4.4.21 - 2026-05-10]

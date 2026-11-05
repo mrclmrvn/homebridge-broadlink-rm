@@ -30,7 +30,8 @@ presence as evidence that their behaviors are supported by the new code.
 | src/broadlink/ | UDP packets, crypto, discovery, IR learning and native sensors |
 | src/accessories/ | HomeKit service and code mappings |
 | src/accessories/timed.ts | Serialized commands, cancellable timers/delays for newer controllers |
-| src/accessories/sensorSource.ts | Native/file readings, validation and unit conversion |
+| src/accessories/sensorSource.ts | Native/file/MQTT/1-wire and explicit pseudo readings, validation and units |
+| src/accessories/battery.ts | Optional battery telemetry and low-battery service |
 | src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
 | src/sensors/power.ts, feedback.ts | Power probes and explicit file/MQTT binary feedback |
 | src/helpers/commands.ts | Bounded structured command compilation |

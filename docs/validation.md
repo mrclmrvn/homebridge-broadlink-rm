@@ -111,7 +111,23 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Humidity controller | Humidify/idle/dehumidify selection and no new automatic command on unavailable measurements |
 | Window/covering | Calibrated full travel, intermediate stop, reversal, hold, endpoint resend and initial-position assumption |
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
-| Sensors | Native/file/MQTT readings, offsets, invalid/missing values and shutdown cleanup |
+| Sensors | Native/file/MQTT/1-wire readings, explicit pseudo constants, offsets, CRC failures, battery telemetry, missing values and shutdown cleanup |
+
+## 1-wire, pseudo and battery checks
+
+On a Linux test host, confirm the intended w1_device ID and file access from the
+actual Homebridge process/container. Record a valid signed reading against a
+reference, a CRC failure, missing file and shutdown during a read. Check that
+failures never produce a synthetic zero or native fallback. A fixture test alone
+does not establish sensor/bus compatibility.
+
+For pseudo temperatures, record the configured Celsius constant separately from
+physical measurements. Test zero and offsets, and verify any separate humidity
+source independently. For `batteryAlerts`, test file and MQTT percentages at 0,
+20, 21 and 100, invalid/missing data, receipt expiry and reconnect. Confirm
+battery-only MQTT messages do not refresh climate readings or transmit appliance
+commands, low status matches the rounded percentage, charging remains unavailable,
+and removing the option removes the dedicated Battery service after restart.
 
 ## Power and feedback checks
 

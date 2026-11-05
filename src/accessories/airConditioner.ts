@@ -1,6 +1,7 @@
 import { Service, CharacteristicValue } from 'homebridge';
 import { TimedAccessory } from './timed';
 import { SensorSource } from './sensorSource';
+import { BatteryStatus } from './battery';
 import type { BroadlinkRMPlatform } from '../platform';
 import { PlatformAccessory } from 'homebridge';
 
@@ -10,6 +11,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   private targetHeatingCoolingState: number = 0;
   private targetTemperature: number;
   private readonly source: SensorSource;
+  private readonly battery: BatteryStatus;
   private readonly pollInterval: number;
   private humidityService?: Service;
   private minTemperature: number;
@@ -96,8 +98,11 @@ export class AirConditionerAccessory extends TimedAccessory {
     );
 
     this.humidityService = accessory.getService(platform.Service.HumiditySensor);
-    if (this.config.noHumidity && this.humidityService) { accessory.removeService(this.humidityService); this.humidityService = undefined; }
-    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.pollSensors()));
+    if ((this.config.noHumidity || this.source.temperatureOnly) && this.humidityService) { accessory.removeService(this.humidityService); this.humidityService = undefined; }
+    this.battery = new BatteryStatus(platform, accessory, this.source);
+    this.source.onUpdate(quantity => {
+      if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.pollSensors());
+    });
     if (this.pollInterval > 0) this.schedule('sensors', 0, () => this.pollSensors());
   }
 
@@ -159,7 +164,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       } catch (error) {
         if (!this.disposed) this.service.updateCharacteristic(C.CurrentTemperature, error as Error);
       }
-      if (!this.config.noHumidity) {
+      if (!this.config.noHumidity && !this.source.temperatureOnly) {
         try {
           const humidity = await this.source.read('humidity');
           if (this.disposed) return;
@@ -172,12 +177,14 @@ export class AirConditionerAccessory extends TimedAccessory {
         }
       }
     } finally {
+      await this.battery.update();
       if (this.pollInterval > 0) this.schedule('sensors', this.pollInterval * 1000, () => this.pollSensors());
     }
   }
 
   public override dispose(): void {
     super.dispose();
+    this.battery.dispose();
     this.source.dispose();
   }
 }

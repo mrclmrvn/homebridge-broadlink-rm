@@ -110,7 +110,7 @@ commands. No air-quality or filter-life sensor is supplied.
 ```
 
 Temperature sensors also expose a separate HumiditySensor service unless
-`noHumidity` is true. Humidity-only accessories use `type: "humiditySensor"`.
+`noHumidity` is true or the configured 1-wire/pseudo source has no humidity source. Humidity-only accessories use `type: "humiditySensor"`.
 Native measurements require a Broadlink device with the relevant built-in or
 cable sensor. Unsupported or missing measurements report errors, never a
 fabricated zero. Polling starts immediately, repeats after each completed read,
@@ -143,10 +143,13 @@ is applied in Celsius after conversion, while humidity adjustment is in
 percentage points. Native Broadlink readings are never converted as Fahrenheit.
 
 MQTT is supported through the legacy broker/topic options; see the
-[MQTT guide](mqtt.md). 1-wire and pseudo-device sources are not implemented
-by this source reader; their options report a configuration error. Battery data
-remains pending. Optional Eve history is excluded from the current scope. The same sensor reader now supplies humidity controllers, HeaterCooler and the
-Thermostat-style AC.
+[MQTT guide](mqtt.md). Linux `w1DeviceID` readings validate CRC and signed
+millidegrees; `pseudoDeviceTemperature` supplies an explicitly configured Celsius
+constant. Optional `batteryAlerts` exposes file/MQTT percentage telemetry without
+inventing a default battery level. See [sensor sources](sensor-sources.md) for
+precedence, examples, units and failure behavior. The shared reader also supplies
+humidity controllers, HeaterCooler and Thermostat-style AC. Optional Eve history
+is excluded from the current scope.
 
 ## HeaterCooler
 
@@ -263,6 +266,6 @@ for characteristic warnings. Live Homebridge pairing and physical operation
 remain unvalidated.
 
 All legacy type names now resolve, but advanced options remain incomplete.
-1-wire/pseudo-device integrations, battery data, and complete legacy accessory
-behavior remain roadmap work. Optional Eve history is excluded from scope. MQTT support adds MQTT.js as a runtime dependency; the core Broadlink
-driver remains based on Node standard libraries.
+Complete legacy accessory behavior and physical validation remain roadmap work.
+Optional Eve history is excluded from scope. MQTT support adds MQTT.js as a
+runtime dependency; the core Broadlink driver uses Node standard libraries.

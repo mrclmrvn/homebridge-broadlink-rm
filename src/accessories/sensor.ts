@@ -2,9 +2,11 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { SensorSource } from './sensorSource';
+import { BatteryStatus } from './battery';
 
 export class SensorAccessory extends TimedAccessory {
   private readonly source: SensorSource;
+  private readonly battery: BatteryStatus;
   private readonly service: Service;
   private readonly humidityService?: Service;
   private readonly humidityOnly: boolean;
@@ -24,7 +26,7 @@ export class SensorAccessory extends TimedAccessory {
     } else {
       this.service.getCharacteristic(C.CurrentTemperature).setProps({ minValue: -270, maxValue: 100, minStep: 0.1 })
         .onGet(() => this.source.read('temperature'));
-      if (!this.config.noHumidity) {
+      if (!this.config.noHumidity && !this.source.temperatureOnly) {
         this.humidityService = accessory.getService(platform.Service.HumiditySensor)
           || accessory.addService(platform.Service.HumiditySensor, `${this.name} Humidity`);
         this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
@@ -33,7 +35,10 @@ export class SensorAccessory extends TimedAccessory {
         if (stale) accessory.removeService(stale);
       }
     }
-    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.poll()));
+    this.battery = new BatteryStatus(platform, accessory, this.source);
+    this.source.onUpdate(quantity => {
+      if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.poll());
+    });
     if (this.pollInterval > 0) this.schedule('sensors', 0, () => this.poll());
   }
 
@@ -57,12 +62,14 @@ export class SensorAccessory extends TimedAccessory {
         }
       }
     } finally {
+      await this.battery.update();
       if (this.pollInterval > 0) this.schedule('sensors', this.pollInterval * 1000, () => this.poll());
     }
   }
 
   public override dispose(): void {
     super.dispose();
+    this.battery.dispose();
     this.source.dispose();
   }
 

@@ -69,12 +69,16 @@ scalar topics to avoid ambiguity.
 The first topic can publish `23.5` or a JSON object with a temperature alias.
 The second can publish `{"readings":{"rh":48}}`. Paths are dot-separated,
 case-sensitive field/array indices; they do not evaluate expressions. A path
-requires an explicit temperature or humidity identifier and an object payload.
+requires an explicit measurement identifier and an object payload.
 Multiple identifiers can subscribe to the same topic with different paths.
 
-Supported identifiers are temperature, humidity, combined and unknown. Legacy
-battery entries are accepted but ignored because battery services are still
-pending. combined requires object measurements; unknown follows the combined
+Climate identifiers are temperature, humidity, battery, combined and unknown.
+Battery accepts percentage scalars or numeric JSON fields/paths; combined JSON
+recognizes battery/batteryLevel/battery_level/batteryPercentage/battery_percentage
+case-insensitively. `batteryAlerts` exposes a separate Battery service on sensor
+and climate accessories; see [sensor sources](sensor-sources.md#optional-battery-status).
+Binary sources also use contact, lock and obstruction identifiers as described
+in the feedback guide. combined requires object measurements; unknown follows the combined
 JSON/scalar behavior described above. Topic filters support MQTT + and # rules,
 including the special handling of $-prefixed topics. Shared-subscription filters
 are not supported. Prefer a filter that identifies one physical sensor: multiple
@@ -91,10 +95,11 @@ included in integration error logs; avoid sharing credentials in bug reports.
 
 mqttMaxAge is the maximum age in seconds since a measurement was received locally
 (default 300). Zero disables age expiry while connected. Choose an age longer
-than the sensor's expected publication interval. Temperature and humidity have
-independent receipt times; partial JSON messages do not refresh omitted fields.
-Status-only combined updates, such as battery/link-quality messages, do not
-refresh or erase earlier measurements. Empty or malformed measurement messages
+than the sensor's expected publication interval. Temperature, humidity and battery
+have independent receipt times; partial JSON messages do not refresh omitted
+fields. Battery-only and link-quality updates do not refresh or erase earlier
+temperature/humidity measurements. Battery-only updates do not trigger climate
+control polls. Empty or malformed measurement messages
 invalidate the affected quantity; booleans, nulls and invalid numeric text do
 not become zero. A real numeric zero remains valid.
 

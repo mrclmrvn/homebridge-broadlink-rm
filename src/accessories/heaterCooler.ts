@@ -2,6 +2,7 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { SensorSource } from './sensorSource';
+import { BatteryStatus } from './battery';
 import { compileCommands } from '../helpers/commands';
 
 type Settings = { heat: number; cool: number; speed: number; swing: number };
@@ -10,6 +11,7 @@ type Settings = { heat: number; cool: number; speed: number; swing: number };
 export class HeaterCoolerAccessory extends TimedAccessory {
   private readonly service: Service;
   private readonly source: SensorSource;
+  private readonly battery: BatteryStatus;
   private readonly modes: number[];
   private readonly min: number;
   private readonly max: number;
@@ -81,7 +83,10 @@ export class HeaterCoolerAccessory extends TimedAccessory {
       this.service.removeCharacteristic(this.service.getCharacteristic(C.SwingMode));
     }
     this.publish();
-    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.poll()));
+    this.battery = new BatteryStatus(platform, accessory, this.source);
+    this.source.onUpdate(quantity => {
+      if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.poll());
+    });
     if (this.interval > 0) this.schedule('temperature', 0, () => this.poll());
   }
 
@@ -205,12 +210,14 @@ export class HeaterCoolerAccessory extends TimedAccessory {
       if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, error as Error);
       throw error;
     } finally {
+      await this.battery.update();
       if (this.interval > 0) this.schedule('temperature', this.interval * 1000, () => this.poll());
     }
   }
 
   public override dispose(): void {
     super.dispose();
+    this.battery.dispose();
     this.source.dispose();
   }
 

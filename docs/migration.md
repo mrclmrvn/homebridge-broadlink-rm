@@ -38,9 +38,9 @@ Homebridge range still needs validation beyond the development dependency.
 | `temperatureSensor`, `humiditySensor` | Accepted with original casing; kebab-case aliases also available |
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
 | MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
-| 1-wire, pseudo-device sensors | Not implemented in the new sensor reader; configuring them there is an error |
+| 1-wire, pseudo-device sensors | CRC-checked Linux w1DeviceID and explicit Celsius pseudoDeviceTemperature supported; review source precedence |
 | Ping/ARP state detection | Supported on switch/outlet, TV, fan/Fan v1 and purifier; ARP is a cache estimate |
-| Eve/fakegato history, battery alerts | Eve history excluded from scope; battery alerts pending |
+| Eve/fakegato history, battery alerts | Eve history excluded; batteryAlerts exposes file/MQTT telemetry, with no assumed full battery |
 | RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
 | Pronto strings | Raw modulated 0000 strings with whitespace are converted before transmission |
 | Fan speedCycle/default-reset/timers, light exclusives | Supported; review assumptions and timer behavior in the fan/light guides |
@@ -80,9 +80,18 @@ rather than authorizing a command. Jam detection remains unimplemented.
 
 Sensor readers, including the Thermostat, report invalid/missing readings as
 errors rather than inventing zero values or displaying the AC target as measured
-temperature. MQTT disconnects and expired readings are unavailable until a new
-valid message arrives. MQTT measurements take precedence over file/native values;
-see [MQTT migration details](mqtt.md) before combining source options.
+temperature. An explicit `pseudoDeviceTemperature` is a configured Celsius
+constant and overrides the temperature source; it is not a physical measurement.
+Otherwise MQTT measurements take precedence over file/1-wire/native values.
+MQTT disconnects and expired readings are unavailable until a new valid message
+arrives. See [sensor source precedence](sensor-sources.md) and
+[MQTT migration details](mqtt.md) before combining source options.
+
+`batteryAlerts` adds a dedicated Battery service on sensor and climate accessories.
+It uses actual file/MQTT percentages; missing data faults instead of becoming
+100%. ChargingState remains unavailable. Linux 1-wire and native RM readings do
+not establish battery state. Polling/getter failures never reuse an old 1-wire
+reading or replace it with zero after a CRC failure.
 
 ## Rollback
 

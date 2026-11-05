@@ -136,8 +136,10 @@ visual schema defaults to true; set it explicitly. Otherwise modes are Off,
 Heat and Cool; plugin-controlled Auto regulation is not offered. The current port
 does not select separate heat/cool code trees. Current activity is inferred from successful sends,
 and temperature waits for a real reading instead of displaying the target as a
-measurement. The shared source reader supports MQTT, files and native RM sensors;
-see [MQTT configuration](mqtt.md). Polling starts immediately; 0 disables
+measurement. The shared reader supports MQTT, files, Linux 1-wire and native RM
+sensors, plus an explicitly configured pseudo constant. Optional battery telemetry
+comes from MQTT/files. See [sensor source selection](sensor-sources.md) and
+[MQTT configuration](mqtt.md). Polling starts immediately; 0 disables
 background polls, while MQTT messages still push updates. Poll timers and MQTT
 connections are disposed on shutdown. Invalid modes/temperatures are rejected,
 and repeated identical commands are suppressed unless `allowResend` is true.

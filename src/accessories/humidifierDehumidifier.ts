@@ -2,9 +2,11 @@ import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { FanAccessory } from './fan';
 import { SensorSource } from './sensorSource';
+import { BatteryStatus } from './battery';
 
 export class HumidifierDehumidifierAccessory extends FanAccessory {
   private readonly source: SensorSource;
+  private readonly battery: BatteryStatus;
   private readonly modes: number[];
   private readonly interval: number;
   private target: number;
@@ -54,8 +56,11 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
     this.service.updateCharacteristic(C.TargetHumidifierDehumidifierState, this.target);
     this.service.updateCharacteristic(C.RelativeHumidityHumidifierThreshold, this.low);
     this.service.updateCharacteristic(C.RelativeHumidityDehumidifierThreshold, this.high);
-    this.source.onUpdate(() => this.schedule('mqtt-update', 0, () => this.poll()));
-    if (!this.config.noHumidity && this.interval > 0) this.schedule('humidity', 0, () => this.poll());
+    this.battery = new BatteryStatus(platform, accessory, this.source);
+    this.source.onUpdate(quantity => {
+      if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.poll());
+    });
+    if ((!this.config.noHumidity || this.config.batteryAlerts) && this.interval > 0) this.schedule('humidity', 0, () => this.poll());
   }
 
   private percentage(value: number): number {
@@ -105,6 +110,7 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
 
   private async poll(): Promise<void> {
     try {
+      if (this.config.noHumidity) return;
       let humidity: number;
       try {
         humidity = await this.source.read('humidity');
@@ -116,12 +122,14 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
       this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity);
       await this.apply(this.target, this.low, this.high, humidity);
     } finally {
-      if (!this.config.noHumidity && this.interval > 0) this.schedule('humidity', this.interval * 1000, () => this.poll());
+      await this.battery.update();
+      if ((!this.config.noHumidity || this.config.batteryAlerts) && this.interval > 0) this.schedule('humidity', this.interval * 1000, () => this.poll());
     }
   }
 
   public override dispose(): void {
     super.dispose();
+    this.battery.dispose();
     this.source.dispose();
   }
 

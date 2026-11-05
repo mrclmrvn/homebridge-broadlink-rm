@@ -585,7 +585,7 @@
                   },
                   "path": {
                     "type": "string",
-                    "description": "Optional dot-separated field path for explicit temperature/humidity entries."
+                    "description": "Optional dot-separated field path for an explicit temperature, humidity or battery identifier."
                   }
                 },
                 "required": [
@@ -958,6 +958,37 @@
                   }
                 }
               }
+            },
+            "w1DeviceID": {
+              "title": "Linux 1-wire Device ID",
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{2}-[0-9a-fA-F]{12}$",
+              "description": "Reads /sys/bus/w1/devices/<ID>/w1_slave with CRC validation. Requires host/container access."
+            },
+            "w1Device": {
+              "title": "Legacy 1-wire Flag or Device ID",
+              "type": [
+                "boolean",
+                "string"
+              ],
+              "description": "A true flag requires w1DeviceID; a device-ID string is also accepted."
+            },
+            "pseudoDeviceTemperature": {
+              "title": "Explicit Pseudo Temperature (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "User-configured constant, not a measured value. Overrides other temperature sources, including MQTT."
+            },
+            "batteryAlerts": {
+              "title": "Expose Battery Telemetry",
+              "type": "boolean",
+              "description": "Adds a Battery service. Percentages must come from MQTT or a file; missing values fault instead of defaulting to 100%."
+            },
+            "batteryFilePath": {
+              "title": "Battery Percentage File",
+              "type": "string",
+              "description": "Plain number, JSON battery field or battery: line; MQTT takes precedence when configured."
             }
           }
         }

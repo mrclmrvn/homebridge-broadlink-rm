@@ -2,19 +2,20 @@ import { randomBytes } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import type { MqttClient, IClientOptions } from 'mqtt';
 
-export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction';
-type Identifier = Quantity | 'combined' | 'unknown' | 'battery';
+export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction' | 'battery';
+type Identifier = Quantity | 'combined' | 'unknown';
 interface Topic { identifier: Identifier; topic: string; path?: string }
 interface Reading { value?: number; received: number; error?: string }
 export type ConnectMQTT = (url: string, options: IClientOptions) => MqttClient;
 
-const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction'];
+const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'battery'];
 const aliases: Record<Quantity, string[]> = {
   temperature: ['temperature', 'temp', 'local_temperature'],
   humidity: ['humidity', 'hum', 'relativehumidity', 'relative_humidity'],
   contact: ['contact', 'closed', 'door_closed'],
   lock: ['locked', 'lock'],
   obstruction: ['obstruction', 'obstructed'],
+  battery: ['battery', 'batterylevel', 'battery_level', 'batterypercentage', 'battery_percentage'],
 };
 
 export function binaryValue(value: unknown, quantity: Quantity): number | undefined {
@@ -172,7 +173,6 @@ export class MQTTSensor {
     }
     const changed = new Map<Quantity, Reading>();
     for (const entry of matched) {
-      if (entry.identifier === 'battery') continue; // Legacy configuration accepted; battery services remain pending.
       const targeted = quantities.includes(entry.identifier as Quantity);
       const wanted: Quantity[] = targeted ? [entry.identifier as Quantity]
         : parsed && typeof parsed === 'object' || entry.identifier === 'combined' || (['contact', 'lock', 'obstruction'].includes(this.primary) ? binaryValue(parsed, this.primary) : numeric(parsed)) === undefined ? quantities : [this.primary];
@@ -183,7 +183,8 @@ export class MQTTSensor {
         // Combined partial objects leave omitted quantities unchanged.
         if (!targeted && parsed && typeof parsed === 'object' && raw === undefined) continue;
         found = true;
-        const value = ['contact', 'lock', 'obstruction'].includes(quantity) ? binaryValue(raw, quantity) : numeric(raw);
+        let value = ['contact', 'lock', 'obstruction'].includes(quantity) ? binaryValue(raw, quantity) : numeric(raw);
+        if (quantity === 'battery' && value !== undefined && (value < 0 || value > 100)) value = undefined;
         changed.set(quantity, { value, received: performance.now(), error: value === undefined ? 'Invalid MQTT measurement' : undefined });
       }
       // Status-only combined updates do not refresh or erase earlier measurements.

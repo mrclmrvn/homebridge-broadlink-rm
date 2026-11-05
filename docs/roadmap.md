@@ -15,7 +15,8 @@ configuration parity remains a goal.
   timed movement and lock controls, humidity automation, and standalone sensors.
 - Shared structured command leaves with bounded expansion and cancellation;
   switch/outlet variants preserve their sequence/repeat options.
-- Native/file sources for sensor, humidity, HeaterCooler and Thermostat controllers.
+- Shared native/file/MQTT sources for sensor and climate controllers, Linux 1-wire
+  CRC-checked readings, explicit pseudo temperatures and optional battery telemetry.
 - Ping/ARP power estimates and guarded toggles on switch/outlet, TV and fan/purifier;
   ARP inspects cached neighbors and is not fresh physical power confirmation.
 - Fan cycling/default resets/timers and light exclusives/timers.
@@ -35,7 +36,8 @@ not verify Broadlink packets or real devices.
   framing, error parsing, and discovery across firmware/device families.
 - Validate RF learning and Pronto output on actual hardware; frequency support
   remains device-dependent. Expand coverage for uncommon device IDs.
-- Port 1-wire/pseudo sensors and battery data where required by migration cases.
+- Validate 1-wire CRC behavior, file access and container mounts on a real Linux
+  host; validate battery producers, units and HomeKit presentation in live use.
 - Audit advanced light options, jam detection, TV timers/picture modes and advanced
   legacy air-conditioner behavior. Core feedback does not supply motor interlocks
   or automatic obstruction reversal.

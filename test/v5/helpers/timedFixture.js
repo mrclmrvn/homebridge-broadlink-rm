@@ -6,6 +6,7 @@ function fixture(t, type, options = {}) {
     TargetHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2, AUTO: 3 },
     CurrentHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2 },
     TemperatureDisplayUnits: { CELSIUS: 0, FAHRENHEIT: 1 },
+    StatusLowBattery: { BATTERY_LEVEL_NORMAL: 0, BATTERY_LEVEL_LOW: 1 },
     Active: { INACTIVE: 0, ACTIVE: 1 },
     RotationDirection: { CLOCKWISE: 0, COUNTER_CLOCKWISE: 1 },
     SwingMode: { SWING_DISABLED: 0, SWING_ENABLED: 1 },
@@ -21,12 +22,12 @@ function fixture(t, type, options = {}) {
     LockCurrentState: { UNSECURED: 0, SECURED: 1, UNKNOWN: 3 },
     LockTargetState: { UNSECURED: 0, SECURED: 1 },
   };
-  const names = ['Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
+  const names = ['BatteryLevel', 'ChargingState', 'Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
     'Brightness', 'Hue', 'Saturation', 'ColorTemperature', 'TargetPosition', 'HoldPosition', 'ObstructionDetected', 'On', 'OutletInUse', 'RotationSpeed', 'LockPhysicalControls',
     'CurrentTemperature', 'CurrentRelativeHumidity', 'RelativeHumidityHumidifierThreshold', 'RelativeHumidityDehumidifierThreshold',
     'CoolingThresholdTemperature', 'HeatingThresholdTemperature', 'TargetTemperature', ...Object.keys(constants)];
   const C = Object.fromEntries(names.map(name => [name, { ...constants[name] }]));
-  const S = Object.fromEntries(['AccessoryInformation', 'Lightbulb', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
+  const S = Object.fromEntries(['AccessoryInformation', 'Battery', 'Lightbulb', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
   class Accessory {
     constructor(name, uuid) { this.displayName = name; this.UUID = uuid; this.context = {}; this.services = []; }
     getService(type) { return this.services.find(service => service.UUID === type.UUID); }
