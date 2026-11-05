@@ -21,7 +21,9 @@ configuration parity remains a goal.
   ARP inspects cached neighbors and is not fresh physical power confirmation.
 - Fan cycling/default resets/timers and light exclusives/timers.
 - Explicit file/MQTT garage endpoint/obstruction and standalone bolt feedback.
-- Thermostat mode/temperature validation and state commits after successful sends.
+- Thermostat mode/temperature validation, state commits after successful sends,
+  and saved target restoration through Homebridge accessory context without
+  restoring power mode or transmitting at startup.
 - MQTT subscriptions with legacy config support, validated messages, receipt-age
   expiry, reconnect handling, push updates and connection cleanup.
 - v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.

@@ -107,7 +107,7 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Switch/outlet | Sequence order, repeat/pause timing, stateless reset, automatic commands; OutletInUse remains an estimate |
 | Fan/purifier | Nearest speed, cycle wrap/reset assumptions, defaults/timers, supported mode and direction/swing/control lock; repeated toggles do not reverse accidentally |
 | Light | Brightness/white/color presets, power-on delay, exclusives, automatic timers and supported saturation requests |
-| Thermostat/HeaterCooler | Correct mode/temperature code, Celsius/configured unit handling, measured temperature versus target, and failed-send state |
+| Thermostat/HeaterCooler | Correct code and units, measured versus target, failed-send state; AC target persists across normal restart while startup stays Off and sends nothing |
 | Humidity controller | Humidify/idle/dehumidify selection and no new automatic command on unavailable measurements |
 | Window/covering | Calibrated full travel, intermediate stop, reversal, hold, endpoint resend and initial-position assumption |
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |

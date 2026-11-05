@@ -47,6 +47,15 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
     this.accessories.set(accessory.UUID, accessory);
   }
 
+  /** Ask Homebridge to persist updated context without replaying accessory commands. */
+  public updateAccessoryContext(accessory: PlatformAccessory): void {
+    try {
+      this.api.updatePlatformAccessories([accessory]);
+    } catch {
+      this.log.warn(`[${PLATFORM_NAME}] Could not persist state for "${accessory.displayName}"; it may be lost on restart.`);
+    }
+  }
+
   private createInstance(accessory: PlatformAccessory): BaseAccessory | null {
     try {
       return createAccessoryInstance(this, accessory);

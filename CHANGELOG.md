@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- AC/Thermostat target persistence in Homebridge accessory context, restoring valid
+  setpoints after restart while leaving startup power Off without transmission.
 - Anonymized legacy cooling-config fixture and real HAP regression coverage for
   complete temperature maps, per-host routing, deferred writes and a disabled fan.
 - TypeScript dynamic platform and a Node.js standard-library Broadlink driver.

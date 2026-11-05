@@ -8,7 +8,7 @@ const template = require('./fixtures/legacy-cooling-platform.json');
 // This fixture preserves a contributed configuration's structure and code sizes.
 // Names, addresses, bridge identity and every learned code have been replaced.
 // Synthetic code bytes are test data, not appliance commands or hardware fixtures.
-async function setup(t) {
+async function setup(t, restored = []) {
   const config = structuredClone(template);
   const handlers = {};
   const registered = [], removed = [], sent = [], warnings = [];
@@ -40,9 +40,14 @@ async function setup(t) {
   const disabled = config.accessories.find(accessory => accessory.disabled);
   const cached = new Accessory(disabled.name, hap.uuid.generate(`${disabled.name}:${disabled.host}`));
   platform.configureAccessory(cached);
+  for (const record of restored) {
+    const accessory = new Accessory(record.name, record.UUID);
+    accessory.context = structuredClone(record.context);
+    platform.configureAccessory(accessory);
+  }
   t.after(() => handlers.shutdown());
   await handlers.didFinishLaunching();
-  return { config, platform, handlers, registered, removed, cached, sent, warnings, discovery, Accessory };
+  return { config, platform, api, handlers, registered, removed, cached, sent, warnings, discovery, Accessory };
 }
 
 test('legacy cooling platform restores its supported types and removes the disabled fan without network access', async t => {
@@ -122,4 +127,38 @@ test('the disabled fan configuration supports all three speeds when explicitly e
   await speed.handleSetRequest(0);
   assert.equal(f.sent.at(-1).code, config.data.off);
   assert.deepEqual(f.warnings, []);
+});
+
+test('AC target survives serialized cache restoration while power remains Off and startup sends nothing', async t => {
+  const f = await setup(t);
+  const accessory = f.registered.find(a => a.getService(hap.Service.Thermostat));
+  const service = accessory.getService(hap.Service.Thermostat);
+  const updates = t.mock.method(f.api, 'updatePlatformAccessories', () => {});
+  await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleSetRequest(18);
+  assert.deepEqual(updates.mock.calls[0].arguments[0], [accessory]);
+  assert.deepEqual(accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(2);
+  await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(0);
+  const records = JSON.parse(JSON.stringify([{ name: accessory.displayName, UUID: accessory.UUID, context: accessory.context }]));
+  f.handlers.shutdown();
+  const restored = await setup(t, records);
+  const current = restored.platform.accessories.get(accessory.UUID).getService(hap.Service.Thermostat);
+  assert.equal(await current.getCharacteristic(hap.Characteristic.TargetTemperature).handleGetRequest(), 18);
+  assert.equal(await current.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleGetRequest(), 0);
+  assert.deepEqual(restored.sent, []);
+  await current.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(2);
+  assert.equal(restored.sent.at(-1).code, accessory.context.config.data.temperature18.data);
+  assert.deepEqual(restored.warnings, []);
+});
+
+test('cache persistence failure warns without undoing a successful setpoint change', async t => {
+  const f = await setup(t);
+  const warnings = [];
+  t.mock.method(f.platform.log, 'warn', message => warnings.push(message));
+  t.mock.method(f.api, 'updatePlatformAccessories', () => { throw new Error('storage unavailable'); });
+  const service = f.registered.find(a => a.getService(hap.Service.Thermostat)).getService(hap.Service.Thermostat);
+  await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleSetRequest(18);
+  assert.equal(await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleGetRequest(), 18);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Could not persist state/);
 });

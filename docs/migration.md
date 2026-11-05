@@ -76,7 +76,11 @@ See [TV setup](tv.md) before changing an existing TV installation.
 Most appliance state is inferred from commands rather than read back from the
 appliance. Restarting the plugin or using another remote can desynchronize it.
 Locks start Unknown; garage doors start Stopped. These are deliberate unknown
-physical-state representations. Window position starts from initialPosition
+physical-state representations. The AC/Thermostat's last accepted target temperature
+is saved in Homebridge accessory context and restored for the same identity/cache;
+its power mode still starts Off without sending. Invalid saved targets fall back
+to the configured default. This cache-based persistence does not preserve v4
+identities or survive cache removal. Window position starts from initialPosition
 (default 0), not a position sensor. Optional file/MQTT garage endpoint,
 obstruction and standalone lock-bolt sources provide explicit feedback; see
 [power and feedback](power-and-feedback.md). Configured unavailable sources fault

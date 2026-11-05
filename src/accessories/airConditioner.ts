@@ -29,6 +29,11 @@ export class AirConditionerAccessory extends TimedAccessory {
       || this.minTemperature < -270 || this.maxTemperature > 100 || this.minTemperature >= this.maxTemperature
       || step <= 0 || step > this.maxTemperature - this.minTemperature
       || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature) throw new Error('Invalid Thermostat temperature configuration');
+    const saved = accessory.context.broadlinkRMState?.targetTemperature;
+    if (typeof saved === 'number' && Number.isFinite(saved) && saved >= this.minTemperature && saved <= this.maxTemperature
+      && Math.abs((saved - this.minTemperature) / step - Math.round((saved - this.minTemperature) / step)) < 0.000001) {
+      this.targetTemperature = saved;
+    }
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
     this.coolOnly = this.config.coolOnly ?? false;
@@ -136,6 +141,11 @@ export class AirConditionerAccessory extends TimedAccessory {
     return this.targetTemperature;
   }
 
+  private saveTargetTemperature(): void {
+    this.accessory.context.broadlinkRMState = { targetTemperature: this.targetTemperature };
+    this.platform.updateAccessoryContext(this.accessory);
+  }
+
   private async setTargetTemperature(value: CharacteristicValue): Promise<void> {
     const requested = Number(value);
     if (!Number.isFinite(requested) || requested < this.minTemperature || requested > this.maxTemperature) throw new Error('Thermostat temperature is outside the configured range');
@@ -149,6 +159,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     }
     this.targetTemperature = temp;
     this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
+    this.saveTargetTemperature();
   }
 
   private async getCurrentTemperature(): Promise<number> {

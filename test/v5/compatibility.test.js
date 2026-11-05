@@ -321,3 +321,37 @@ test('HeaterCooler validates a structured preset before powering on', async t =>
   await f.set('Active', 1);
   assert.deepEqual(f.sent, ['on', 'cool', 'cool']);
 });
+
+test('invalid or reconfigured cached setpoints fall back to the configured default', async t => {
+  const { AirConditionerAccessory } = require('../../dist/accessories/airConditioner');
+  const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, defaultCoolTemperature: 25 });
+  f.instance.dispose();
+  for (const saved of [undefined, null, '18', NaN, Infinity, 15, 31, 18.5]) {
+    f.accessory.context.broadlinkRMState = { targetTemperature: saved };
+    const instance = new AirConditionerAccessory(f.platform, f.accessory);
+    assert.equal(f.get('TargetTemperature'), 25);
+    instance.dispose();
+  }
+  f.accessory.context.broadlinkRMState = { targetTemperature: 18 };
+  const valid = new AirConditionerAccessory(f.platform, f.accessory);
+  assert.equal(f.get('TargetTemperature'), 18); valid.dispose();
+  f.config.minTemperature = 20;
+  const changed = new AirConditionerAccessory(f.platform, f.accessory);
+  assert.equal(f.get('TargetTemperature'), 25); changed.dispose();
+  assert.deepEqual(f.sent, []);
+});
+
+test('only accepted AC temperature writes update persisted state', async t => {
+  const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0,
+    data: { on: 'on', temperature18: '18', temperature24: '24', off: 'off' } });
+  const save = t.mock.method(f.platform, 'updateAccessoryContext', () => {});
+  await f.set('TargetTemperature', 18);
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  await f.set('TargetHeatingCoolingState', 2);
+  f.device.sendData = async () => { throw new Error('offline'); };
+  await assert.rejects(f.set('TargetTemperature', 24), /offline/);
+  await assert.rejects(f.set('TargetTemperature', 19), /No IR/);
+  await assert.rejects(f.set('TargetTemperature', 31), /range/);
+  assert.equal(save.mock.callCount(), 1);
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18 });
+});

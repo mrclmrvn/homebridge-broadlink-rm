@@ -145,6 +145,17 @@ connections are disposed on shutdown. Invalid modes/temperatures are rejected,
 and repeated identical commands are suppressed unless `allowResend` is true.
 Full legacy AC options remain pending.
 
+Accepted target-temperature changes are saved in the accessory's Homebridge cache,
+including changes made while Off. After a normal restart with the same accessory
+identity/cache, the last target is restored; startup stays Off and sends no IR.
+For example, 18°C → Off → restart → Cool sends the 18°C code. Failed active
+transmissions do not overwrite the saved target. Missing, malformed, out-of-range
+or step-incompatible saved values use `defaultCoolTemperature` (default 24) instead.
+The configured default remains the fallback, not a forced reset at every restart.
+Removing the accessory/cache or changing its name/host can lose this saved value.
+Homebridge owns the cache write; a persistence error is logged and sudden process
+or storage failure is not guaranteed to preserve the latest change.
+
 For distinct mode-specific `data.heat` / `data.cool`, use
 [HeaterCooler](remaining-accessories.md#heatercooler).
 

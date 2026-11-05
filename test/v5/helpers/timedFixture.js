@@ -86,7 +86,7 @@ function fixture(t, type, options = {}) {
   const readings = { temperature: 24, humidity: 50 };
   const device = { async sendData(code) { sent.push(code); }, async checkSensors() { return { ...readings }; } };
   const log = { info() {}, debug() {}, warn() {}, error(message) { errors.push(message); } };
-  const platform = { Service: S, Characteristic: C, log, deviceManager: { getDevice: () => device } };
+  const platform = { Service: S, Characteristic: C, log, updateAccessoryContext() {}, deviceManager: { getDevice: () => device } };
   const config = { name: 'Test', type, data: { open: 'open', close: 'close', stop: 'stop', lock: 'lock', unlock: 'unlock' }, ...options };
   const accessory = new Accessory('Test', 'test');
   accessory.context.config = config;
