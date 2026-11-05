@@ -17,6 +17,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   public readonly accessories: Map<string, PlatformAccessory> = new Map();
   public readonly instances: Map<string, BaseAccessory> = new Map();
   public readonly deviceManager: DeviceManager;
+  private stopped = false;
 
   constructor(
     public readonly log: Logging,
@@ -34,6 +35,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
     });
 
     this.api.on('shutdown', () => {
+      this.stopped = true;
       for (const instance of this.instances.values()) instance.dispose();
       this.deviceManager.closeAll();
     });
@@ -77,6 +79,8 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
       this.log.info(`[${PLATFORM_NAME}] Discovering Broadlink devices on local network...`);
       await this.deviceManager.discover(3000);
     }
+    if (this.stopped) return;
+    if (!disableDiscovery) this.deviceManager.startRediscovery(this.config.rediscoveryInterval);
 
     // 3. Register and bind accessories from config
     const configuredAccessories = this.config.accessories || [];

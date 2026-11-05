@@ -107,6 +107,8 @@ for RM2/3 or every RM4 variant.
 | H10 | Drop a native sensor response, then restore connectivity | Read becomes unavailable within the two-second deadline without a stale measurement; later reads recover |
 | H11 | Configure duplicate TV name/host identities | First enabled entry publishes once; duplicate is warned about; unrelated accessories load |
 | H12 | Rediscover a device at a changed IP and exercise MAC/IP-selected accessories | MAC selection follows the rediscovered device; stale-IP failure does not block another accessory |
+| H13 | Start with one RM powered off, then power it on before a scheduled sweep | Device becomes available without restart; disabling the schedule or all discovery behaves as documented |
+| H14 | Stop Homebridge during a scheduled discovery sweep | No late registration occurs; discovery sockets and scheduled timers are released |
 
 ## Upstream reliability checks
 
@@ -123,8 +125,8 @@ API-event tests do not test discovery, advertisement or actual pairing.
 
 For H12, capture discovery and request-failure logs before restarting. A device
 responding to ping does not prove that Broadlink authentication/commands work.
-The automated case explicitly registers a rediscovered device at a new address;
-it does not establish continuous network rediscovery. The original crash report
+Tests cover explicit address replacement and controlled scheduled sweeps, not
+continuous network presence or real DHCP behavior. The original crash report
 still needs a reproducible failure and crash stack before it can be closed.
 
 For each configured accessory, record at least one positive command, one missing

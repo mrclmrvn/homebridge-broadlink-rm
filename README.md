@@ -69,6 +69,10 @@ Read the [migration guide](docs/migration.md) before replacing an installation.
    logged hex code into an accessory's data configuration. TVs require separate
    HomeKit pairing; other types are bridged.
 
+Automatic discovery repeats hourly by default; [rediscovery settings](docs/rediscovery.md)
+explain interval, disable and MAC-selection behavior. Configure accessories using
+the existing schema or JSON, and capture codes with learning accessories or the CLI.
+
 This is a source/tarball installation path, not confirmation that an npm release
 or alpha dist-tag has been published. Release-head CI and live integration
 validation remain required.
@@ -96,11 +100,31 @@ handling and unsupported options.
 
 ## Troubleshooting and bug reports
 
+Documentation is available in the [setup guide](docs/setup.md) and
+[accessory guides](#accessory-guides). If you still have trouble after reading
+them, [open an issue](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues/new)
+and we'll help as best we can.
+
 If discovery finds nothing, check reachability from the machine or container
 running Homebridge and review [discovery troubleshooting](docs/troubleshooting.md#discovery-finds-nothing).
-If the device reports a cloud/local-control lock error, review its lock settings
-in the Broadlink app. App navigation varies; see
-[authentication troubleshooting](docs/troubleshooting.md#authentication-or-sends-fail).
+
+### Unlock local control in the Broadlink app
+
+The Broadlink device's cloud lock can prevent discovery or local connections.
+If your device is locked, follow these steps:
+
+1. Open the [Broadlink app](https://apps.apple.com/us/app/broadlink/id1450257910).
+2. From the Home screen, tap your Broadlink device.
+3. Tap **…** in the top right.
+4. Scroll down and toggle **Lock device** to **Off**.
+5. Tap **OK** when prompted **Confirm to unlock the device**.
+
+<img src="docs/images/broadlink-unlock-device.png" alt="Broadlink app device settings showing Lock device switched off" width="375">
+
+Screenshot retained from the [previous maintainer's documentation](https://github.com/kiwi-cam/homebridge-broadlink-rm#documentation).
+App navigation may vary by version. Retry discovery or authentication after
+unlocking; see [authentication troubleshooting](docs/troubleshooting.md#authentication-or-sends-fail)
+if local connections still fail.
 
 For reproducible problems, [open an issue](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues/new)
 with the plugin, Homebridge and Node versions; RM model/device ID; relevant
@@ -110,6 +134,8 @@ occurs after restart or only with a particular command or sensor source.
 
 ## Diagnostics and development
 
+- [Scheduled rediscovery](docs/rediscovery.md): late-device recovery, DHCP address
+  changes, static hosts and shutdown behavior.
 - [Sensor sources](docs/sensor-sources.md): 1-wire, explicit pseudo temperatures,
   source precedence and optional battery telemetry.
 - [Power and feedback](docs/power-and-feedback.md): Ping/ARP estimates, shared

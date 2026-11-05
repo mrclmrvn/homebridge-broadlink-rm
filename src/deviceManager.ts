@@ -15,6 +15,11 @@ export class DeviceManager {
   private devicesByMac: Map<string, RMDevice> = new Map();
   private allDevices: RMDevice[] = [];
   private log: Logging;
+  private closed = false;
+  private readonly shutdown = new AbortController();
+  private discovering?: Promise<void>;
+  private rediscoveryTimer?: NodeJS.Timeout;
+  private rediscoveryGeneration = 0;
 
   constructor(log: Logging) {
     this.log = log;
@@ -25,13 +30,19 @@ export class DeviceManager {
   }
 
   public registerDevice(device: RMDevice): void {
+    if (this.closed) { device.close(); return; }
     const ip = device.host;
+    if (ip.startsWith('169.254.')) {
+      this.log.warn(`[DeviceManager] Device ${device.macAddress} has link-local address ${ip}; check DHCP/network configuration and power-cycle it after fixing its address.`);
+      device.close();
+      return;
+    }
     const macKey = this.normalizeMac(device.macAddress);
 
     const existing = this.devicesByMac.get(macKey);
     if (existing === device) return;
     if (existing) {
-      if (existing.host === device.host && existing.devType === device.devType && existing.port === device.port) {
+      if (existing.isUsable !== false && existing.host === device.host && existing.devType === device.devType && existing.port === device.port) {
         device.close();
         return;
       }
@@ -48,6 +59,7 @@ export class DeviceManager {
   }
 
   public async initHosts(hosts?: HostConfig[]): Promise<void> {
+    if (this.closed) return;
     if (hosts && Array.isArray(hosts) && hosts.length > 0) {
       for (const host of hosts) {
         if (!host || typeof host !== 'object' || !host.address || !host.mac) {
@@ -71,15 +83,37 @@ export class DeviceManager {
     }
   }
 
-  public async discover(timeoutMs: number = 3000): Promise<void> {
-    try {
-      const discovered = await discoverDevices(timeoutMs);
-      for (const item of discovered) {
-        this.registerDevice(item.device);
+  public discover(timeoutMs: number = 3000): Promise<void> {
+    if (this.closed) return Promise.resolve();
+    if (this.discovering) return this.discovering;
+    this.discovering = (async () => {
+      try {
+        const discovered = await discoverDevices(timeoutMs, this.shutdown.signal);
+        for (const item of discovered) this.registerDevice(item.device);
+      } catch (error) {
+        if (!this.closed) this.log.error(`[DeviceManager] Discovery error: ${error instanceof Error ? error.message : error}`);
       }
-    } catch (err: any) {
-      this.log.error(`[DeviceManager] Discovery error: ${err.message}`);
+    })().finally(() => { this.discovering = undefined; });
+    return this.discovering;
+  }
+
+  /** Schedule the next sweep after completion, avoiding overlapping broadcasts. */
+  public startRediscovery(minutes: unknown = 60): void {
+    const generation = ++this.rediscoveryGeneration;
+    clearTimeout(this.rediscoveryTimer);
+    if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0 || minutes * 60000 > 2147483647) {
+      this.log.warn('[DeviceManager] Invalid rediscoveryInterval; use nonnegative minutes within the Node.js timer range. Scheduled discovery is disabled.');
+      return;
     }
+    if (this.closed || minutes === 0) return;
+    const schedule = () => {
+      if (this.closed || generation !== this.rediscoveryGeneration) return;
+      this.rediscoveryTimer = setTimeout(() => {
+        void this.discover().finally(schedule);
+      }, minutes * 60000);
+      this.rediscoveryTimer.unref();
+    };
+    schedule();
   }
 
   public getDevice(host?: string): RMDevice | undefined {
@@ -97,6 +131,9 @@ export class DeviceManager {
   }
 
   public closeAll(): void {
+    this.closed = true;
+    clearTimeout(this.rediscoveryTimer);
+    this.shutdown.abort();
     for (const dev of this.allDevices) {
       dev.close();
     }

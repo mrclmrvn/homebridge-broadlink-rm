@@ -37,8 +37,9 @@ export function buildDiscoveryPacket(localAddress: string, port: number, date = 
   return packet;
 }
 
-export async function discoverDevices(timeoutMs = 3000): Promise<DiscoveredDeviceInfo[]> {
+export async function discoverDevices(timeoutMs = 3000, signal?: AbortSignal): Promise<DiscoveredDeviceInfo[]> {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2147483647) throw new Error('Invalid discovery timeout');
+  if (signal?.aborted) throw new Error('Discovery aborted');
   return new Promise((resolve, reject) => {
     const found = new Map<string, DiscoveredDeviceInfo>();
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -47,11 +48,14 @@ export async function discoverDevices(timeoutMs = 3000): Promise<DiscoveredDevic
       if (finished) return;
       finished = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', aborted);
       try { socket.close(); } catch { /* Failed or already closed. */ }
       if (error) { for (const item of found.values()) item.device.close(); reject(error); }
       else resolve([...found.values()]);
     };
     const timer = setTimeout(() => finish(), timeoutMs);
+    const aborted = () => finish(new Error('Discovery aborted'));
+    signal?.addEventListener('abort', aborted, { once: true });
     socket.on('error', error => finish(error));
     socket.on('message', (message, remote) => {
       if (finished || message.length < 0x40) return;

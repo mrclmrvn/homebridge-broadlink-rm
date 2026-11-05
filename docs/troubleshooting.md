@@ -50,8 +50,9 @@ that exchange; adding a static host does not bypass those requirements.
 Try a static host with the correct IP/MAC and framing flags, or use the CLI with
 the actual device ID. A static host appearing as registered only means a device
 object exists; it is not proof of authentication. If a device moves addresses,
-update it or enable discovery and restart: a later response for the same MAC
-now refreshes its address/type and closes the replaced socket.
+update its static entry or enable [scheduled rediscovery](rediscovery.md). A later
+response for the same MAC refreshes its address/type and closes the replaced
+socket. MAC-selected accessories follow the move; old IP selections do not.
 
 ## Authentication or sends fail
 
@@ -59,8 +60,8 @@ Confirm the current IP, MAC and device ID. RM4 and legacy devices have different
 payload framing. Session success is separate from discovery success. The driver
 reports device errors and timeouts; include the exact error text when reporting
 an issue. A cloud-lock error can require changing the device's local-control lock
-setting in the Broadlink app; app navigation varies, so check the device's current
-settings rather than relying on the historical screenshot.
+setting in the Broadlink app. Follow the [unlock steps and screenshot](../README.md#unlock-local-control-in-the-broadlink-app);
+app navigation may vary by version.
 
 A successful UDP transmission is not appliance feedback. Test that the IR emitter
 can reach the appliance, that the code matches the intended button, and, for RF,

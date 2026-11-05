@@ -23,15 +23,16 @@ reveals gaps that should be tracked separately:
 
 | Proposal | Rebuild assessment |
 | --- | --- |
-| [#786: MAC tracking and scheduled rediscovery](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/786) | MAC normalization and address replacement exist, but discovery runs only at startup. Scheduled sweeps, recovery of devices absent at startup, failure-triggered discovery and explicit link-local-address diagnostics are not implemented. The current rediscovery test injects a new device; it does not initiate discovery automatically. |
-| [#787: configuration UI](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/787) | A declarative schema, CLI and learning accessories exist. A custom device scanner, per-code Learn/Test controls and guided capture UI do not. These are additional UX features rather than prerequisites for the native sensor fix. |
+| [#786: MAC tracking and scheduled rediscovery](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/786) | Scheduled sweeps, late-device recovery, MAC/IP refresh, unusable-socket replacement and link-local diagnostics are implemented with overlap/shutdown tests. Actual DHCP/network recovery needs live validation. Optional failure-triggered sweeps and per-device health summaries remain absent. |
+| [#787: configuration UI](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/787) | Deferred from the core upgrade by user decision. Implementation, UI dependency and tests are preserved on local branch `feat/custom-configuration-ui` at `24dc8ed`; they are absent from this branch. The existing schema, JSON, CLI and learning accessories remain available. Live UI and physical capture validation are part of the separate feature. |
 | [#789: temperature callback timeout](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/789) | Addresses the same lost-response symptom as #788 in the legacy callback implementation. Our independent native-reader deadline cancels work and reports unavailable instead of substituting a last-known temperature. No upstream code was copied or PR merged. |
 
-Scheduled rediscovery is the next reliability implementation priority because
-MAC address replacement alone cannot recover a device that never answers the
-startup discovery window. Preserve explicit discovery-disable configuration and
-own/cancel scheduled work on shutdown when implementing it. The original crash
-and pairing reports still require their own reproduction and live validation.
+Scheduled rediscovery now runs hourly by default and honors both interval zero
+and explicit discovery-disable configuration. See [rediscovery](rediscovery.md)
+for implementation scope and credit to @arthur-moebios's proposal. Custom UI
+work is deferred as described in the [roadmap](roadmap.md#deferred-custom-configuration-ui).
+The original crash and pairing reports still
+require their own reproduction and live validation.
 
 The remaining five open PRs are dependency updates:
 [lodash #773](https://github.com/kiwi-cam/homebridge-broadlink-rm/pull/773),
@@ -43,14 +44,13 @@ All five package names are absent from the rebuild's current package-lock.json
 and installed dependency tree, so these specific bumps do not need porting.
 This comparison is not a security audit of the rebuild's other dependencies.
 
-The three functional proposals modify legacy JavaScript helpers/accessories or
-add a custom UI server; they are not patches that can be applied unchanged to
-the TypeScript driver and accessory architecture. Track the desired behaviors,
-implement against the new APIs, and credit reused upstream work if incorporated.
+The functional proposals target the legacy JavaScript architecture or add its
+UI server. Our implementations are independent adaptations of the desired
+behaviors to the TypeScript driver and accessory APIs; no upstream PR was merged.
 
 ## Reliability regression evidence
 
-Build and all 182 tests pass locally on Node 24.14.1 with Homebridge 1.6.0,
+Build and all 192 tests pass locally on Node 24.14.1 with Homebridge 1.6.0,
 1.11.4, 2.0.0 and locked 2.5.0. These results include the compatibility version
 and engine preflight; CI for this branch has not run.
 
@@ -64,9 +64,9 @@ and engine preflight; CI for this branch has not run.
   getters return communication failures on expiry and recover on fresh readings.
 - Real Homebridge API tests preserve external TV identity across restart, skip
   duplicate TV aliases and keep unrelated bridged accessories registered.
-- A MAC-selected switch follows an explicitly rediscovered device's new address;
-  a stale-IP switch fails independently. This does not prove continuous discovery
-  or reproduce the original crash.
+- A MAC-selected switch follows a rediscovered device's new address; a stale-IP
+  switch fails independently. Controlled sweeps also cover late devices,
+  coalescing, interval validation and shutdown; no original crash is reproduced.
 
 These tests use mocked networking and API events, without a running bridge,
 advertiser or physical RM. Use the [validation runbook](validation.md) for those

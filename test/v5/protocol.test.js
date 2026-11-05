@@ -334,10 +334,11 @@ test('device manager closes duplicate sockets, refreshes addresses and accepts e
   assert.equal(manager.getDevice('010203040506'), moved);
   manager.closeAll(); assert.equal(moved.closed, true);
   fixture(t);
-  await manager.initHosts([{ address: remote.address, mac: '01:02:03:04:05:06', devType: '0x2712' }]);
-  assert.equal(manager.getDevice().devType, 0x2712);
-  assert.equal(manager.getDevice().typeInfo.isRM4, false);
-  manager.closeAll();
+  const nextManager = new DeviceManager({ info() {}, warn() {} });
+  t.after(() => nextManager.closeAll());
+  await nextManager.initHosts([{ address: remote.address, mac: '01:02:03:04:05:06', devType: '0x2712' }]);
+  assert.equal(nextManager.getDevice().devType, 0x2712);
+  assert.equal(nextManager.getDevice().typeInfo.isRM4, false);
 });
 
 test('discovery deduplicates valid responses and returns canonical MACs with owned sockets', async t => {

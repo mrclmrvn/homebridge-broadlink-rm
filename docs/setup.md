@@ -87,6 +87,12 @@ Discovery refreshes a device when the same MAC appears at a different address,
 type or port, closing the old socket. Exact duplicates are discarded and their
 unused sockets are closed.
 
+Automatic discovery repeats every 60 minutes after startup, including with static
+hosts. Set `rediscoveryInterval: 0` to disable the schedule, or
+`disableDiscovery: true` to disable all automatic discovery. MAC-selected
+accessories follow a device found at a changed IP on a later sweep; IP-selected
+accessories do not. See [rediscovery](rediscovery.md) for lifecycle and limits.
+
 ## Shared accessory options
 
 Every accessory needs `name` and `type`. Set `disabled: true` to skip it. `host`

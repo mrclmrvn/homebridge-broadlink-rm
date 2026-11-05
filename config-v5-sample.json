@@ -4,6 +4,7 @@
       "platform": "BroadlinkRM",
       "name": "Broadlink RM",
       "disableDiscovery": false,
+      "rediscoveryInterval": 60,
       "hosts": [],
       "accessories": [
         {
