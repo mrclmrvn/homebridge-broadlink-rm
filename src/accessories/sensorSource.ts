@@ -3,12 +3,14 @@ import { MQTTSensor, type Quantity } from '../sensors/mqtt';
 import type { RMDevice } from '../broadlink';
 
 type Measurement = 'temperature' | 'humidity' | 'battery';
+type NativeReading = Awaited<ReturnType<RMDevice['checkSensors']>>;
 
 /** Explicit sensor sources; pseudo temperature is an opt-in constant, never a fallback. */
 export class SensorSource {
   private readonly mqtt?: MQTTSensor;
   private disposed = false;
   private readonly abort = new AbortController();
+  private nativeRead?: Promise<NativeReading>;
   private readonly w1Path?: string;
   public readonly temperatureOnly: boolean;
   constructor(private readonly config: Record<string, any>, private readonly device: () => RMDevice | undefined) {
@@ -30,6 +32,33 @@ export class SensorSource {
   }
 
   public dispose(): void { this.disposed = true; this.abort.abort(); this.mqtt?.dispose(); }
+
+  /** Bound the whole native read, including time waiting for other device commands. */
+  private readNative(device: RMDevice): Promise<NativeReading> {
+    if (this.nativeRead) return this.nativeRead;
+    const controller = new AbortController();
+    let timer: NodeJS.Timeout;
+    let onShutdown: () => void;
+    this.nativeRead = new Promise<NativeReading>((resolve, reject) => {
+      onShutdown = () => {
+        reject(new Error('Sensor source is closed'));
+        controller.abort();
+      };
+      this.abort.signal.addEventListener('abort', onShutdown, { once: true });
+      // Homebridge warns about slow reads after three seconds. Do not wait for
+      // the driver's longer per-packet timeout or return stale ambient data.
+      timer = setTimeout(() => {
+        reject(new Error('Sensor read timed out after 2000ms'));
+        controller.abort();
+      }, 2000);
+      device.checkSensors(controller.signal).then(resolve, reject);
+    }).finally(() => {
+      clearTimeout(timer);
+      this.abort.signal.removeEventListener('abort', onShutdown);
+      this.nativeRead = undefined;
+    });
+    return this.nativeRead;
+  }
 
   public async read(quantity: Measurement): Promise<number> {
     if (this.disposed) throw new Error('Sensor source is closed');
@@ -69,7 +98,7 @@ export class SensorSource {
     } else {
       const device = this.device();
       if (!device) throw new Error('No Broadlink sensor device is available');
-      const reading = await device.checkSensors();
+      const reading = await this.readNative(device);
       value = reading[quantity];
     }
     if (this.disposed) throw new Error('Sensor source is closed');

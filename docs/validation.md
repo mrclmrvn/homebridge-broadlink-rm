@@ -104,6 +104,28 @@ for RM2/3 or every RM4 variant.
 | H07 | Stop Homebridge during a timer or learning operation | Owned work stops, connections close, and no delayed automatic command is observed afterward |
 | H08 | Exercise the visual config form and save/reload | String/array switch data and MQTT topic entries survive correctly; secret fields are not unnecessarily exposed |
 | H09 | Restore the previous package/config/cache in the isolated environment | Previous accessories and assignments recover as recorded in the backup |
+| H10 | Drop a native sensor response, then restore connectivity | Read becomes unavailable within the two-second deadline without a stale measurement; later reads recover |
+| H11 | Configure duplicate TV name/host identities | First enabled entry publishes once; duplicate is warned about; unrelated accessories load |
+| H12 | Rediscover a device at a changed IP and exercise MAC/IP-selected accessories | MAC selection follows the rediscovered device; stale-IP failure does not block another accessory |
+
+## Upstream reliability checks
+
+The [issue checkpoint](upstream-issue-checkpoint.md) separates automated regression
+coverage from outstanding hardware reports. H10 is specific to native accessory
+reads, not file access or a blocked Node event loop. Record both the HomeKit result
+and elapsed time, and repeat after queued commands and a Homebridge restart.
+
+For H05, capture external-accessory publication/listening errors and mDNS/network
+details when the TV is absent from the Home app. Record whether the installation
+was moved between hosts, whether a child bridge is used and whether an existing
+pairing was restored. Test initial pairing and pairing retention after restart.
+API-event tests do not test discovery, advertisement or actual pairing.
+
+For H12, capture discovery and request-failure logs before restarting. A device
+responding to ping does not prove that Broadlink authentication/commands work.
+The automated case explicitly registers a rediscovered device at a new address;
+it does not establish continuous network rediscovery. The original crash report
+still needs a reproducible failure and crash stack before it can be closed.
 
 For each configured accessory, record at least one positive command, one missing
 or unreachable-device failure, and restart behavior. Add the relevant cases:

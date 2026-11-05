@@ -63,6 +63,53 @@ function fixture(t, type = 0x520b) {
   return { socket, device };
 }
 
+test('native sensor deadline cancels lost authentication or sensor packets and leaves the device usable', async t => {
+  for (const stage of ['authentication', 'sensor']) await t.test(stage, async t => {
+    const { SensorSource } = require('../../dist/accessories/sensorSource');
+    const { socket, device } = fixture(t);
+    if (stage === 'sensor') await device.auth();
+    const timers = new Map();
+    t.mock.method(global, 'setTimeout', (callback, delay) => {
+      const handle = {}; timers.set(handle, { callback, delay }); return handle;
+    });
+    t.mock.method(global, 'clearTimeout', handle => timers.delete(handle));
+    socket.onSend = () => {}; // Drop the response at the selected protocol stage.
+    const source = new SensorSource({}, () => device); t.after(() => source.dispose());
+    const lost = assert.rejects(source.read('temperature'), /Sensor read timed out/);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(socket.listenerCount('message'), 1);
+    [...timers.values()].find(timer => timer.delay === 2000).callback();
+    await lost; await new Promise(resolve => setImmediate(resolve));
+    assert.equal(socket.listenerCount('message'), 0);
+    assert.equal(timers.size, 0);
+    socket.onSend = request => {
+      if (request.readUInt16LE(0x26) === 0x65) {
+        const auth = Buffer.alloc(20); sessionKey.copy(auth, 4);
+        socket.emit('message', response(request, auth), remote);
+      } else socket.emit('message', response(request, inner(0x24, Buffer.from([23, 50, 45, 0])), sessionKey), remote);
+    };
+    assert.equal(await source.read('temperature'), 23.5);
+    assert.equal(timers.size, 0);
+  });
+});
+
+test('a sensor read expires while queued and sends no delayed packet when the queue resumes', async t => {
+  const { SensorSource } = require('../../dist/accessories/sensorSource');
+  const { socket, device } = fixture(t);
+  await device.auth();
+  let release;
+  const blocking = device.synchronized(() => new Promise(resolve => { release = resolve; }));
+  await new Promise(resolve => setImmediate(resolve));
+  let deadline;
+  t.mock.method(global, 'setTimeout', (callback, delay) => { assert.equal(delay, 2000); deadline = callback; return {}; });
+  t.mock.method(global, 'clearTimeout', () => {});
+  const source = new SensorSource({}, () => device); t.after(() => source.dispose());
+  const lost = assert.rejects(source.read('temperature'), /Sensor read timed out/);
+  deadline(); await lost;
+  release(); await blocking; await new Promise(resolve => setImmediate(resolve));
+  assert.equal(socket.packets.length, 1); // Authentication only; expired read never sent.
+});
+
 test('AES uses the NIST CBC vector and zero padding without an extra aligned block', () => {
   const key = Buffer.from('2b7e151628aed2a6abf7158809cf4f3c', 'hex');
   const iv = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
