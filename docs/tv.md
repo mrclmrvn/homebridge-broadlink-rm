@@ -55,8 +55,37 @@ updates Active and checks observed state before a power command. Monitoring send
 no IR. Without detection, toggle-only remotes can lose synchronization after
 changes from another remote or plugin restart. All command leaves accept
 [structured sequences](power-and-feedback.md#shared-structured-commands), and
-writes are serialized. Automatic TV power timers and picture modes remain
-unimplemented; full legacy compatibility remains a goal.
+writes are serialized. Automatic power timers and explicit picture-mode mappings
+are described below. Full legacy compatibility remains a goal.
+
+## Automatic power and picture modes
+
+`enableAutoOff` / `enableAutoOn` schedule actual Off/On commands using positive
+`onDuration` / `offDuration` seconds (default 60). Explicit
+`disableAutomaticOff` / `disableAutomaticOn` override those flags: false enables,
+true disables. Timers start after a successful request, never at startup.
+Observed power changes cancel a pending timer; shutdown cancels all owned work.
+Automatic command failure is logged and preserves the previous power estimate.
+
+Optional picture mappings use `data.pictureMode`:
+
+```json
+{
+  "pictureMode": {
+    "standard": "YOUR_STANDARD_HEX",
+    "game": { "data": "YOUR_GAME_HEX", "sendCount": 2, "interval": 0 }
+  }
+}
+```
+
+Names map to HomeKit values: other=0, standard=1, calibrated=2, calibratedDark=3,
+vivid=4, game=5, computer=6, custom=7. Numeric string keys 0–7 are also accepted;
+only configured values are offered. Each is a discrete command/sequence, not an
+inferred cycle count. Until a preset is successfully selected, PictureMode is
+unavailable. Failed sends retain the last successful selection and repeated
+identical selections are suppressed. Selecting a picture mode does not power on
+the TV. Removing the map removes the cached optional control. The old plugin's
+picture-mode callback was a placeholder; this mapping is an explicit v5 extension.
 
 `npm test` checks controls, failure handling, input cleanup, external publishing,
 and migration using mocks. Live Homebridge pairing and physical TV operation

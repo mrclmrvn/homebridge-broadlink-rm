@@ -49,7 +49,8 @@ uses its requested speed instead. Successful power changes remain reported if a
 later default-speed command fails. `enableAutoOff` / `enableAutoOn` send actual
 power commands after `onDuration` / `offDuration` (default 60 seconds). Explicit
 legacy `disableAutomaticOff: false` / `disableAutomaticOn: false` also enable
-them. Durations must be positive when enabled; no automatic command starts at
+them. Explicit disable flags override enable flags when both are supplied.
+Durations must be positive when enabled; no automatic command starts at
 plugin startup. Shutdown cancels owned timers.
 
 State starts off and otherwise follows successful sends or optional

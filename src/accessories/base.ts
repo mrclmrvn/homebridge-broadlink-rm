@@ -47,8 +47,8 @@ export abstract class BaseAccessory {
   /**
    * Send an IR or RF hex code
    */
-  protected async sendCode(code: unknown): Promise<void> {
-    const steps = compileCommands(code);
+  protected async sendCode(code: unknown, arrayInterval = 0.1): Promise<void> {
+    const steps = compileCommands(code, arrayInterval);
     const signal = this.commandShutdown.signal;
     if (signal.aborted) throw new Error('Accessory has shut down');
     const device = this.getDevice();

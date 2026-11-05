@@ -19,8 +19,13 @@ configuration parity remains a goal.
   CRC-checked readings, explicit pseudo temperatures and optional battery telemetry.
 - Ping/ARP power estimates and guarded toggles on switch/outlet, TV and fan/purifier;
   ARP inspects cached neighbors and is not fresh physical power confirmation.
-- Fan cycling/default resets/timers and light exclusives/timers.
-- Explicit file/MQTT garage endpoint/obstruction and standalone bolt feedback.
+- Fan cycling/default resets/timers; light exclusives/timers, resend and stateless
+  local resets; TV power timers and explicit picture-mode mappings.
+- Thermostat flat heat/cool codes, mode/On sequencing, metadata, dry-off, fixed
+  Auto replacement and opt-in mode-default resets/fallback without losing the
+  default saved-setpoint behavior.
+- Explicit file/MQTT garage endpoint/obstruction, standalone bolt and jam feedback;
+  faults cancel inferred transitions and automatic actions without motor commands.
 - Thermostat mode/temperature validation, state commits after successful sends,
   and saved target restoration through Homebridge accessory context without
   restoring power mode or transmitting at startup.
@@ -43,9 +48,11 @@ not verify Broadlink packets or real devices.
   remains device-dependent. Expand coverage for uncommon device IDs.
 - Validate 1-wire CRC behavior, file access and container mounts on a real Linux
   host; validate battery producers, units and HomeKit presentation in live use.
-- Audit advanced light options, jam detection, TV timers/picture modes and advanced
-  legacy air-conditioner behavior. Core feedback does not supply motor interlocks
-  or automatic obstruction reversal.
+- Audit additional concrete legacy migration cases. AC ambient-temperature
+  automation/linked auto switches, device Auto commands and full fallback
+  heuristics remain unsupported; see [Thermostat scope](air-conditioner.md).
+- Validate explicit jam producers and physical recovery. Feedback faults/cancels
+  software actions; it does not transmit motor stop/reversal or supply an interlock.
 - Validate power utilities, cycle reset assumptions and feedback polarity/freshness
   against actual appliances and producers. Optional Eve history is excluded from
   the current implementation scope by user decision.

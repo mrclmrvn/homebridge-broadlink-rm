@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Thermostat flat heat/cool mappings, mode/On sequences, heat-only and fixed Auto
+  replacement, dry-off/power timers, and opt-in mode-default reset/code fallback.
+- TV automatic power timers and explicit picture-mode code maps; light resend
+  aliases and stateless local resets.
+- Explicit file/MQTT jam feedback for locks/garage doors, cancelling inferred
+  completion and automatic actions while keeping motor recovery under device control.
 - AC/Thermostat target persistence in Homebridge accessory context, restoring valid
   setpoints after restart while leaving startup power Off without transmission.
 - Anonymized legacy cooling-config fixture and real HAP regression coverage for

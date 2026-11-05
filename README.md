@@ -60,7 +60,8 @@ RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
 
 | Accessories | Configuration |
 | --- | --- |
-| Air conditioner / Thermostat, switches, IR learning | [Setup guide](docs/setup.md) |
+| Air conditioner / Thermostat | [Setup](docs/setup.md), [mode/default options](docs/air-conditioner.md) |
+| Switches, IR learning | [Setup guide](docs/setup.md) |
 | Fan / Fanv2 | [Fan](docs/fan.md) |
 | Television, inputs, remote, volume | [TV and pairing](docs/tv.md) |
 | Light, brightness, color presets | [Light](docs/light.md) |

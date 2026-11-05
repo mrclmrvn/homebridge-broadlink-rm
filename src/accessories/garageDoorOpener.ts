@@ -15,6 +15,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
   private readonly closedSensor?: FeedbackSource;
   private readonly openSensor?: FeedbackSource;
   private readonly obstructionSensor?: FeedbackSource;
+  private readonly jam?: FeedbackSource;
   private movement?: number;
   private pendingAutoClose = false;
 
@@ -28,6 +29,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
     this.openDuration = this.seconds(this.config.openDuration ?? this.config.openCloseDuration, 8);
     this.closeDuration = this.seconds(this.config.closeDuration ?? this.config.openCloseDuration, 8);
     this.autoCloseDelay = this.seconds(this.config.autoCloseDelay, 0);
+    if (this.config.jamSensor) this.jam = new FeedbackSource(this.config.jamSensor, 'jam');
     if (this.config.closedSensor) this.closedSensor = new FeedbackSource(this.config.closedSensor, 'contact');
     if (this.config.openSensor) this.openSensor = new FeedbackSource(this.config.openSensor, 'contact');
     if (this.config.obstructionSensor) this.obstructionSensor = new FeedbackSource(this.config.obstructionSensor, 'obstruction');
@@ -35,11 +37,11 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
     this.service = accessory.getService(platform.Service.GarageDoorOpener)
       || accessory.addService(platform.Service.GarageDoorOpener, this.name);
     this.service.getCharacteristic(C.CurrentDoorState).onGet(() =>
-      this.hasEndpoints() ? this.refreshEndpoints().then(() => this.current) : this.current);
+      this.hasEndpoints() || this.jam ? this.refreshState().then(() => this.current) : this.current);
     this.service.getCharacteristic(C.TargetDoorState).onGet(() => this.target)
       .onSet(value => this.serialize(() => this.setTarget(Number(value))));
     this.service.getCharacteristic(C.ObstructionDetected).onGet(() => this.obstructionSensor ? this.readObstruction() : false);
-    if (this.hasEndpoints()) this.service.updateCharacteristic(C.CurrentDoorState, new Error('Waiting for door endpoint feedback'));
+    if (this.hasEndpoints() || this.jam) this.service.updateCharacteristic(C.CurrentDoorState, new Error('Waiting for door endpoint feedback'));
     else this.service.updateCharacteristic(C.CurrentDoorState, this.current);
     this.service.updateCharacteristic(C.TargetDoorState, this.target);
     if (this.config.data?.lock && this.config.data?.unlock) {
@@ -66,7 +68,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
   }
 
   private sources(): FeedbackSource[] {
-    return [this.closedSensor, this.openSensor, this.obstructionSensor].filter((source): source is FeedbackSource => Boolean(source));
+    return [this.closedSensor, this.openSensor, this.obstructionSensor, this.jam].filter((source): source is FeedbackSource => Boolean(source));
   }
   private hasEndpoints(): boolean { return Boolean(this.closedSensor || this.openSensor); }
 
@@ -87,6 +89,28 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
       if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.ObstructionDetected, error as Error);
       throw error;
     }
+  }
+
+  private async checkJam(): Promise<void> {
+    if (!this.jam) return;
+    try {
+      if (await this.jam.read()) throw new Error('Garage is jammed; command blocked');
+    } catch (error) {
+      if (!this.disposed) {
+        this.cancelTimer('transition'); this.cancelTimer('autoClose');
+        this.movement = undefined; this.pendingAutoClose = false;
+        this.current = this.platform.Characteristic.CurrentDoorState.STOPPED;
+        this.service.updateCharacteristic(this.platform.Characteristic.CurrentDoorState, error as Error);
+      }
+      throw error;
+    }
+  }
+
+  private async refreshState(): Promise<void> {
+    await this.checkJam();
+    if (this.disposed) return;
+    if (this.hasEndpoints()) await this.refreshEndpoints();
+    else this.service.updateCharacteristic(this.platform.Characteristic.CurrentDoorState, this.current);
   }
 
   private async refreshEndpoints(): Promise<void> {
@@ -117,7 +141,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
   }
 
   private async poll(): Promise<void> {
-    try { await this.refreshEndpoints(); } catch { /* Publish the fault, retain last observed state. */ }
+    try { await this.refreshState(); } catch { /* Publish the fault, retain last observed state. */ }
     try { await this.readObstruction(); } catch { /* An unavailable obstruction source blocks closing. */ }
     const intervals = this.sources().map(source => source.interval).filter(interval => interval > 0);
     if (intervals.length) this.schedule('feedback', Math.min(...intervals), () => this.poll());
@@ -126,6 +150,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
   private async setTarget(target: number): Promise<void> {
     const C = this.platform.Characteristic;
     if (![C.TargetDoorState.OPEN, C.TargetDoorState.CLOSED].includes(target)) throw new Error('Invalid garage door target state');
+    await this.checkJam();
     if (target === C.TargetDoorState.CLOSED && await this.readObstruction()) throw new Error('Garage obstruction detected; close command blocked');
     if (this.hasEndpoints()) await this.refreshEndpoints();
     if (this.disposed) throw new Error('Accessory has shut down');
@@ -140,6 +165,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
     this.service.updateCharacteristic(C.TargetDoorState, target);
     this.service.updateCharacteristic(C.CurrentDoorState, this.current);
     this.schedule('transition', (opening ? this.openDuration : this.closeDuration) * 1000, async () => {
+      await this.checkJam();
       if (this.hasEndpoints()) {
         try { await this.refreshEndpoints(); }
         catch (error) { this.movement = undefined; this.pendingAutoClose = false; throw error; }

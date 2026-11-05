@@ -77,7 +77,7 @@ Battery accepts percentage scalars or numeric JSON fields/paths; combined JSON
 recognizes battery/batteryLevel/battery_level/batteryPercentage/battery_percentage
 case-insensitively. `batteryAlerts` exposes a separate Battery service on sensor
 and climate accessories; see [sensor sources](sensor-sources.md#optional-battery-status).
-Binary sources also use contact, lock and obstruction identifiers as described
+Binary sources also use contact, lock, obstruction and jam identifiers as described
 in the feedback guide. combined requires object measurements; unknown follows the combined
 JSON/scalar behavior described above. Topic filters support MQTT + and # rules,
 including the special handling of $-prefixed topics. Shared-subscription filters

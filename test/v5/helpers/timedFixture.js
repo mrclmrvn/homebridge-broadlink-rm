@@ -3,6 +3,10 @@ const { createAccessoryInstance } = require('../../../dist/accessories');
 
 function fixture(t, type, options = {}) {
   const constants = {
+    PictureMode: { OTHER: 0, STANDARD: 1, GAME: 5 },
+    RemoteKey: { INFORMATION: 15 }, PowerModeSelection: { SHOW: 0, HIDE: 1 },
+    VolumeSelector: { INCREMENT: 0, DECREMENT: 1 }, VolumeControlType: { RELATIVE: 1 },
+    SleepDiscoveryMode: { ALWAYS_DISCOVERABLE: 1 }, IsConfigured: { CONFIGURED: 1 },
     TargetHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2, AUTO: 3 },
     CurrentHeatingCoolingState: { OFF: 0, HEAT: 1, COOL: 2 },
     TemperatureDisplayUnits: { CELSIUS: 0, FAHRENHEIT: 1 },
@@ -19,23 +23,27 @@ function fixture(t, type, options = {}) {
     PositionState: { DECREASING: 0, INCREASING: 1, STOPPED: 2 },
     CurrentDoorState: { OPEN: 0, CLOSED: 1, OPENING: 2, CLOSING: 3, STOPPED: 4 },
     TargetDoorState: { OPEN: 0, CLOSED: 1 },
-    LockCurrentState: { UNSECURED: 0, SECURED: 1, UNKNOWN: 3 },
+    LockCurrentState: { UNSECURED: 0, SECURED: 1, JAMMED: 2, UNKNOWN: 3 },
     LockTargetState: { UNSECURED: 0, SECURED: 1 },
   };
-  const names = ['BatteryLevel', 'ChargingState', 'Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
+  const names = ['ConfiguredName', 'ActiveIdentifier', 'Identifier', 'InputSourceType', 'Mute', 'BatteryLevel', 'ChargingState', 'Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
     'Brightness', 'Hue', 'Saturation', 'ColorTemperature', 'TargetPosition', 'HoldPosition', 'ObstructionDetected', 'On', 'OutletInUse', 'RotationSpeed', 'LockPhysicalControls',
     'CurrentTemperature', 'CurrentRelativeHumidity', 'RelativeHumidityHumidifierThreshold', 'RelativeHumidityDehumidifierThreshold',
     'CoolingThresholdTemperature', 'HeatingThresholdTemperature', 'TargetTemperature', ...Object.keys(constants)];
   const C = Object.fromEntries(names.map(name => [name, { ...constants[name] }]));
-  const S = Object.fromEntries(['AccessoryInformation', 'Battery', 'Lightbulb', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
+  const S = Object.fromEntries(['Television', 'TelevisionSpeaker', 'InputSource', 'AccessoryInformation', 'Battery', 'Lightbulb', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
   class Accessory {
     constructor(name, uuid) { this.displayName = name; this.UUID = uuid; this.context = {}; this.services = []; }
     getService(type) { return this.services.find(service => service.UUID === type.UUID); }
+    getServiceById(type, subtype) { return this.services.find(service => service.UUID === type.UUID && service.subtype === subtype); }
     removeService(service) { this.services.splice(this.services.indexOf(service), 1); }
-    addService(type) {
+    addService(type, name, subtype) {
       const controls = new Map();
       const service = {
-        UUID: type.UUID, controls,
+        UUID: type.UUID, controls, subtype, links: new Set(),
+        setPrimaryService() { this.primary = true; },
+        addLinkedService(service) { this.links.add(service); },
+        removeLinkedService(service) { this.links.delete(service); },
         getCharacteristic(key) {
           if (!controls.has(key)) controls.set(key, {
             onGet(fn) { this.get = fn; return this; },
@@ -61,7 +69,7 @@ function fixture(t, type, options = {}) {
   const timers = new Map();
   t.mock.method(performance, 'now', () => now);
   t.mock.method(global, 'setTimeout', (callback, delay) => {
-    const handle = {};
+    const handle = { unref() { return this; } };
     timers.set(handle, { callback, due: now + delay });
     return handle;
   });

@@ -65,6 +65,17 @@ than independent lights needing an off transmission.
 / `disableAutomaticOn: false` also enable them. Durations must be positive when
 enabled. No automatic command runs at startup; shutdown cancels timers and
 power-on delays. Commands accept [structured sequences](power-and-feedback.md#shared-structured-commands).
+Explicit `disableAutomaticOff` / `disableAutomaticOn` override enable flags when
+both are supplied. `allowResend: true` retransmits identical power/brightness
+requests; without allowResend, `preventResendHex: false` is the equivalent alias.
+The default suppresses those repeated writes.
+
+`stateless: true` resets On/brightness locally after `onDuration` (default 0.5
+seconds) without sending Off, unless automatic Off is enabled. The reset does
+not schedule automatic On. New successful writes restart the reset timer;
+exclusives and shutdown cancel it. Use this only for deliberate button/preset
+behavior, since local Off does not establish physical Off.
+
 Other advanced legacy options remain roadmap work. Restart Homebridge after
 changing configuration; cached optional controls are removed when their
 corresponding code groups are removed.

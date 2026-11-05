@@ -125,16 +125,18 @@ sequences are supported at command leaves across controllers; see
 This creates a Thermostat, not HeaterCooler. `airconditioner` is also accepted.
 Target temperatures use `tempStepSize` (default 1°C), rounded relative to the
 configured minimum, and matching keys such as `temperature24` or
-`temperature24.5`. Entries accept strings and structured commands. Turning on
-prefers the current temperature code, falling back to `on`; missing both is an
-error. Changing an active target requires its temperature code. Missing/failed
+`temperature24.5`. Mode-prefixed `heatXX` / `coolXX` take precedence over generic
+keys. Entries accept strings and structured commands. Mode changes can send a
+separate `data.heat` / `data.cool` command before the temperature code; `on` remains
+an activation fallback when no mode/temperature code is supplied. Changing an active target requires its temperature code. Missing/failed
 commands retain the previous state; off-state temperature changes are deferred.
 Set bounds and supply all temperature codes you intend to expose.
 
 `coolOnly` restricts modes to Off/Cool. It defaults to false in code, while the
 visual schema defaults to true; set it explicitly. Otherwise modes are Off,
-Heat and Cool; plugin-controlled Auto regulation is not offered. The current port
-does not select separate heat/cool code trees. Current activity is inferred from successful sends,
+Heat and Cool; `heatOnly` restricts to Off/Heat. Plugin-controlled Auto regulation
+is not offered. Mode-specific flat codes, metadata and optional Auto replacement
+are described in [Thermostat modes](air-conditioner.md). Current activity is inferred from successful sends,
 and temperature waits for a real reading instead of displaying the target as a
 measurement. The shared reader supports MQTT, files, Linux 1-wire and native RM
 sensors, plus an explicitly configured pseudo constant. Optional battery telemetry
@@ -156,7 +158,10 @@ Removing the accessory/cache or changing its name/host can lose this saved value
 Homebridge owns the cache write; a persistence error is logged and sudden process
 or storage failure is not guaranteed to preserve the latest change.
 
-For distinct mode-specific `data.heat` / `data.cool`, use
+See [Thermostat modes and legacy options](air-conditioner.md) for On/mode delays,
+dry-off, power timers, resend aliases and opt-in default resets/fallback. Without
+reset-on-mode-change, the saved setpoint behavior above remains unchanged.
+For nested setting maps under `data.heat` / `data.cool`, use
 [HeaterCooler](remaining-accessories.md#heatercooler).
 
 ## Switches and IR learning

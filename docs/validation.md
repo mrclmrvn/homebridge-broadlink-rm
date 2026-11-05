@@ -57,7 +57,8 @@ by the installation, supplying actual recorded codes and explicit host selection
 when multiple RMs are present. Enable automatic close/relock or timed movement
 only for the corresponding supervised test. Configure explicit endpoint/bolt and
 obstruction sources if present; otherwise state remains inferred. Jam detection
-and automatic obstruction reversal are not provided. Validate sensor polarity,
+and automatic obstruction reversal are not provided; explicit jam feedback
+reports faults without transmitting motor recovery commands. Validate sensor polarity,
 freshness, missing-source handling and actual mechanical outcomes separately.
 
 ## Driver checks
@@ -139,7 +140,9 @@ blocks it. Observe physical power separately; reachability alone is an estimate.
 For configured feedback, exercise each endpoint and bolt, contradictory endpoints,
 obstruction, invalid payloads, expiry and disconnect. Confirm a closed-only contact
 never establishes Open or Secured, source failure blocks new guarded commands,
-and automatic close/relock waits for the required confirmation. Obstruction
+and automatic close/relock waits for the required confirmation. For jamSensor,
+exercise clear/jammed/invalid/stale states, confirm timer cancellation, no false
+obstruction signal and no automatic retry after clearing. Obstruction
 updates during travel do not stop or reverse the motor automatically. Repeat
 these checks using the actual producer and its signal polarity.
 

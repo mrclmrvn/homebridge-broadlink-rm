@@ -134,7 +134,8 @@ the plugin does not invent endpoint confirmation. Opening/closing requests
 require usable configured endpoint feedback. Closing also reads an optional
 obstruction source immediately before sending; obstructed or unavailable blocks
 the command. An obstruction update during movement reports its state but does
-not issue a stop/reversal command. No jam sensor or motor interlock is provided.
+not issue a stop/reversal command. Optional explicit jam feedback is described
+below; no automatic motor stop/reversal interlock is provided.
 
 With endpoint feedback, `autoCloseDelay` requires an `openSensor` and starts only
 after that sensor confirms Open. Without endpoint sensors, the original timer
@@ -158,3 +159,38 @@ waiting for confirmation. Missing feedback blocks new commands; unconfirmed
 completion faults the current-state characteristic. `autoLockDelay` starts only
 after a requested unlock is confirmed. A door-closed contact cannot establish
 that a bolt is secured. Without `lockSensor`, the legacy timer estimate remains.
+
+
+## Explicit jam feedback
+
+Standalone locks and garage doors accept `jamSensor`, using the same explicit
+file/MQTT source object, poll interval and freshness rules as other binary sources:
+
+```json
+{
+  "jamSensor": {
+    "mqttURL": "mqtt://broker.local",
+    "mqttTopic": [{ "identifier": "jam", "topic": "motor/state", "path": "jammed" }],
+    "maxAge": 30
+  }
+}
+```
+
+True/1/`jammed` means jammed; false/0/`clear` means clear. Files accept a `jam`
+or `jammed` field, and combined MQTT JSON recognizes either alias. A missing,
+stale or invalid configured source blocks new movement/lock commands. Without
+an explicit source, a missed endpoint/bolt deadline remains a confirmation fault;
+it is never labeled a verified jam.
+
+A jammed standalone lock reports HomeKit LockCurrentState.JAMMED and cancels
+transition/auto-lock timers. After clearing, a bolt source supplies the physical
+state; without one, state becomes Unknown until a new inferred operation completes.
+A jammed garage faults CurrentDoorState and cancels travel/auto-close estimates;
+after clearing, endpoint sensors determine position or the unsensed door remains
+Stopped. Jam is not copied into ObstructionDetected. Source failure also cancels
+these automatic actions and faults the current-state characteristic.
+
+Jam updates send no IR/RF stop, reversal, unlock or retry. Clearing a fault does
+not resume cancelled actions. The software reports sensor state and guards new
+commands; the appliance's physical controller remains responsible for motor
+protection and recovery. Optional garage lock controls remain separately inferred.

@@ -6,6 +6,7 @@ const remoteKeys = [
   'rewind', 'fastForward', 'nextTrack', 'previousTrack', 'arrowUp', 'arrowDown',
   'arrowLeft', 'arrowRight', 'select', 'back', 'exit', 'playPause',
 ];
+const pictureModes = ['other', 'standard', 'calibrated', 'calibratedDark', 'vivid', 'game', 'computer', 'custom'];
 const inputTypes = ['other', 'home_screen', 'tuner', 'hdmi', 'composite_video',
   's_video', 'component_video', 'dvi', 'airplay', 'usb', 'application'];
 
@@ -13,10 +14,13 @@ export class TelevisionAccessory extends TimedAccessory {
   private active = 0;
   private input = 0;
   private muted = false;
+  private pictureMode = 0;
+  private pictureModeConfirmed = false;
   private readonly television: Service;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
+    this.validatePowerTimers();
     const C = platform.Characteristic;
     const S = platform.Service;
     this.television = accessory.getService(S.Television)
@@ -26,14 +30,7 @@ export class TelevisionAccessory extends TimedAccessory {
       .setCharacteristic(C.SleepDiscoveryMode, C.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
     this.television.getCharacteristic(C.Active).onGet(() => this.active)
       .onSet(value => this.serialize(async () => {
-        const target = Number(value) ? 1 : 0;
-        const required = this.power ? await this.power.requiresSend(Boolean(target)) : target !== this.active;
-        if (required) {
-          await this.sendTVCode(target ? this.config.data?.on : this.config.data?.off, target ? 'on' : 'off');
-          this.power?.recordSent(Boolean(target));
-        }
-        this.active = target;
-        this.television.updateCharacteristic(C.Active, target);
+        await this.setActive(Number(value));
       }));
     const inputs = Array.isArray(this.config.data?.inputs) ? this.config.data.inputs : [];
     this.television.getCharacteristic(C.ActiveIdentifier).onGet(() => this.input)
@@ -51,6 +48,29 @@ export class TelevisionAccessory extends TimedAccessory {
       const key = Number(value) === C.PowerModeSelection.SHOW ? 'show' : 'hide';
       await this.sendTVCode(this.config.data?.powerMode?.[key], `powerMode.${key}`);
     }));
+
+    const picture = this.config.data?.pictureMode;
+    if (picture !== undefined) {
+      if (!picture || typeof picture !== 'object' || Array.isArray(picture)) throw new Error('pictureMode requires a code map');
+      const values = pictureModes.flatMap((name, index) => picture[index] || picture[name] ? [index] : []);
+      if (!values.length || Object.keys(picture).some(key => !pictureModes.includes(key) && !/^[0-7]$/.test(key))) throw new Error('Invalid pictureMode code map');
+      this.pictureMode = values[0];
+      this.television.getCharacteristic(C.PictureMode)
+        .setProps({ validValues: pictureModes.map((_, index) => index) }).updateValue(this.pictureMode)
+        .setProps({ validValues: values })
+        .onGet(() => { if (!this.pictureModeConfirmed) throw new Error('Picture mode has not been selected'); return this.pictureMode; }).onSet(value => this.serialize(async () => {
+          const mode = Number(value);
+          if (!values.includes(mode)) throw new Error('Unsupported picture mode');
+          if (mode === this.pictureMode && this.pictureModeConfirmed) return;
+          await this.sendTVCode(picture[mode] ?? picture[pictureModes[mode]], 'pictureMode');
+          this.pictureMode = mode;
+          this.pictureModeConfirmed = true;
+          this.television.updateCharacteristic(C.PictureMode, mode);
+        }));
+      this.television.updateCharacteristic(C.PictureMode, new Error('Picture mode has not been selected'));
+    } else if (this.television.testCharacteristic(C.PictureMode)) {
+      this.television.removeCharacteristic(this.television.getCharacteristic(C.PictureMode));
+    }
 
     const speaker = accessory.getService(S.TelevisionSpeaker)
       || accessory.addService(S.TelevisionSpeaker, `${this.name} Speaker`, 'speaker');
@@ -87,9 +107,22 @@ export class TelevisionAccessory extends TimedAccessory {
       }
     }
     this.watchPower(on => {
+      if (this.active !== Number(on)) this.cancelTimer('power-auto');
       this.active = on ? 1 : 0;
       this.television.updateCharacteristic(C.Active, this.active);
     });
+  }
+
+  private async setActive(target: number): Promise<void> {
+    if (![0, 1].includes(target)) throw new Error('Invalid TV power state');
+    const required = this.power ? await this.power.requiresSend(Boolean(target)) : target !== this.active;
+    if (required) {
+      await this.sendTVCode(target ? this.config.data?.on : this.config.data?.off, target ? 'on' : 'off');
+      this.power?.recordSent(Boolean(target));
+    }
+    this.active = target;
+    this.television.updateCharacteristic(this.platform.Characteristic.Active, target);
+    this.automaticPower(Boolean(target), on => this.setActive(Number(on)));
   }
 
   private async sendTVCode(code: unknown, key: string): Promise<void> {

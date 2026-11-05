@@ -38,7 +38,7 @@ Homebridge range still needs validation beyond the development dependency.
 | Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |
-| `air-conditioner` | Thermostat service with temperatureXX codes; advanced legacy mode logic is incomplete |
+| `air-conditioner` | Flat heatXX/coolXX/temperatureXX codes, separate mode commands and opt-in defaults/fallback; saved setpoint preserved by default. See the Thermostat guide |
 | `temperatureSensor`, `humiditySensor` | Accepted with original casing; kebab-case aliases also available |
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
 | MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
@@ -48,7 +48,9 @@ Homebridge range still needs validation beyond the development dependency.
 | RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
 | Pronto strings | Raw modulated 0000 strings with whitespace are converted before transmission |
 | Fan speedCycle/default-reset/timers, light exclusives | Supported; review assumptions and timer behavior in the fan/light guides |
-| Garage endpoint/obstruction and lock-bolt feedback | Explicit file/MQTT source objects; see the power and feedback guide |
+| Garage endpoint/obstruction, lock-bolt and jam feedback | Explicit file/MQTT source objects; jams require an explicit signal, not a missed deadline |
+| TV power timers / picture modes | Power timers supported; pictureMode is an explicit v5 code map rather than the old placeholder |
+| Light allowResend / stateless | Repeat power/brightness commands and local reset are supported; local reset sends no Off |
 | hideLearnButton/hideScanFrequencyButton | No automatic legacy helper-button creation; explicitly configure an IR learning accessory |
 
 See the type-specific guides for exact options. The old sample configs at the
@@ -84,7 +86,8 @@ identities or survive cache removal. Window position starts from initialPosition
 (default 0), not a position sensor. Optional file/MQTT garage endpoint,
 obstruction and standalone lock-bolt sources provide explicit feedback; see
 [power and feedback](power-and-feedback.md). Configured unavailable sources fault
-rather than authorizing a command. Jam detection remains unimplemented.
+rather than authorizing a command. Explicit jamSensor feedback reports jam state
+and cancels automatic actions; it does not transmit stop/reversal or recover a motor.
 
 Sensor readers, including the Thermostat, report invalid/missing readings as
 errors rather than inventing zero values or displaying the AC target as measured
