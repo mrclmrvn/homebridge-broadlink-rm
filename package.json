@@ -12,7 +12,8 @@
     "cli": "ts-node src/cli.ts",
     "prepublishOnly": "npm test",
     "test": "npm run build && node --test test/v5/*.test.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:homebridge": "node test/compatibility/homebridge-info.js && npm test"
   },
   "keywords": [
     "homebridge-plugin",

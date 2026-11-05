@@ -67,9 +67,11 @@ fallbacks, ambient mode restrictions, display units, nested timing, aggregate
 limits and persistence opt-out. The full suite passes **167 tests** at this
 checkpoint. The retained legacy reference files and contributed private JSON are unchanged; no physical IR/RF or network operation is performed by this audit.
 
-The declared Homebridge range still needs automated compatibility coverage beyond
-the locked development version. The current CI matrix varies OS and Node, not
-Homebridge versions. Release tooling also needs review against the final package;
+Follow-up [Homebridge version coverage](homebridge-compatibility.md) adds exact
+1.6.0/1.11.4/2.0.0 targets alongside locked 2.5.0, with selected HAP dependencies
+and real API/cache checks. All four passed 169 tests locally on Node 24. The
+configured remote matrix and live installations still need release-head results.
+Release tooling also needs review against the final package;
 the retained legacy release-it configuration is not a validated v5 release path.
 Use the [validation runbook](validation.md) to record live UI/cache/pairing,
 appliance, migration and rollback results before release claims.

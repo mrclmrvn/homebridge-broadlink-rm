@@ -30,7 +30,9 @@ This is software evidence, not a hardware pass.
 The new npm package is `@mrclmrvn/homebridge-broadlink-rm`; the platform alias
 remains `BroadlinkRM`. The old package name is not an installation alias for v5.
 The Node engine range matches the locked dependency and CI majors. The declared
-Homebridge range still needs validation beyond the development dependency.
+Homebridge range now has [representative automated coverage](homebridge-compatibility.md)
+beyond the development dependency; live integration and release-head CI results
+remain separate requirements.
 
 ## Configuration differences to review
 

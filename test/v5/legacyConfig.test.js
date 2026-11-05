@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const hap = require('@homebridge/hap-nodejs');
+const hap = require('./helpers/homebridgeRuntime').hap;
 const { BroadlinkRMPlatform } = require('../../dist/platform');
 const { createAccessoryInstance } = require('../../dist/accessories');
 const template = require('./fixtures/legacy-cooling-platform.json');

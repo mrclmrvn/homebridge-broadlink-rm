@@ -25,6 +25,11 @@ npm test
 npm pack
 ```
 
+Use `npm run test:homebridge` as well when recording automated version checks;
+[the compatibility guide](homebridge-compatibility.md) lists exact targets and
+local results. The script verifies the actual selected Homebridge/HAP/Node;
+this is not evidence that the live Homebridge service uses those versions.
+
 Record any uncommitted modifications. The Homebridge version reported by npm ls
 here is the development dependency; separately record the version actually
 running on the test host, its Node version, OS/architecture and installation type.

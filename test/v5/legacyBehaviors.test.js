@@ -181,7 +181,7 @@ test('MQTT jam identifiers parse explicit states and reject invalid values/disco
 });
 
 test('new TV picture and jam-configured services construct with real HAP without warnings', () => {
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const warnings = [];
   const platform = { Service: hap.Service, Characteristic: hap.Characteristic, log: {}, deviceManager: { getDevice() {} } };
   for (const config of [{ type: 'tv', data: { pictureMode: { standard: 'standard', game: 'game' } } },
@@ -209,7 +209,7 @@ test('AC reports accepted pseudo-mode overrides and failed mode commands preserv
 test('AC Auto replacement and temperature fallback publish normalized values after the HAP write', async t => {
   const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, replaceAutoMode: 'cool',
     fallbackToDefaultTemperature: true, defaultCoolTemperature: 25, data: { cool25: '25' } });
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const accessory = new hap.Accessory('AC', hap.uuid.generate('legacy-normalized-ac'));
   accessory.context = { config: f.config };
   const platform = { ...f.platform, Service: hap.Service, Characteristic: hap.Characteristic };

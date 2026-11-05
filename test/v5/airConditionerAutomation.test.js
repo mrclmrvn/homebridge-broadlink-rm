@@ -194,7 +194,7 @@ test('Auto default replacement also governs explicit activation by off-state tem
 
 test('real HAP device Auto publishes the target without claiming heating or cooling activity', async t => {
   const f = fixture(t, 'lock');
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const accessory = new hap.Accessory('Auto AC', hap.uuid.generate('device-auto-ac'));
   accessory.context = { config: { type: 'air-conditioner', sensorPollInterval: 0, data: { auto24: '24' } } };
   const warnings = []; accessory.on('characteristic-warning', warning => warnings.push(warning.message));

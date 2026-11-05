@@ -34,7 +34,10 @@ configuration parity remains a goal.
   restoring power mode or transmitting at startup.
 - MQTT subscriptions with legacy config support, validated messages, receipt-age
   expiry, reconnect handling, push updates and connection cleanup.
-- v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
+- v5 tests, real HAP service checks and real Homebridge API/cache serialization
+  checks using the selected version's own HAP dependency.
+- A three-OS/three-Node locked-Homebridge CI matrix plus Ubuntu Homebridge
+  1.6.0/1.11.4/2.0.0 checks on Node 22/24; see [coverage](homebridge-compatibility.md).
 - Setup, migration, diagnostics, accessory, and development/release documentation.
 - Explicit legacy sparse-map fallback, display-unit preference and AC target
   persistence opt-out, with independent nested sequence timing and aggregate limits.
@@ -68,8 +71,10 @@ not verify Broadlink packets or real devices.
 
 ## Validation and release work
 
-- Audit the declared Homebridge range beyond the development dependency.
-  Node engines now match the locked dependency/CI majors (22.12+ in 22.x, 24, 26).
+- Run the new Homebridge matrix on the pushed/release head and validate live
+  installations; representative version checks are not exhaustive range proof.
+  Node engines match the locked dependency/CI majors (22.12+ in 22.x, 24, 26),
+  but each Homebridge release must also support the selected Node version.
 - Validate configuration schema behavior in a live Homebridge UI, especially
   scalar/array switch data, MQTT topic forms and options shared across accessories.
 - Exercise hardware across device families and record actual auth, send, IR learn,

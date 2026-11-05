@@ -181,7 +181,7 @@ test('1-wire and battery sources work across Thermostat, HeaterCooler and humidi
 });
 
 test('real HAP battery service exposes valid levels and low status without warnings', async t => {
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const { createAccessoryInstance } = require('../../dist/accessories');
   t.mock.method(fs, 'readFile', async () => '{"battery":19.6}');
   const warnings = [];

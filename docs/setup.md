@@ -8,8 +8,10 @@ validation remain outstanding.
 ## Build and install a local package
 
 Use Node 22.12+ within 22.x, or Node 24/26, for the locked development dependency
-set. The Node engine declaration now matches that range; the declared Homebridge
-range still needs validation beyond the current development dependency. From your selected v5 checkout:
+set. The Node engine declaration matches that range. Representative Homebridge
+1.6.0/1.11.4/2.0.0/2.5.0 releases have [automated coverage](homebridge-compatibility.md);
+choose a Node version supported by both packages. Live integration remains
+outstanding. From your selected v5 checkout:
 
 ```bash
 npm ci

@@ -32,4 +32,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build and run v5 tests
-        run: npm test
+        run: npm run test:homebridge
+
+  homebridge-compatibility:
+    name: Homebridge ${{ matrix.homebridge_version }} / Node ${{ matrix.node_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exact boundary/representative releases from the declared Homebridge range.
+        homebridge_version: ['1.6.0', '1.11.4', '2.0.0']
+        # 1.11.4 and 2.0.0 exclude Node 26; 2.5.0 covers it in the main matrix.
+        node_version: [22, 24]
+    env:
+      HOMEBRIDGE_EXPECTED_VERSION: ${{ matrix.homebridge_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: npm
+      - name: Install locked development tools
+        run: npm ci --ignore-scripts
+      - name: Select Homebridge version without changing the lockfile
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund homebridge@${{ matrix.homebridge_version }}
+      - name: Verify selected runtime, compile and run the full suite
+        run: npm run test:homebridge

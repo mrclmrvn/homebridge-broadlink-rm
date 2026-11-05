@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exact Homebridge 1.6.0/1.11.4/2.0.0 compatibility jobs on Node 22/24 alongside
+  locked 2.5.0's existing Node/OS matrix, with version/engine preflight checks.
+- Real Homebridge registration, external TV publication and serialized cache
+  restoration tests; HAP tests resolve the selected Homebridge's own dependency.
 - Opt-in legacy AC sparse-map fallback using heatTemperature and generic default
   keys, Thermostat display units, and persistState false for target persistence.
 
@@ -73,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
 - Several advanced per-accessory behaviors remain outstanding. 1-wire, pseudo and battery sources still require live validation. Optional Eve history is excluded from the current scope.
-- Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/roadmap.md.
+- Live Homebridge/hardware validation, release-head CI results, publication and Homebridge verification remain pending; representative automated version coverage is documented.
 
 ## [4.4.21 - 2026-05-10]
 ### Fixed
