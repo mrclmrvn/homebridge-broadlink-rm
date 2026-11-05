@@ -134,8 +134,9 @@ Set bounds and supply all temperature codes you intend to expose.
 
 `coolOnly` restricts modes to Off/Cool. It defaults to false in code, while the
 visual schema defaults to true; set it explicitly. Otherwise modes are Off,
-Heat and Cool; `heatOnly` restricts to Off/Heat. Plugin-controlled Auto regulation
-is not offered. Mode-specific flat codes, metadata and optional Auto replacement
+Heat and Cool; `heatOnly` restricts to Off/Heat. Device Auto requires explicit
+mappings, while optional ambient control uses configured thresholds and measured
+temperature. Mode-specific flat codes, metadata and fixed Auto replacement
 are described in [Thermostat modes](air-conditioner.md). Current activity is inferred from successful sends,
 and temperature waits for a real reading instead of displaying the target as a
 measurement. The shared reader supports MQTT, files, Linux 1-wire and native RM
@@ -149,7 +150,9 @@ Full legacy AC options remain pending.
 
 Accepted target-temperature changes are saved in the accessory's Homebridge cache,
 including changes made while Off. After a normal restart with the same accessory
-identity/cache, the last target is restored; startup stays Off and sends no IR.
+identity/cache, the last target is restored without sending IR. Startup starts
+Off; explicitly configured ambient automation can subsequently act on a fresh
+reading when its optional gate allows it.
 For example, 18°C → Off → restart → Cool sends the 18°C code. Failed active
 transmissions do not overwrite the saved target. Missing, malformed, out-of-range
 or step-incompatible saved values use `defaultCoolTemperature` (default 24) instead.
@@ -161,6 +164,8 @@ or storage failure is not guaranteed to preserve the latest change.
 See [Thermostat modes and legacy options](air-conditioner.md) for On/mode delays,
 dry-off, power timers, resend aliases and opt-in default resets/fallback. Without
 reset-on-mode-change, the saved setpoint behavior above remains unchanged.
+See [ambient control and enable switches](air-conditioner.md#ambient-threshold-automation-and-linked-switches)
+for opt-in regulation, manual overrides and virtual gates.
 For nested setting maps under `data.heat` / `data.cool`, use
 [HeaterCooler](remaining-accessories.md#heatercooler).
 

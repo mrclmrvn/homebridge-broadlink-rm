@@ -24,6 +24,9 @@ configuration parity remains a goal.
 - Thermostat flat heat/cool codes, mode/On sequencing, metadata, dry-off, fixed
   Auto replacement and opt-in mode-default resets/fallback without losing the
   default saved-setpoint behavior.
+- Explicit appliance Auto with unavailable compressor activity, measured ambient
+  thresholds with minimum intervals/manual ownership, and linked physical/virtual
+  switch gates that block on missing or ambiguous names.
 - Explicit file/MQTT garage endpoint/obstruction, standalone bolt and jam feedback;
   faults cancel inferred transitions and automatic actions without motor commands.
 - Thermostat mode/temperature validation, state commits after successful sends,
@@ -48,9 +51,10 @@ not verify Broadlink packets or real devices.
   remains device-dependent. Expand coverage for uncommon device IDs.
 - Validate 1-wire CRC behavior, file access and container mounts on a real Linux
   host; validate battery producers, units and HomeKit presentation in live use.
-- Audit additional concrete legacy migration cases. AC ambient-temperature
-  automation/linked auto switches, device Auto commands and full fallback
-  heuristics remain unsupported; see [Thermostat scope](air-conditioner.md).
+- Audit additional concrete legacy migration cases, including complete fallback
+  heuristics and command layouts not represented by current fixtures; see
+  [Thermostat scope](air-conditioner.md). Third-party HomeKit switch gates are
+  outside the platform-local linking implementation.
 - Validate explicit jam producers and physical recovery. Feedback faults/cancels
   software actions; it does not transmit motor stop/reversal or supply an interlock.
 - Validate power utilities, cycle reset assumptions and feedback polarity/freshness

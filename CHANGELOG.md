@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Appliance Auto commands/temperature maps and auto metadata without fabricated
+  compressor activity; fixed Auto replacement remains available.
+- Opt-in measured ambient AC thresholds, minimum action intervals, manual ownership,
+  bounded retry decisions and named platform switch/outlet gates.
+- Explicit virtual switch/outlet gates without IR/RF commands or power probes.
 - Thermostat flat heat/cool mappings, mode/On sequences, heat-only and fixed Auto
   replacement, dry-off/power timers, and opt-in mode-default reset/code fallback.
 - TV automatic power timers and explicit picture-mode code maps; light resend

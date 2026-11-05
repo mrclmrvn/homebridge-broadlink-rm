@@ -588,8 +588,10 @@
               "type": "string",
               "enum": [
                 "heat",
-                "cool"
-              ]
+                "cool",
+                "auto"
+              ],
+              "description": "auto is Thermostat-only and requires device Auto mappings or replaceAutoMode."
             },
             "defaultRotationSpeed": {
               "title": "HeaterCooler Default Fan Speed (%)",
@@ -1180,6 +1182,51 @@
                   }
                 }
               }
+            },
+            "defaultAutoTemperature": {
+              "title": "Thermostat Device Auto Default Temperature (Celsius)",
+              "type": "number"
+            },
+            "autoHeatTemperature": {
+              "title": "Thermostat Ambient Heat Threshold (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Opt-in: fresh measured temperature below this threshold selects Heat. No pseudo source."
+            },
+            "autoCoolTemperature": {
+              "title": "Thermostat Ambient Cool Threshold (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Opt-in: fresh measured temperature above this threshold selects Cool. First valid poll/message may activate after startup."
+            },
+            "minimumAutoOnOffDuration": {
+              "title": "Thermostat Ambient Minimum Action Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647,
+              "description": "Defaults to 120; also delays reevaluation after manual changes or failed automatic sends. 0 disables the interval."
+            },
+            "autoMinimumDuration": {
+              "title": "Thermostat Legacy Ambient Interval Alias (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "autoSwitchName": {
+              "title": "Thermostat Ambient Enable Switch Name",
+              "type": "string",
+              "description": "Requires exactly one enabled switch/outlet accessory with this name and On=true; missing/ambiguous names block ambient actions."
+            },
+            "autoSwitch": {
+              "title": "Thermostat Legacy Enable Switch Alias",
+              "type": "string"
+            },
+            "virtual": {
+              "title": "Virtual Switch / Outlet",
+              "type": "boolean",
+              "description": "Local state only, useful as an ambient automation gate. Omit data and pingIPAddress. Starts Off after restart."
             }
           }
         }

@@ -114,6 +114,18 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
 | Sensors | Native/file/MQTT/1-wire readings, explicit pseudo constants, offsets, CRC failures, battery telemetry, missing values and shutdown cleanup |
 
+## AC automation checks
+
+On an isolated appliance, validate device Auto codes and the selected setpoint;
+confirm the plugin does not claim observed compressor activity. For configured
+ambient thresholds, exercise below/equal/above boundaries, manual takeover,
+return-to-band Off only for automatic runs, the minimum interval and failed sends.
+Check missing/invalid/stale/disconnected sensor data, missing/ambiguous/Off gates,
+virtual gate restart state, and shutdown during commands. Gate Off suspends future
+ambient actions; it does not stop an already running appliance. Record that
+explicitly configured ungated automation may act on the first valid startup
+reading, while saved-target restoration itself sends nothing.
+
 ## 1-wire, pseudo and battery checks
 
 On a Linux test host, confirm the intended w1_device ID and file access from the

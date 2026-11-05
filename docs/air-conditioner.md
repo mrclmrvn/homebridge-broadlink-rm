@@ -1,8 +1,8 @@
 # Thermostat mode commands and legacy options
 
 `air-conditioner` / `airconditioner` uses the Thermostat service. These options
-extend the [basic setup](setup.md); they do not implement compressor feedback or
-automatic room-temperature regulation. Use [HeaterCooler](remaining-accessories.md#heatercooler)
+extend the [basic setup](setup.md). Device Auto and explicit ambient-threshold
+control are separate features; neither provides compressor feedback. Use [HeaterCooler](remaining-accessories.md#heatercooler)
 for its separate nested `data.heat` / `data.cool` hierarchy.
 
 ```json
@@ -36,32 +36,53 @@ The complete selected command plan is validated before any transmission.
 ## Mode and temperature selection
 
 `coolOnly` restricts modes to Off/Cool; `heatOnly` restricts them to Off/Heat.
-They cannot both be true. Otherwise Off/Heat/Cool are offered. Explicit
-`defaultMode` must be heat or cool and agree with those restrictions; it selects
-the mode used for explicit off-state activation. Startup remains Off.
+They cannot both be true. Otherwise Off/Heat/Cool are offered, with device Auto
+when appropriate mappings exist. Explicit `defaultMode` may be heat, cool or auto
+and must agree with the available modes or fixed Auto replacement; it selects
+the mode used for explicit off-state activation. Startup begins Off, although
+configured ambient thresholds can act on the first valid poll/message.
 
-For active mode Heat/Cool, lookup prefers `heatXX` / `coolXX`, then generic
-`temperatureXX`. A mode change sends `data.heat` / `data.cool` first when provided,
+For active mode Heat/Cool/Auto, lookup prefers `heatXX` / `coolXX` / `autoXX`,
+then generic `temperatureXX`. A mode change sends `data.heat` / `data.cool` /
+`data.auto` first when provided,
 then the temperature code after `modeChangeDelay` seconds (default 0.25).
 Without a temperature entry, a mode command or plain `data.on` can provide the
 existing activation fallback; an active temperature change requires a matching
 entry unless default fallback is enabled. Mode commands must be command leaves,
 not HeaterCooler's nested setting maps.
 
-Temperature entries may contain `"pseudo-mode": "heat"` or `"cool"`. After a
-successful send, both target and inferred current mode reflect that metadata.
+Temperature entries may contain `"pseudo-mode": "heat"`, `"cool"` or `"auto"`.
+After a successful send, the reported target reflects the encoded mode.
 Unsupported values or modes conflicting with heatOnly/coolOnly reject the plan
-before sending. Device Auto commands/pseudo-mode Auto and closed-loop Auto
-regulation remain unsupported. `replaceAutoMode: "heat"` or `"cool"` instead
-offers Auto as a selection alias and immediately reports the mapped fixed mode;
-it does not switch modes based on room temperature.
+before sending. `replaceAutoMode: "heat"` or `"cool"` offers Auto as a selection
+alias and reports the mapped fixed mode; that explicit replacement takes
+precedence over device Auto when processing a mode request.
+
+### Device Auto
+
+Without heatOnly/coolOnly restrictions, Auto is available when `data.auto`, an
+`autoXX` entry, or a generic temperature entry with pseudo-mode auto is configured.
+For example, `data.auto` can select appliance Auto, while `data.auto24` supplies
+its 24°C setting. Missing active temperature codes still fail rather than
+pretending to change a setpoint. `defaultAutoTemperature` supplies an optional
+Auto default, including opt-in reset/fallback behavior.
+
+Device Auto delegates regulation to the appliance. Its target mode is Auto, but
+CurrentHeatingCoolingState reports unavailable because the plugin cannot observe
+whether the compressor is heating, cooling or idle. It never reports a fabricated
+Off/Heat/Cool activity. Selecting a fixed mode or Off restores inferred activity.
+Choosing device Auto also suspends plugin ambient-threshold actions until a
+fixed mode or Off is selected. A fixed replaceAutoMode alias is distinct from
+appliance Auto.
 
 ## Saved targets and legacy defaults
 
 Accepted targets persist in Homebridge accessory context. A normal restart with
-the same identity/cache restores the target without restoring power or sending
-IR. Initial/fallback target uses `defaultCoolTemperature` (default 24), or
-`defaultHeatTemperature` (default 24) for heatOnly/defaultMode heat.
+the same identity/cache restores the target without restoring power. No command
+is sent merely to restore the target. Explicit ambient automation may act later
+on a fresh reading. Initial/fallback target uses `defaultCoolTemperature` (default
+24), `defaultHeatTemperature` (default 24) for heatOnly/defaultMode heat, or
+`defaultAutoTemperature` falling back to the cool default for defaultMode auto.
 
 Preserving that setpoint remains the default. Opt-in
 `resetTemperatureOnModeChange: true` uses the configured heat/cool default when
@@ -85,7 +106,7 @@ Explicit zero delays work. Shutdown cancels delays and remaining commands.
 Temperature writes while Off are deferred by default. Explicit
 `ignoreTemperatureWhenOff: false` makes a changed temperature activate the last
 used mode, or defaultMode before one has been used. This is an explicit activation
-policy; it does not enable sensor-driven automation.
+policy; ambient-threshold automation below is configured independently.
 
 Off sends `data.offDryMode` when the inferred current mode was Cool and that code
 exists, otherwise `data.off`. After successful commands, `enableAutoOff` /
@@ -99,7 +120,78 @@ allows retransmission; when allowResend is absent, `preventResendHex: false` als
 enables it. Failed command plans do not commit the requested mode/target. Already
 transmitted portions cannot be undone, and physical activity remains unverified.
 
-The tests cover command order, zero/nonzero delays, partial failures, cancellation,
-defaults/fallback, metadata, normalized HomeKit values, timers and persisted targets.
-Legacy ambient-temperature auto-on/off rules, linked auto switches, device Auto
-and complete legacy fallback heuristics remain outside this implementation.
+## Ambient-threshold automation and linked switches
+
+Ambient control is opt-in through `autoHeatTemperature` and/or
+`autoCoolTemperature`, both in Celsius. A valid measurement strictly below the
+heat threshold selects Heat; strictly above the cool threshold selects Cool.
+When both are present, heat must be below cool. Equality is in the inactive band.
+Only allowed fixed modes may be configured, and pseudo temperatures are rejected
+as automation sources. Native, file and MQTT temperature readings are supported.
+
+```json
+{
+  "autoHeatTemperature": 18,
+  "autoCoolTemperature": 27,
+  "minimumAutoOnOffDuration": 120,
+  "autoSwitchName": "Climate Automation"
+}
+```
+
+The selected mode uses the existing saved target and command selection, including
+explicit reset/fallback options. Command metadata conflicting with the desired
+ambient mode is rejected before transmitting. Returning to the inactive band
+sends Off only when the plugin owns the current automatic run. A manual mode or
+setpoint write takes ownership back, so entering the band does not switch off
+that manual run. A failed manual command does not change ownership.
+
+`minimumAutoOnOffDuration` defaults to 120 seconds; `autoMinimumDuration` is the
+legacy alias. It bounds automatic changes and retries after failed sends. A
+successful manual write also starts this interval before another automatic
+change is permitted. Explicit 0 removes the interval. Reevaluation requires a
+later valid poll/message: no standalone timer sends a command merely because
+the interval ended. Manual Off pauses automation for the interval; it does not
+permanently disable explicitly configured thresholds. Use the gate to disable
+future ambient actions.
+
+`autoSwitchName` (legacy alias `autoSwitch`) requires exactly one currently
+registered switch/outlet accessory with that name and On=true. Missing, disabled,
+ambiguous or non-switch matches block actions. The name is case-sensitive and
+need not appear before the AC in the config. The gate reads plugin state without
+sending commands. Turning it Off suspends future actions and leaves a running AC
+unchanged; it is not an emergency-stop control. Manual AC commands and separately
+configured power timers remain independent of this ambient gate.
+
+A local enable toggle can be configured as a separate accessory:
+
+```json
+{
+  "name": "Climate Automation",
+  "type": "switch",
+  "virtual": true
+}
+```
+
+Virtual switch/outlet state starts Off on restart. Do not supply data or a power
+probe to a virtual accessory; enabling/disabling it sends no IR/RF. A physical
+switch/outlet can also be linked, using its last reported plugin state.
+
+Background sensor polls and MQTT temperature updates drive ambient decisions;
+getters only read measurements. With polling disabled, native/file sources will
+not regulate automatically; MQTT push updates still work. Missing, malformed,
+stale or disconnected temperatures issue no ambient command, including Off.
+Existing power is left as last reported and manual Off remains available.
+Battery-only MQTT updates never drive the controller. Selecting device Auto
+suspends this fixed-mode controller.
+
+If thresholds are configured without a gate, the first valid startup reading may
+activate the appliance. With a virtual gate, startup stays gated Off until that
+toggle is enabled. This activation comes from explicit automation configuration,
+not from restoring the saved target.
+
+Tests cover command order, failures/cancellation, defaults/fallback, metadata,
+HomeKit values, timers, persisted targets, device Auto, thresholds, minimum
+intervals, manual ownership, missing/ambiguous/virtual gates and MQTT expiry.
+Complete legacy fallback heuristics and arbitrary third-party HomeKit switch
+linking remain outside this implementation; linked gates belong to this platform.
+Live sensor/appliance and Homebridge validation remain required.

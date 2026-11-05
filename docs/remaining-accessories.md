@@ -257,6 +257,12 @@ local-reset behavior. `enableAutoOff: true` sends off after onDuration (default
 60 seconds). `enableAutoOn: true` sends on after offDuration (default 60 seconds).
 No automatic on command is scheduled at startup.
 
+Explicit `virtual: true` supports local switch/outlet toggles without code or
+power-probe configuration. They start Off and can gate
+[AC ambient automation](air-conditioner.md#ambient-threshold-automation-and-linked-switches).
+No IR/RF is sent by changing a virtual toggle; non-virtual switches still require
+configured commands.
+
 ## Validation and remaining gaps
 
 `npm test` builds and tests type mappings, code selection, repeated sequences,

@@ -5,10 +5,12 @@ import { BatteryStatus } from './battery';
 import type { BroadlinkRMPlatform } from '../platform';
 import { PlatformAccessory } from 'homebridge';
 import { compileCommands } from '../helpers/commands';
+import { performance } from 'node:perf_hooks';
+import { SwitchAccessory } from './switch';
 
 export class AirConditionerAccessory extends TimedAccessory {
   private service: Service;
-  private currentHeatingCoolingState: number = 0;
+  private currentHeatingCoolingState: number | undefined = 0;
   private targetHeatingCoolingState: number = 0;
   private targetTemperature: number;
   private readonly source: SensorSource;
@@ -19,6 +21,13 @@ export class AirConditionerAccessory extends TimedAccessory {
   private maxTemperature: number;
   private readonly allowedModes: number[];
   private lastMode: number;
+  private readonly autoHeat?: number;
+  private readonly autoCool?: number;
+  private readonly ambientMinimum: number;
+  private readonly autoSwitchName?: string;
+  private ambientOwned = false;
+  private ambientAllowedAt = 0;
+  private gateIssue?: string;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
@@ -26,7 +35,8 @@ export class AirConditionerAccessory extends TimedAccessory {
     this.minTemperature = this.config.minTemperature ?? 16;
     this.maxTemperature = this.config.maxTemperature ?? 30;
     this.targetTemperature = this.config.heatOnly || this.config.defaultMode === 'heat'
-      ? this.config.defaultHeatTemperature ?? 24 : this.config.defaultCoolTemperature ?? 24;
+      ? this.config.defaultHeatTemperature ?? 24 : this.config.defaultMode === 'auto'
+        ? this.config.defaultAutoTemperature ?? this.config.defaultCoolTemperature ?? 24 : this.config.defaultCoolTemperature ?? 24;
     const step = this.config.tempStepSize ?? 1;
     if (![this.minTemperature, this.maxTemperature, this.targetTemperature, step].every(value => typeof value === 'number' && Number.isFinite(value))
       || this.minTemperature < -270 || this.maxTemperature > 100 || this.minTemperature >= this.maxTemperature
@@ -42,15 +52,32 @@ export class AirConditionerAccessory extends TimedAccessory {
     this.seconds(this.config.modeChangeDelay, 0.25);
     if (this.config.heatOnly && this.config.coolOnly) throw new Error('Choose heatOnly or coolOnly');
     this.allowedModes = this.config.heatOnly ? [0, 1] : this.config.coolOnly ? [0, 2] : [0, 1, 2];
-    this.lastMode = this.config.defaultMode !== undefined ? this.config.defaultMode === 'heat' ? 1 : 2 : this.config.heatOnly ? 1 : 2;
-    if (this.config.defaultMode !== undefined && !['heat', 'cool'].includes(this.config.defaultMode)) throw new Error('Unsupported defaultMode');
-    if (!this.allowedModes.includes(this.lastMode)) throw new Error('defaultMode conflicts with allowed AC modes');
+    const data = this.config.data || {};
+    const hasDeviceAuto = data.auto !== undefined || Object.keys(data).some(key => /^auto-?\d/.test(key)
+      || /^temperature/.test(key) && data[key]?.['pseudo-mode'] === 'auto');
+    if (!this.config.heatOnly && !this.config.coolOnly && hasDeviceAuto) this.allowedModes.push(3);
+    const names: Record<string, number> = { heat: 1, cool: 2, auto: 3 };
+    this.lastMode = this.config.defaultMode !== undefined ? names[this.config.defaultMode] : this.config.heatOnly ? 1 : 2;
+    if (this.config.defaultMode !== undefined && !['heat', 'cool', 'auto'].includes(this.config.defaultMode)) throw new Error('Unsupported defaultMode');
+    if (!this.allowedModes.includes(this.lastMode) && !(this.lastMode === 3 && this.config.replaceAutoMode)) throw new Error('defaultMode conflicts with allowed AC modes');
     if (this.config.replaceAutoMode !== undefined && (!['heat', 'cool'].includes(this.config.replaceAutoMode)
       || !this.allowedModes.includes(this.config.replaceAutoMode === 'heat' ? 1 : 2))) throw new Error('Invalid replaceAutoMode');
-    for (const key of ['defaultHeatTemperature', 'defaultCoolTemperature']) {
+    if (this.lastMode === 3 && this.config.replaceAutoMode) this.lastMode = this.config.replaceAutoMode === 'heat' ? 1 : 2;
+    for (const key of ['defaultHeatTemperature', 'defaultCoolTemperature', 'defaultAutoTemperature']) {
       const value = this.config[key];
       if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < this.minTemperature || value > this.maxTemperature)) throw new Error(`Invalid ${key}`);
     }
+    this.autoHeat = this.config.autoHeatTemperature;
+    this.autoCool = this.config.autoCoolTemperature;
+    for (const [mode, value] of [[1, this.autoHeat], [2, this.autoCool]] as const) {
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < -270 || value > 100
+        || !this.allowedModes.includes(mode))) throw new Error('Invalid ambient threshold or unsupported ambient mode');
+    }
+    if (this.autoHeat !== undefined && this.autoCool !== undefined && this.autoHeat >= this.autoCool) throw new Error('autoHeatTemperature must be below autoCoolTemperature');
+    if (this.hasAmbientAutomation && this.config.pseudoDeviceTemperature !== undefined) throw new Error('Ambient automation requires measured temperature, not pseudoDeviceTemperature');
+    this.ambientMinimum = this.seconds(this.config.minimumAutoOnOffDuration ?? this.config.autoMinimumDuration, 120) * 1000;
+    this.autoSwitchName = this.config.autoSwitchName ?? this.config.autoSwitch;
+    if (this.autoSwitchName !== undefined && (typeof this.autoSwitchName !== 'string' || !this.autoSwitchName.trim())) throw new Error('Invalid autoSwitchName');
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
 
@@ -68,9 +95,9 @@ export class AirConditionerAccessory extends TimedAccessory {
     const targetStateChar = this.service
       .getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
       .onGet(this.getTargetHeatingCoolingState.bind(this))
-      .onSet(value => this.serialize(async () => { await this.setTargetHeatingCoolingState(value); this.deferDisplay(); }));
+      .onSet(value => this.serialize(async () => { await this.setTargetHeatingCoolingState(value); this.manualOverride(); this.deferDisplay(); }));
 
-    targetStateChar.setProps({ validValues: [...this.allowedModes, ...(this.config.replaceAutoMode ? [3] : [])] });
+    targetStateChar.setProps({ validValues: [...new Set([...this.allowedModes, ...(this.config.replaceAutoMode ? [3] : [])])] });
 
     // Target Temperature
     this.service
@@ -82,7 +109,7 @@ export class AirConditionerAccessory extends TimedAccessory {
         minStep: this.config.tempStepSize ?? 1,
       })
       .onGet(this.getTargetTemperature.bind(this))
-      .onSet(value => this.serialize(async () => { await this.setTargetTemperature(value); this.deferDisplay(); }));
+      .onSet(value => this.serialize(async () => { await this.setTargetTemperature(value); this.manualOverride(); this.deferDisplay(); }));
 
     // Current Temperature
     this.service
@@ -100,10 +127,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       .setValue(this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
 
     // Initial values
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.CurrentHeatingCoolingState,
-      this.currentHeatingCoolingState,
-    );
+    this.publishActivity();
     this.service.updateCharacteristic(
       this.platform.Characteristic.TargetHeatingCoolingState,
       this.targetHeatingCoolingState,
@@ -135,6 +159,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private getCurrentHeatingCoolingState(): CharacteristicValue {
+    if (this.currentHeatingCoolingState === undefined) throw new Error('Device Auto activity is unavailable');
     return this.currentHeatingCoolingState;
   }
 
@@ -142,7 +167,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     return this.targetHeatingCoolingState;
   }
 
-  private async setTargetHeatingCoolingState(value: CharacteristicValue): Promise<void> {
+  private async setTargetHeatingCoolingState(value: CharacteristicValue, ambient = false): Promise<void> {
     let state = Number(value);
     if (state === 3 && this.config.replaceAutoMode) state = this.config.replaceAutoMode === 'heat' ? 1 : 2;
     if (!this.allowedModes.includes(state)) throw new Error('Unsupported Thermostat mode');
@@ -156,7 +181,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     } else {
       const entering = state !== this.targetHeatingCoolingState;
       const temp = entering && this.config.resetTemperatureOnModeChange ? this.modeDefault(state) : this.targetTemperature;
-      await this.applyTemperature(state, temp, entering);
+      await this.applyTemperature(state, temp, entering, ambient);
     }
     this.armPowerTimer();
   }
@@ -165,23 +190,32 @@ export class AirConditionerAccessory extends TimedAccessory {
 
   private modeDefault(state: number): number {
     return state === 1 ? this.config.defaultHeatTemperature ?? this.targetTemperature
-      : this.config.defaultCoolTemperature ?? this.targetTemperature;
+      : state === 3 ? this.config.defaultAutoTemperature ?? this.targetTemperature
+        : this.config.defaultCoolTemperature ?? this.targetTemperature;
   }
 
   private commitMode(state: number): void {
-    this.targetHeatingCoolingState = this.currentHeatingCoolingState = state;
+    this.targetHeatingCoolingState = state;
+    this.currentHeatingCoolingState = state === 3 ? undefined : state;
+    if (state === 0 || state === 3) this.ambientOwned = false;
     if (state) this.lastMode = state;
     this.service.updateCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState, state);
-    this.service.updateCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState, state);
+    this.publishActivity();
+  }
+
+  private publishActivity(): void {
+    const type = this.platform.Characteristic.CurrentHeatingCoolingState;
+    if (this.currentHeatingCoolingState === undefined) this.service.updateCharacteristic(type, new Error('Device Auto activity is unavailable'));
+    else this.service.updateCharacteristic(type, this.currentHeatingCoolingState);
   }
 
   private armPowerTimer(): void {
     this.automaticPower(this.targetHeatingCoolingState !== 0, on => this.setTargetHeatingCoolingState(on ? this.lastMode : 0));
   }
 
-  private async applyTemperature(state: number, temperature: number, entering: boolean): Promise<void> {
+  private async applyTemperature(state: number, temperature: number, entering: boolean, ambient = false): Promise<void> {
     const data = this.config.data || {};
-    const name = state === 1 ? 'heat' : 'cool';
+    const name = state === 1 ? 'heat' : state === 3 ? 'auto' : 'cool';
     let temp = temperature;
     let entry = data[`${name}${temp}`] ?? data[`temperature${temp}`];
     if (entry === undefined && this.config.fallbackToDefaultTemperature) {
@@ -190,7 +224,8 @@ export class AirConditionerAccessory extends TimedAccessory {
     }
     const mode = entry?.['pseudo-mode'];
     if (mode !== undefined) {
-      if (!['heat', 'cool'].includes(mode) || !this.allowedModes.includes(mode === 'heat' ? 1 : 2)) throw new Error('Unsupported temperature pseudo-mode');
+      if (!['heat', 'cool', 'auto'].includes(mode) || !this.allowedModes.includes(mode === 'heat' ? 1 : mode === 'auto' ? 3 : 2)) throw new Error('Unsupported temperature pseudo-mode');
+      if (ambient && (mode === 'heat' ? 1 : mode === 'auto' ? 3 : 2) !== state) throw new Error('Ambient command metadata conflicts with the requested mode');
     }
     const commands: unknown[] = [];
     if (this.targetHeatingCoolingState === 0 && (this.config.turnOnWhenOff ?? this.config.sendOnWhenOff)) {
@@ -206,7 +241,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     }
     compileCommands(commands, 0);
     await this.sendCode(commands, 0);
-    this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : state);
+    this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : mode === 'auto' ? 3 : state);
     const changed = this.targetTemperature !== temp;
     this.targetTemperature = temp;
     this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
@@ -229,12 +264,47 @@ export class AirConditionerAccessory extends TimedAccessory {
     const temp = Number(Math.min(this.maxTemperature, this.minTemperature + Math.round((requested - this.minTemperature) / step) * step).toFixed(6));
     if (temp === this.targetTemperature && !this.resend) return;
     if (this.targetHeatingCoolingState !== 0 || this.config.ignoreTemperatureWhenOff === false) {
-      await this.applyTemperature(this.targetHeatingCoolingState || this.lastMode, temp, this.targetHeatingCoolingState === 0);
+      const resumed = this.lastMode === 3 && this.config.replaceAutoMode ? this.config.replaceAutoMode === 'heat' ? 1 : 2 : this.lastMode;
+      await this.applyTemperature(this.targetHeatingCoolingState || resumed, temp, this.targetHeatingCoolingState === 0);
       this.armPowerTimer();
     } else {
       this.targetTemperature = temp;
       this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
       this.saveTargetTemperature();
+    }
+  }
+
+  private get hasAmbientAutomation(): boolean { return this.autoHeat !== undefined || this.autoCool !== undefined; }
+
+  private manualOverride(): void {
+    this.ambientOwned = false;
+    this.ambientAllowedAt = performance.now() + this.ambientMinimum;
+  }
+
+  private ambientSwitchEnabled(): boolean {
+    if (!this.autoSwitchName) return true;
+    const states = [...(this.platform.instances?.values() || [])]
+      .filter((instance): instance is SwitchAccessory => instance instanceof SwitchAccessory)
+      .map(instance => instance.automationState(this.autoSwitchName!))
+      .filter((state): state is boolean => state !== undefined);
+    const issue = states.length !== 1 ? 'Expected exactly one enabled switch/outlet for autoSwitchName' : undefined;
+    if (issue && issue !== this.gateIssue) this.log.warn(`[${this.name}] ${issue}; ambient automation is blocked`);
+    this.gateIssue = issue;
+    return states.length === 1 && states[0];
+  }
+
+  private async evaluateAmbient(temperature: number): Promise<void> {
+    if (!this.hasAmbientAutomation || this.disposed || this.targetHeatingCoolingState === 3
+      || performance.now() < this.ambientAllowedAt || !this.ambientSwitchEnabled()) return;
+    const desired = this.autoHeat !== undefined && temperature < this.autoHeat ? 1
+      : this.autoCool !== undefined && temperature > this.autoCool ? 2 : this.ambientOwned ? 0 : undefined;
+    if (desired === undefined || desired === this.targetHeatingCoolingState) return;
+    try {
+      await this.setTargetHeatingCoolingState(desired, true);
+      this.ambientOwned = desired !== 0 && this.targetHeatingCoolingState !== 3;
+    } finally {
+      // Failed sends also wait before another fresh decision, avoiding tight retry loops.
+      this.ambientAllowedAt = performance.now() + this.ambientMinimum;
     }
   }
 
@@ -245,11 +315,16 @@ export class AirConditionerAccessory extends TimedAccessory {
   private async pollSensors(): Promise<void> {
     const C = this.platform.Characteristic;
     try {
+      let temperature: number | undefined;
       try {
-        const temperature = await this.source.read('temperature');
+        temperature = await this.source.read('temperature');
         if (!this.disposed) this.service.updateCharacteristic(C.CurrentTemperature, temperature);
       } catch (error) {
         if (!this.disposed) this.service.updateCharacteristic(C.CurrentTemperature, error as Error);
+      }
+      if (temperature !== undefined) {
+        try { await this.evaluateAmbient(temperature); }
+        catch (error) { if (!this.disposed) this.log.error(`[${this.name}] Ambient command failed: ${(error as Error).message}`); }
       }
       if (!this.config.noHumidity && !this.source.temperatureOnly) {
         try {
