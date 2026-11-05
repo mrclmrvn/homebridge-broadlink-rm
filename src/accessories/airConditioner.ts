@@ -22,6 +22,11 @@ export class AirConditionerAccessory extends TimedAccessory {
     this.minTemperature = this.config.minTemperature ?? 16;
     this.maxTemperature = this.config.maxTemperature ?? 30;
     this.targetTemperature = this.config.defaultCoolTemperature ?? 24;
+    const step = this.config.tempStepSize ?? 1;
+    if (![this.minTemperature, this.maxTemperature, this.targetTemperature, step].every(value => typeof value === 'number' && Number.isFinite(value))
+      || this.minTemperature < -270 || this.maxTemperature > 100 || this.minTemperature >= this.maxTemperature
+      || step <= 0 || step > this.maxTemperature - this.minTemperature
+      || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature) throw new Error('Invalid Thermostat temperature configuration');
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
     this.coolOnly = this.config.coolOnly ?? false;
@@ -42,14 +47,8 @@ export class AirConditionerAccessory extends TimedAccessory {
       .onGet(this.getTargetHeatingCoolingState.bind(this))
       .onSet(value => this.serialize(() => this.setTargetHeatingCoolingState(value)));
 
-    if (this.coolOnly) {
-      targetStateChar.setProps({
-        validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.OFF,
-          this.platform.Characteristic.TargetHeatingCoolingState.COOL,
-        ],
-      });
-    }
+    const modes = platform.Characteristic.TargetHeatingCoolingState;
+    targetStateChar.setProps({ validValues: this.coolOnly ? [modes.OFF, modes.COOL] : [modes.OFF, modes.HEAT, modes.COOL] });
 
     // Target Temperature
     this.service
@@ -111,49 +110,21 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private async setTargetHeatingCoolingState(value: CharacteristicValue): Promise<void> {
-    const newState = value as number;
-    const previousState = this.targetHeatingCoolingState;
-    this.targetHeatingCoolingState = newState;
-
+    const state = Number(value);
+    const C = this.platform.Characteristic;
+    const modes = C.TargetHeatingCoolingState;
+    const allowed = this.coolOnly ? [modes.OFF, modes.COOL] : [modes.OFF, modes.HEAT, modes.COOL];
+    if (!allowed.includes(state)) throw new Error('Unsupported Thermostat mode');
+    if (state === this.targetHeatingCoolingState && !this.config.allowResend) return;
     const data = this.config.data || {};
-
-    if (newState === this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
-      this.log.info(`[${this.name}] Turning OFF`);
-      if (data.off) {
-        await this.sendCode(data.off);
-      }
-      this.currentHeatingCoolingState = this.platform.Characteristic.CurrentHeatingCoolingState.OFF;
-      this.service.updateCharacteristic(
-        this.platform.Characteristic.CurrentHeatingCoolingState,
-        this.currentHeatingCoolingState,
-      );
-    } else {
-      // Turning ON (COOL or HEAT)
-      this.log.info(`[${this.name}] Turning ON (Mode: ${newState})`);
-      const tempKey = `temperature${Math.round(this.targetTemperature)}`;
-      const tempEntry = data[tempKey];
-
-      let codeToSend: string | undefined;
-      if (tempEntry) {
-        codeToSend = typeof tempEntry === 'string' ? tempEntry : tempEntry.data;
-      } else if (data.on) {
-        codeToSend = data.on;
-      }
-
-      if (codeToSend) {
-        await this.sendCode(codeToSend);
-      }
-
-      this.currentHeatingCoolingState =
-        newState === this.platform.Characteristic.TargetHeatingCoolingState.HEAT
-          ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
-          : this.platform.Characteristic.CurrentHeatingCoolingState.COOL;
-
-      this.service.updateCharacteristic(
-        this.platform.Characteristic.CurrentHeatingCoolingState,
-        this.currentHeatingCoolingState,
-      );
-    }
+    const code = state === modes.OFF ? data.off : data[`temperature${this.targetTemperature}`] ?? data.on;
+    if (!code) throw new Error('No IR/RF code configured for the requested Thermostat mode/temperature');
+    await this.sendCode(code);
+    this.targetHeatingCoolingState = state;
+    this.currentHeatingCoolingState = state === modes.OFF ? C.CurrentHeatingCoolingState.OFF
+      : state === modes.HEAT ? C.CurrentHeatingCoolingState.HEAT : C.CurrentHeatingCoolingState.COOL;
+    this.service.updateCharacteristic(C.TargetHeatingCoolingState, state);
+    this.service.updateCharacteristic(C.CurrentHeatingCoolingState, this.currentHeatingCoolingState);
   }
 
   private getTargetTemperature(): CharacteristicValue {
@@ -161,25 +132,18 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private async setTargetTemperature(value: CharacteristicValue): Promise<void> {
-    const temp = Math.round(value as number);
-    this.targetTemperature = temp;
-    this.log.info(`[${this.name}] Setting Target Temperature to ${temp}°C`);
-
-    // Only send IR code if AC is currently active
+    const requested = Number(value);
+    if (!Number.isFinite(requested) || requested < this.minTemperature || requested > this.maxTemperature) throw new Error('Thermostat temperature is outside the configured range');
+    const step = this.config.tempStepSize ?? 1;
+    const temp = Number(Math.min(this.maxTemperature, this.minTemperature + Math.round((requested - this.minTemperature) / step) * step).toFixed(6));
+    if (temp === this.targetTemperature && !this.config.allowResend) return;
     if (this.targetHeatingCoolingState !== this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
-      const data = this.config.data || {};
-      const tempKey = `temperature${temp}`;
-      const tempEntry = data[tempKey];
-
-      if (tempEntry) {
-        const code = typeof tempEntry === 'string' ? tempEntry : tempEntry.data;
-        if (code) {
-          await this.sendCode(code);
-        }
-      } else {
-        this.log.warn(`[${this.name}] No IR code configured for temperature ${temp}°C ("${tempKey}")`);
-      }
+      const code = this.config.data?.[`temperature${temp}`];
+      if (!code) throw new Error(`No IR/RF code configured for temperature${temp}`);
+      await this.sendCode(code);
     }
+    this.targetTemperature = temp;
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
   }
 
   private async getCurrentTemperature(): Promise<number> {

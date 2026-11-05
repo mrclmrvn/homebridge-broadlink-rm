@@ -1,6 +1,6 @@
 import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
-import { BaseAccessory } from './base';
+import { TimedAccessory } from './timed';
 
 const remoteKeys = [
   'rewind', 'fastForward', 'nextTrack', 'previousTrack', 'arrowUp', 'arrowDown',
@@ -9,7 +9,7 @@ const remoteKeys = [
 const inputTypes = ['other', 'home_screen', 'tuner', 'hdmi', 'composite_video',
   's_video', 'component_video', 'dvi', 'airplay', 'usb', 'application'];
 
-export class TelevisionAccessory extends BaseAccessory {
+export class TelevisionAccessory extends TimedAccessory {
   private active = 0;
   private input = 0;
   private muted = false;
@@ -25,43 +25,47 @@ export class TelevisionAccessory extends BaseAccessory {
     this.television.setCharacteristic(C.ConfiguredName, this.name)
       .setCharacteristic(C.SleepDiscoveryMode, C.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
     this.television.getCharacteristic(C.Active).onGet(() => this.active)
-      .onSet(async value => {
+      .onSet(value => this.serialize(async () => {
         const target = Number(value) ? 1 : 0;
-        if (target === this.active) return;
-        await this.transmit(target ? this.config.data?.on : this.config.data?.off, target ? 'on' : 'off');
+        const required = this.power ? await this.power.requiresSend(Boolean(target)) : target !== this.active;
+        if (required) {
+          await this.sendTVCode(target ? this.config.data?.on : this.config.data?.off, target ? 'on' : 'off');
+          this.power?.recordSent(Boolean(target));
+        }
         this.active = target;
-      });
+        this.television.updateCharacteristic(C.Active, target);
+      }));
     const inputs = Array.isArray(this.config.data?.inputs) ? this.config.data.inputs : [];
     this.television.getCharacteristic(C.ActiveIdentifier).onGet(() => this.input)
-      .onSet(async value => {
+      .onSet(value => this.serialize(async () => {
         const index = Number(value);
         if (!Number.isInteger(index) || !inputs[index]) throw new Error(`Unknown TV input: ${index}`);
-        await this.transmit(inputs[index].data, `inputs[${index}].data`);
+        await this.sendTVCode(inputs[index].data, `inputs[${index}].data`);
         this.input = index;
-      });
-    this.television.getCharacteristic(C.RemoteKey).onSet(async value => {
+      }));
+    this.television.getCharacteristic(C.RemoteKey).onSet(value => this.serialize(async () => {
       const key = Number(value) === C.RemoteKey.INFORMATION ? 'info' : remoteKeys[Number(value)];
-      await this.transmit(key && this.config.data?.remote?.[key], `remote.${key ?? value}`);
-    });
-    this.television.getCharacteristic(C.PowerModeSelection).onSet(async value => {
+      await this.sendTVCode(key && this.config.data?.remote?.[key], `remote.${key ?? value}`);
+    }));
+    this.television.getCharacteristic(C.PowerModeSelection).onSet(value => this.serialize(async () => {
       const key = Number(value) === C.PowerModeSelection.SHOW ? 'show' : 'hide';
-      await this.transmit(this.config.data?.powerMode?.[key], `powerMode.${key}`);
-    });
+      await this.sendTVCode(this.config.data?.powerMode?.[key], `powerMode.${key}`);
+    }));
 
     const speaker = accessory.getService(S.TelevisionSpeaker)
       || accessory.addService(S.TelevisionSpeaker, `${this.name} Speaker`, 'speaker');
     speaker.setCharacteristic(C.Active, C.Active.ACTIVE)
       .setCharacteristic(C.VolumeControlType, C.VolumeControlType.RELATIVE);
-    speaker.getCharacteristic(C.VolumeSelector).onSet(async value => {
+    speaker.getCharacteristic(C.VolumeSelector).onSet(value => this.serialize(async () => {
       const key = Number(value) === C.VolumeSelector.INCREMENT ? 'up' : 'down';
-      await this.transmit(this.config.data?.volume?.[key], `volume.${key}`);
-    });
-    speaker.getCharacteristic(C.Mute).onGet(() => this.muted).onSet(async value => {
+      await this.sendTVCode(this.config.data?.volume?.[key], `volume.${key}`);
+    }));
+    speaker.getCharacteristic(C.Mute).onGet(() => this.muted).onSet(value => this.serialize(async () => {
       const target = Boolean(value);
       if (target === this.muted) return;
-      await this.transmit(this.config.data?.volume?.mute, 'volume.mute');
+      await this.sendTVCode(this.config.data?.volume?.mute, 'volume.mute');
       this.muted = target;
-    });
+    }));
     this.television.addLinkedService(speaker);
 
     const currentInputs = new Set<Service>();
@@ -82,9 +86,13 @@ export class TelevisionAccessory extends BaseAccessory {
         accessory.removeService(service);
       }
     }
+    this.watchPower(on => {
+      this.active = on ? 1 : 0;
+      this.television.updateCharacteristic(C.Active, this.active);
+    });
   }
 
-  private async transmit(code: string | Buffer | undefined, key: string): Promise<void> {
+  private async sendTVCode(code: unknown, key: string): Promise<void> {
     if (!code) throw new Error(`[${this.name}] No IR/RF code configured for "${key}"`);
     await this.sendCode(code);
   }

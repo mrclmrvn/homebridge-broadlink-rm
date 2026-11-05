@@ -5,6 +5,9 @@ MQTT is supported by standalone temperature/humidity sensors, the Thermostat-sty
 names are retained: mqttURL, mqttTopic, mqttUsername and mqttPassword.
 
 The integration uses [MQTT.js](https://github.com/mqttjs/MQTT.js) with MQTT 3.1.1.
+Binary garage endpoint/obstruction and lock-bolt sources use the same transport;
+see [power and feedback](power-and-feedback.md#file-and-mqtt-binary-feedback).
+
 It subscribes to measurements and does not publish appliance commands, wills,
 or Home Assistant discovery entities. Each configured accessory owns one broker
 connection; connections are not pooled. MQTT.js is loaded only when a configured

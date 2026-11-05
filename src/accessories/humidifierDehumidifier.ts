@@ -88,12 +88,12 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
     this.service.updateCharacteristic(C.CurrentHumidifierDehumidifierState, this.current);
   }
 
-  protected override async setActive(value: CharacteristicValue): Promise<void> {
+  protected override async setActive(value: CharacteristicValue, applyDefaults = true): Promise<void> {
     if (Number(value) && this.active) {
       await this.apply(this.target, this.low, this.high);
       return;
     }
-    await super.setActive(value);
+    await super.setActive(value, applyDefaults);
   }
 
   protected override async activeChanged(): Promise<void> {

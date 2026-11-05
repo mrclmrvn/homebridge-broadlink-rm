@@ -24,8 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Hardware/Homebridge/MQTT validation runbook and a blank report template for recording actual test evidence and rollback results.
 
+- Shared structured command leaves, Ping/ARP power estimates and guarded toggles,
+  fan speed cycling/default resets/power timers, and light exclusives/power timers.
+- Explicit file/MQTT garage endpoint/obstruction and standalone lock-bolt feedback.
+
 ### Fixed
 
+- Thermostat rejects unsupported modes and invalid temperatures, preserves structured
+  temperature commands, and commits requested state only after successful sends.
 - Thermostat measurements no longer substitute the target temperature; shared MQTT/file/native reads and polling resources are cleaned up on shutdown.
 - Authentication queue deadlock, session-key offsets, AES padding, sensor subcommands, discovery fields, and pending socket cleanup.
 - CLI operational failures now return nonzero status; learned-code polling preserves authorization and transport errors.
@@ -40,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known limitations
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
-- 1-wire/pseudo-device integrations, ping/ARP, history, and several advanced per-accessory behaviors remain outstanding.
+- 1-wire/pseudo-device integrations, battery data, and several advanced per-accessory behaviors remain outstanding. Optional Eve history is excluded from the current scope.
 - Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/roadmap.md.
 
 ## [4.4.21 - 2026-05-10]

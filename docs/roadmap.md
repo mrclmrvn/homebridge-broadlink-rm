@@ -13,8 +13,14 @@ configuration parity remains a goal.
   explicit package allowlist with automatic prepack builds.
 - Core service mappings for every legacy accessory type, external TV publishing,
   timed movement and lock controls, humidity automation, and standalone sensors.
-- Switch/outlet code sequences and repeat support; native/file sources for the
-  sensor, humidity, HeaterCooler and Thermostat implementations.
+- Shared structured command leaves with bounded expansion and cancellation;
+  switch/outlet variants preserve their sequence/repeat options.
+- Native/file sources for sensor, humidity, HeaterCooler and Thermostat controllers.
+- Ping/ARP power estimates and guarded toggles on switch/outlet, TV and fan/purifier;
+  ARP inspects cached neighbors and is not fresh physical power confirmation.
+- Fan cycling/default resets/timers and light exclusives/timers.
+- Explicit file/MQTT garage endpoint/obstruction and standalone bolt feedback.
+- Thermostat mode/temperature validation and state commits after successful sends.
 - MQTT subscriptions with legacy config support, validated messages, receipt-age
   expiry, reconnect handling, push updates and connection cleanup.
 - v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
@@ -29,14 +35,13 @@ not verify Broadlink packets or real devices.
   framing, error parsing, and discovery across firmware/device families.
 - Validate RF learning and Pronto output on actual hardware; frequency support
   remains device-dependent. Expand coverage for uncommon device IDs.
-- Port shared structured command support beyond switch/outlet.
-- Port ping/ARP state detection, 1-wire/pseudo sensors, battery data,
-  and optional Eve history.
-- Close remaining per-type gaps: fan cycling/default resets/timers, light
-  exclusives and advanced options, contact/obstruction/jam feedback, and advanced
-  legacy air-conditioner behavior.
-- Align the older Thermostat's command/state/error handling with newer controllers;
-  its sensor source and polling cleanup now use the shared implementation.
+- Port 1-wire/pseudo sensors and battery data where required by migration cases.
+- Audit advanced light options, jam detection, TV timers/picture modes and advanced
+  legacy air-conditioner behavior. Core feedback does not supply motor interlocks
+  or automatic obstruction reversal.
+- Validate power utilities, cycle reset assumptions and feedback polarity/freshness
+  against actual appliances and producers. Optional Eve history is excluded from
+  the current implementation scope by user decision.
 
 ## Validation and release work
 

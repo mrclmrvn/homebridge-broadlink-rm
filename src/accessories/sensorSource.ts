@@ -19,7 +19,7 @@ export class SensorSource {
 
   public dispose(): void { this.disposed = true; this.mqtt?.dispose(); }
 
-  public async read(quantity: Quantity): Promise<number> {
+  public async read(quantity: 'temperature' | 'humidity'): Promise<number> {
     if (this.disposed) throw new Error('Sensor source is closed');
     const path = this.config[`${quantity}FilePath`] || (quantity === 'humidity' ? this.config.temperatureFilePath : undefined);
     let value: unknown;

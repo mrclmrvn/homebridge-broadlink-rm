@@ -144,8 +144,8 @@ percentage points. Native Broadlink readings are never converted as Fahrenheit.
 
 MQTT is supported through the legacy broker/topic options; see the
 [MQTT guide](mqtt.md). 1-wire and pseudo-device sources are not implemented
-by this source reader; their options report a configuration error. Battery data and Eve history
-are not yet exposed. The same sensor reader now supplies humidity controllers, HeaterCooler and the
+by this source reader; their options report a configuration error. Battery data
+remains pending. Optional Eve history is excluded from the current scope. The same sensor reader now supplies humidity controllers, HeaterCooler and the
 Thermostat-style AC.
 
 ## HeaterCooler
@@ -199,22 +199,23 @@ Temperature entries may nest `rotationSpeedXX` and `swingOn`/`swingOff` codes,
 matching the legacy hierarchy. Speed selects the nearest code and reports that
 selected speed. `swingToggle` with `swingDnd` supports toggle-based remotes:
 the toggle is used for explicit swing changes; other changes use swingDnd.
-Optional speed/swing controls are detected from configured code keys. Unsupported
-structured sequence objects report an error.
+Optional speed/swing controls are detected from configured code keys. Command
+leaves also support [structured sequences](power-and-feedback.md#shared-structured-commands).
 
 ## Outlet, Window and Fan v1
 
 Outlet uses the standard switch `data.on`/`data.off` configuration. OutletInUse
-mirrors inferred power, not measured electrical load. Ping/ARP use detection is
-not implemented.
+mirrors inferred power by default, not measured electrical load. Optional
+[Ping/ARP detection](power-and-feedback.md#ping-and-arp-power-estimates) can supply
+a reachability estimate; state-only mode updates OutletInUse independently of On.
 
 Window uses `type: "window"` and the timing/code options from
 [moving-accessories.md](moving-accessories.md), with Service.Window.
 
 Fan v1 uses `type: "fanv1"` and the fan's on/off, `fanSpeedXX`, stepSize/speedSteps,
 and clockwise/counterClockwise codes. It exposes Service.Fan with On instead of
-Active and no swing control. Legacy fan speed cycling, reset defaults and power
-timers remain pending as documented in [fan.md](fan.md).
+Active and no swing control. Speed cycling, reset defaults and power timers
+use the options documented in [fan.md](fan.md).
 
 ## Switch variants and sequences
 
@@ -262,7 +263,6 @@ for characteristic warnings. Live Homebridge pairing and physical operation
 remain unvalidated.
 
 All legacy type names now resolve, but advanced options remain incomplete.
-1-wire/pseudo-device integrations, history, shared structured-code support outside
-switch/outlet, and complete legacy accessory behavior remain separate roadmap
-work. MQTT support adds MQTT.js as a runtime dependency; the core Broadlink
+1-wire/pseudo-device integrations, battery data, and complete legacy accessory
+behavior remain roadmap work. Optional Eve history is excluded from scope. MQTT support adds MQTT.js as a runtime dependency; the core Broadlink
 driver remains based on Node standard libraries.

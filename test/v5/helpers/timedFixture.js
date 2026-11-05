@@ -22,11 +22,11 @@ function fixture(t, type, options = {}) {
     LockTargetState: { UNSECURED: 0, SECURED: 1 },
   };
   const names = ['Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'CurrentPosition',
-    'TargetPosition', 'HoldPosition', 'ObstructionDetected', 'On', 'OutletInUse', 'RotationSpeed', 'LockPhysicalControls',
+    'Brightness', 'Hue', 'Saturation', 'ColorTemperature', 'TargetPosition', 'HoldPosition', 'ObstructionDetected', 'On', 'OutletInUse', 'RotationSpeed', 'LockPhysicalControls',
     'CurrentTemperature', 'CurrentRelativeHumidity', 'RelativeHumidityHumidifierThreshold', 'RelativeHumidityDehumidifierThreshold',
     'CoolingThresholdTemperature', 'HeatingThresholdTemperature', 'TargetTemperature', ...Object.keys(constants)];
   const C = Object.fromEntries(names.map(name => [name, { ...constants[name] }]));
-  const S = Object.fromEntries(['AccessoryInformation', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
+  const S = Object.fromEntries(['AccessoryInformation', 'Lightbulb', 'WindowCovering', 'Window', 'GarageDoorOpener', 'LockMechanism', 'Fan', 'Fanv2', 'AirPurifier', 'HumidifierDehumidifier', 'TemperatureSensor', 'HumiditySensor', 'Switch', 'Outlet', 'Thermostat', 'HeaterCooler'].map(name => [name, { UUID: name }]));
   class Accessory {
     constructor(name, uuid) { this.displayName = name; this.UUID = uuid; this.context = {}; this.services = []; }
     getService(type) { return this.services.find(service => service.UUID === type.UUID); }

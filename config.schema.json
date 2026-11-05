@@ -252,7 +252,7 @@
                 "array",
                 "string"
               ],
-              "description": "Accessory codes; switch variants also accept a single hex string or a sequence array. See the v5 setup guides for each type."
+              "description": "Accessory code mappings; each command can be a string, sequence array, or {data, sendCount, interval, pause}. Top-level string/array data is for switches only."
             },
             "speedSteps": {
               "title": "Number of Fan Speeds",
@@ -405,13 +405,13 @@
               "maximum": 2147483.647
             },
             "onDuration": {
-              "title": "Switch On Duration (seconds)",
+              "title": "On Duration (seconds)",
               "type": "number",
               "minimum": 0,
               "maximum": 2147483.647
             },
             "offDuration": {
-              "title": "Switch Off Duration (seconds)",
+              "title": "Off Duration (seconds)",
               "type": "number",
               "minimum": 0,
               "maximum": 2147483.647
@@ -459,11 +459,11 @@
               "type": "boolean"
             },
             "enableAutoOff": {
-              "title": "Switch: Send Off Automatically",
+              "title": "Switch / Fan / Light: Send Off Automatically",
               "type": "boolean"
             },
             "enableAutoOn": {
-              "title": "Switch: Send On Automatically",
+              "title": "Switch / Fan / Light: Send On Automatically",
               "type": "boolean"
             },
             "temperatureFilePath": {
@@ -592,6 +592,371 @@
                   "identifier",
                   "topic"
                 ]
+              }
+            },
+            "pingIPAddress": {
+              "title": "Appliance Power Detection IPv4 Address",
+              "type": "string",
+              "description": "Switch/outlet, TV, fan/Fan v1 and purifier only. Appliance address, not the Broadlink host."
+            },
+            "pingUseArp": {
+              "title": "Use ARP Cache for Power Estimate",
+              "type": "boolean",
+              "description": "Cache presence may be stale; this does not send an ARP probe."
+            },
+            "pingIPAddressStateOnly": {
+              "title": "Observe Power Without Guarding Commands",
+              "type": "boolean",
+              "description": "For outlets, updates OutletInUse independently of On."
+            },
+            "pingFrequency": {
+              "title": "Power Poll Interval (seconds)",
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 2147483
+            },
+            "pingTimeout": {
+              "title": "Power Probe Timeout (seconds)",
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 60
+            },
+            "pingGrace": {
+              "title": "Power State Grace After Send (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483
+            },
+            "speedCycle": {
+              "title": "Fan Uses a Speed-Cycle Button",
+              "type": "boolean"
+            },
+            "speedCycleInterval": {
+              "title": "Fan Cycle Pulse Gap (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483
+            },
+            "defaultSpeedStep": {
+              "title": "Fan Assumed Power-on Speed Step",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "defaultFanSpeed": {
+              "title": "Fan Reset Speed (%)",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            },
+            "alwaysResetToDefaults": {
+              "title": "Reset Fan Speed on Direct Power-on",
+              "type": "boolean"
+            },
+            "exclusives": {
+              "title": "Mutually Exclusive Light Names",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Updates other lights to Off locally; does not transmit their off codes."
+            },
+            "disableAutomaticOff": {
+              "title": "Disable Legacy Automatic Off",
+              "type": "boolean",
+              "description": "Explicit false enables timed off for fan/light controllers. Omitted leaves it disabled."
+            },
+            "disableAutomaticOn": {
+              "title": "Disable Legacy Automatic On",
+              "type": "boolean",
+              "description": "Explicit false enables timed on for fan/light controllers. Omitted leaves it disabled."
+            },
+            "closedSensor": {
+              "title": "Garage Closed Endpoint Feedback",
+              "type": "object",
+              "description": "Configure exactly one filePath or mqttURL. True means endpoint activated, obstructed, or bolt secured. See power-and-feedback guide.",
+              "properties": {
+                "filePath": {
+                  "title": "Feedback File Path",
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "title": "Feedback Poll Interval (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483
+                },
+                "maxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "description": "Defaults to 300. For files uses modification time; MQTT uses receipt time. 0 disables expiry."
+                },
+                "mqttURL": {
+                  "title": "MQTT Broker URL",
+                  "type": "string",
+                  "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+                },
+                "mqttUsername": {
+                  "title": "MQTT Username",
+                  "type": "string"
+                },
+                "mqttPassword": {
+                  "title": "MQTT Password",
+                  "type": "string",
+                  "format": "password"
+                },
+                "mqttTopic": {
+                  "title": "MQTT Topic(s)",
+                  "type": [
+                    "string",
+                    "array"
+                  ],
+                  "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": {
+                        "type": "string",
+                        "enum": [
+                          "contact",
+                          "lock",
+                          "obstruction",
+                          "combined",
+                          "unknown"
+                        ]
+                      },
+                      "topic": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                      }
+                    },
+                    "required": [
+                      "identifier",
+                      "topic"
+                    ]
+                  }
+                }
+              }
+            },
+            "openSensor": {
+              "title": "Garage Open Endpoint Feedback",
+              "type": "object",
+              "description": "Configure exactly one filePath or mqttURL. True means endpoint activated, obstructed, or bolt secured. See power-and-feedback guide.",
+              "properties": {
+                "filePath": {
+                  "title": "Feedback File Path",
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "title": "Feedback Poll Interval (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483
+                },
+                "maxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "description": "Defaults to 300. For files uses modification time; MQTT uses receipt time. 0 disables expiry."
+                },
+                "mqttURL": {
+                  "title": "MQTT Broker URL",
+                  "type": "string",
+                  "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+                },
+                "mqttUsername": {
+                  "title": "MQTT Username",
+                  "type": "string"
+                },
+                "mqttPassword": {
+                  "title": "MQTT Password",
+                  "type": "string",
+                  "format": "password"
+                },
+                "mqttTopic": {
+                  "title": "MQTT Topic(s)",
+                  "type": [
+                    "string",
+                    "array"
+                  ],
+                  "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": {
+                        "type": "string",
+                        "enum": [
+                          "contact",
+                          "lock",
+                          "obstruction",
+                          "combined",
+                          "unknown"
+                        ]
+                      },
+                      "topic": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                      }
+                    },
+                    "required": [
+                      "identifier",
+                      "topic"
+                    ]
+                  }
+                }
+              }
+            },
+            "obstructionSensor": {
+              "title": "Garage Obstruction Feedback",
+              "type": "object",
+              "description": "Configure exactly one filePath or mqttURL. True means endpoint activated, obstructed, or bolt secured. See power-and-feedback guide.",
+              "properties": {
+                "filePath": {
+                  "title": "Feedback File Path",
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "title": "Feedback Poll Interval (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483
+                },
+                "maxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "description": "Defaults to 300. For files uses modification time; MQTT uses receipt time. 0 disables expiry."
+                },
+                "mqttURL": {
+                  "title": "MQTT Broker URL",
+                  "type": "string",
+                  "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+                },
+                "mqttUsername": {
+                  "title": "MQTT Username",
+                  "type": "string"
+                },
+                "mqttPassword": {
+                  "title": "MQTT Password",
+                  "type": "string",
+                  "format": "password"
+                },
+                "mqttTopic": {
+                  "title": "MQTT Topic(s)",
+                  "type": [
+                    "string",
+                    "array"
+                  ],
+                  "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": {
+                        "type": "string",
+                        "enum": [
+                          "contact",
+                          "lock",
+                          "obstruction",
+                          "combined",
+                          "unknown"
+                        ]
+                      },
+                      "topic": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                      }
+                    },
+                    "required": [
+                      "identifier",
+                      "topic"
+                    ]
+                  }
+                }
+              }
+            },
+            "lockSensor": {
+              "title": "Lock Bolt Feedback",
+              "type": "object",
+              "description": "Configure exactly one filePath or mqttURL. True means endpoint activated, obstructed, or bolt secured. See power-and-feedback guide.",
+              "properties": {
+                "filePath": {
+                  "title": "Feedback File Path",
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "title": "Feedback Poll Interval (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483
+                },
+                "maxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "description": "Defaults to 300. For files uses modification time; MQTT uses receipt time. 0 disables expiry."
+                },
+                "mqttURL": {
+                  "title": "MQTT Broker URL",
+                  "type": "string",
+                  "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+                },
+                "mqttUsername": {
+                  "title": "MQTT Username",
+                  "type": "string"
+                },
+                "mqttPassword": {
+                  "title": "MQTT Password",
+                  "type": "string",
+                  "format": "password"
+                },
+                "mqttTopic": {
+                  "title": "MQTT Topic(s)",
+                  "type": [
+                    "string",
+                    "array"
+                  ],
+                  "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": {
+                        "type": "string",
+                        "enum": [
+                          "contact",
+                          "lock",
+                          "obstruction",
+                          "combined",
+                          "unknown"
+                        ]
+                      },
+                      "topic": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                      }
+                    },
+                    "required": [
+                      "identifier",
+                      "topic"
+                    ]
+                  }
+                }
               }
             }
           }

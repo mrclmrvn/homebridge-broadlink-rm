@@ -1,6 +1,7 @@
 import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
+import { FeedbackSource } from '../sensors/feedback';
 
 export class LockAccessory extends TimedAccessory {
   private readonly service: Service;
@@ -10,6 +11,8 @@ export class LockAccessory extends TimedAccessory {
   private readonly lockDuration: number;
   private readonly unlockDuration: number;
   private readonly autoLockDelay: number;
+  private readonly feedback?: FeedbackSource;
+  private pendingAutoLock = false;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
@@ -19,20 +22,62 @@ export class LockAccessory extends TimedAccessory {
     this.lockDuration = this.seconds(this.config.lockDuration ?? this.config.lockUnlockDuration, 1);
     this.unlockDuration = this.seconds(this.config.unlockDuration ?? this.config.lockUnlockDuration, 1);
     this.autoLockDelay = this.seconds(this.config.autoLockDelay, 0);
+    if (this.config.lockSensor) this.feedback = new FeedbackSource(this.config.lockSensor, 'lock');
     this.service = accessory.getService(platform.Service.LockMechanism)
       || accessory.addService(platform.Service.LockMechanism, this.name);
-    this.service.getCharacteristic(C.LockCurrentState).onGet(() => this.current);
+    this.service.getCharacteristic(C.LockCurrentState).onGet(() =>
+      this.feedback ? this.refresh().then(() => this.current) : this.current);
     this.service.getCharacteristic(C.LockTargetState).onGet(() => this.target)
       .onSet(value => this.serialize(() => this.setTarget(Number(value))));
-    this.service.updateCharacteristic(C.LockCurrentState, this.current);
+    if (this.feedback) this.service.updateCharacteristic(C.LockCurrentState, new Error('Waiting for lock feedback'));
+    else this.service.updateCharacteristic(C.LockCurrentState, this.current);
     this.service.updateCharacteristic(C.LockTargetState, this.target);
+    if (this.feedback) {
+      this.feedback.onUpdate(() => this.schedule('feedback', 0, () => this.poll()));
+      this.schedule('feedback', 0, () => this.poll());
+    }
+  }
+
+  private armAutoLock(): void {
+    if (this.pendingAutoLock && this.autoLockDelay > 0) {
+      this.schedule('autoLock', this.autoLockDelay * 1000, () => this.setTarget(this.platform.Characteristic.LockTargetState.SECURED));
+    }
+    this.pendingAutoLock = false;
+  }
+
+  private async refresh(): Promise<void> {
+    if (!this.feedback) return;
+    try {
+      const secured = await this.feedback.read();
+      if (this.disposed) return;
+      this.current = secured ? this.platform.Characteristic.LockCurrentState.SECURED : this.platform.Characteristic.LockCurrentState.UNSECURED;
+      if (this.transitioning && this.current === this.target) {
+        this.cancelTimer('transition');
+        this.transitioning = false;
+        if (!secured) this.armAutoLock();
+      }
+      if (secured) this.cancelTimer('autoLock');
+      if (!this.transitioning) {
+        this.target = this.current;
+        this.service.updateCharacteristic(this.platform.Characteristic.LockTargetState, this.target);
+      }
+      this.service.updateCharacteristic(this.platform.Characteristic.LockCurrentState, this.current);
+    } catch (error) {
+      if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.LockCurrentState, error as Error);
+      throw error;
+    }
+  }
+
+  private async poll(): Promise<void> {
+    try { await this.refresh(); } catch { /* Error is exposed on the current-state characteristic. */ }
+    finally { if (this.feedback && this.feedback.interval > 0) this.schedule('feedback', this.feedback.interval, () => this.poll()); }
   }
 
   private async setTarget(target: number): Promise<void> {
     const C = this.platform.Characteristic;
-    if (![C.LockTargetState.SECURED, C.LockTargetState.UNSECURED].includes(target)) {
-      throw new Error('Invalid lock target state');
-    }
+    if (![C.LockTargetState.SECURED, C.LockTargetState.UNSECURED].includes(target)) throw new Error('Invalid lock target state');
+    if (this.feedback) await this.refresh();
+    if (this.disposed) throw new Error('Accessory has shut down');
     if (target === this.target && (this.transitioning || this.current === target)) return;
     const locking = target === C.LockTargetState.SECURED;
     await this.transmit(locking ? 'lock' : 'unlock');
@@ -40,16 +85,29 @@ export class LockAccessory extends TimedAccessory {
     this.cancelTimer('autoLock');
     this.target = target;
     this.transitioning = true;
-    this.current = C.LockCurrentState.UNKNOWN;
+    this.pendingAutoLock = !locking;
+    if (!this.feedback) this.current = C.LockCurrentState.UNKNOWN;
     this.service.updateCharacteristic(C.LockTargetState, target);
     this.service.updateCharacteristic(C.LockCurrentState, this.current);
     this.schedule('transition', (locking ? this.lockDuration : this.unlockDuration) * 1000, async () => {
-      this.current = target;
-      this.transitioning = false;
-      this.service.updateCharacteristic(C.LockCurrentState, this.current);
-      if (!locking && this.autoLockDelay > 0) {
-        this.schedule('autoLock', this.autoLockDelay * 1000, () => this.setTarget(C.LockTargetState.SECURED));
+      if (this.feedback) {
+        try { await this.refresh(); }
+        catch (error) { this.transitioning = false; this.pendingAutoLock = false; throw error; }
+        if (this.current !== target) {
+          this.transitioning = false;
+          this.pendingAutoLock = false;
+          const error = new Error('Lock feedback did not reach the requested state');
+          this.service.updateCharacteristic(C.LockCurrentState, error);
+          throw error;
+        }
+      } else {
+        this.current = target;
+        this.transitioning = false;
+        this.service.updateCharacteristic(C.LockCurrentState, this.current);
+        if (!locking) this.armAutoLock();
       }
     });
   }
+
+  public override dispose(): void { super.dispose(); this.feedback?.dispose(); }
 }

@@ -31,7 +31,7 @@ Homebridge range still needs validation beyond the development dependency.
 | Existing configuration | Current v5 behavior |
 | --- | --- |
 | Ordinary hex strings | Reused as accessory data; no re-learning required just for the rebuild |
-| Structured code arrays/objects | Implemented for switches/outlets; not generally supported elsewhere |
+| Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |
 | `air-conditioner` | Thermostat service with temperatureXX codes; advanced legacy mode logic is incomplete |
@@ -39,11 +39,12 @@ Homebridge range still needs validation beyond the development dependency.
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
 | MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
 | 1-wire, pseudo-device sensors | Not implemented in the new sensor reader; configuring them there is an error |
-| Ping/ARP state detection | Not implemented |
-| Eve/fakegato history, battery alerts | Not implemented in new sensor ports |
+| Ping/ARP state detection | Supported on switch/outlet, TV, fan/Fan v1 and purifier; ARP is a cache estimate |
+| Eve/fakegato history, battery alerts | Eve history excluded from scope; battery alerts pending |
 | RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
 | Pronto strings | Raw modulated 0000 strings with whitespace are converted before transmission |
-| Fan speedCycle/default-reset/timers, light exclusives | Still pending |
+| Fan speedCycle/default-reset/timers, light exclusives | Supported; review assumptions and timer behavior in the fan/light guides |
+| Garage endpoint/obstruction and lock-bolt feedback | Explicit file/MQTT source objects; see the power and feedback guide |
 | hideLearnButton/hideScanFrequencyButton | No automatic legacy helper-button creation; explicitly configure an IR learning accessory |
 
 See the type-specific guides for exact options. The old sample configs at the
@@ -72,8 +73,10 @@ Most appliance state is inferred from commands rather than read back from the
 appliance. Restarting the plugin or using another remote can desynchronize it.
 Locks start Unknown; garage doors start Stopped. These are deliberate unknown
 physical-state representations. Window position starts from initialPosition
-(default 0), not a position sensor. Contact, obstruction, and jam detection are
-not integrated in those ports.
+(default 0), not a position sensor. Optional file/MQTT garage endpoint,
+obstruction and standalone lock-bolt sources provide explicit feedback; see
+[power and feedback](power-and-feedback.md). Configured unavailable sources fault
+rather than authorizing a command. Jam detection remains unimplemented.
 
 Sensor readers, including the Thermostat, report invalid/missing readings as
 errors rather than inventing zero values or displaying the AC target as measured

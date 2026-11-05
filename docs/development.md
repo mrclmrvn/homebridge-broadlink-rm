@@ -32,6 +32,8 @@ presence as evidence that their behaviors are supported by the new code.
 | src/accessories/timed.ts | Serialized commands, cancellable timers/delays for newer controllers |
 | src/accessories/sensorSource.ts | Native/file readings, validation and unit conversion |
 | src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
+| src/sensors/power.ts, feedback.ts | Power probes and explicit file/MQTT binary feedback |
+| src/helpers/commands.ts | Bounded structured command compilation |
 | src/cli.ts | Standalone diagnostics |
 | config.schema.json | Shared Homebridge visual configuration schema |
 | test/v5/ | New tests, controlled clocks and service fixtures |

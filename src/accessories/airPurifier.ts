@@ -20,11 +20,16 @@ export class AirPurifierAccessory extends FanAccessory {
     this.service.updateCharacteristic(C.CurrentAirPurifierState, this.currentState());
     this.service.updateCharacteristic(C.TargetAirPurifierState, this.target);
     this.setupPhysicalLock();
+    this.watchFanPower();
   }
 
   private currentState(): number {
     const C = this.platform.Characteristic;
     return this.active ? C.CurrentAirPurifierState.PURIFYING_AIR : C.CurrentAirPurifierState.INACTIVE;
+  }
+
+  protected override observedActiveChanged(): void {
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentAirPurifierState, this.currentState());
   }
 
   protected override async activeChanged(): Promise<void> {

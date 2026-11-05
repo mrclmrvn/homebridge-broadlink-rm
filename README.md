@@ -75,6 +75,8 @@ handling and unsupported options.
 
 ## Diagnostics and development
 
+- [Power and feedback](docs/power-and-feedback.md): Ping/ARP estimates, shared
+  command sequences, garage endpoints/obstruction and lock-bolt sensors.
 - [MQTT sensors](docs/mqtt.md): legacy topics, Zigbee2MQTT JSON, credentials,
   freshness, and integration with AC, HeaterCooler and humidity controllers.
 

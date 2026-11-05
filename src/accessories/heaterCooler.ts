@@ -2,6 +2,7 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { SensorSource } from './sensorSource';
+import { compileCommands } from '../helpers/commands';
 
 type Settings = { heat: number; cool: number; speed: number; swing: number };
 
@@ -104,13 +105,14 @@ export class HeaterCoolerAccessory extends TimedAccessory {
   }
 
   private async send(value: unknown): Promise<void> {
-    if (typeof value !== 'string' && !Buffer.isBuffer(value)) throw new Error('Missing or unsupported HeaterCooler code');
+    compileCommands(value);
     await this.sendCode(value);
     if (this.disposed) throw new Error('Accessory has shut down');
   }
 
-  private decode(node: any, settings: Settings, mode: number, swingChanged: boolean, depth = 0): string | Buffer {
-    if (typeof node === 'string' || Buffer.isBuffer(node)) return node;
+  private decode(node: any, settings: Settings, mode: number, swingChanged: boolean, depth = 0): any {
+    if (typeof node === 'string' || Buffer.isBuffer(node) || Array.isArray(node)) return node;
+    if (node?.data !== undefined) return node;
     if (!node || depth > 10) throw new Error('No matching HeaterCooler code');
     if (node.temperatureCodes) {
       const temp = mode === this.platform.Characteristic.TargetHeaterCoolerState.HEAT ? settings.heat : settings.cool;
@@ -135,6 +137,7 @@ export class HeaterCoolerAccessory extends TimedAccessory {
     // Decode first so an invalid configuration cannot partially power on a unit.
     const settings = { ...this.settings };
     const code = this.decode(this.modeData(mode), settings, mode, false);
+    compileCommands(code);
     await this.send(this.modeData(mode).on);
     this.active = 1;
     this.mode = mode;

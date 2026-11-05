@@ -100,7 +100,8 @@ configuration changes; continuous hot reload is not implemented.
 Only options handled by the selected accessory should be relied upon. Visual
 schema fields are shared across types and do not imply that every accessory
 supports every field. Most controls accept single hex strings. Structured code
-sequences are currently implemented by switch/outlet types only.
+sequences are supported at command leaves across controllers; see
+[shared commands](power-and-feedback.md#shared-structured-commands).
 
 ## Thermostat-style air conditioner
 
@@ -122,22 +123,25 @@ sequences are currently implemented by switch/outlet types only.
 ```
 
 This creates a Thermostat, not HeaterCooler. `airconditioner` is also accepted.
-Target temperatures are rounded to integer Celsius code keys (`temperature16`,
-etc.). Entries can be a string or an object with a single `data` code. Turning
-on prefers the current temperature code, falling back to on. Changing the target
-while active sends its temperature code when present; missing codes are logged.
+Target temperatures use `tempStepSize` (default 1°C), rounded relative to the
+configured minimum, and matching keys such as `temperature24` or
+`temperature24.5`. Entries accept strings and structured commands. Turning on
+prefers the current temperature code, falling back to `on`; missing both is an
+error. Changing an active target requires its temperature code. Missing/failed
+commands retain the previous state; off-state temperature changes are deferred.
 Set bounds and supply all temperature codes you intend to expose.
 
 `coolOnly` restricts modes to Off/Cool. It defaults to false in code, while the
-visual schema defaults to true; set it explicitly. The current port does not
-select separate heat/cool code trees. Current activity is inferred from requests,
+visual schema defaults to true; set it explicitly. Otherwise modes are Off,
+Heat and Cool; plugin-controlled Auto regulation is not offered. The current port
+does not select separate heat/cool code trees. Current activity is inferred from successful sends,
 and temperature waits for a real reading instead of displaying the target as a
 measurement. The shared source reader supports MQTT, files and native RM sensors;
 see [MQTT configuration](mqtt.md). Polling starts immediately; 0 disables
 background polls, while MQTT messages still push updates. Poll timers and MQTT
-connections are disposed on shutdown. The older Thermostat command/state handling
-is still less strict than the newer controllers; full legacy AC options remain
-pending.
+connections are disposed on shutdown. Invalid modes/temperatures are rejected,
+and repeated identical commands are suppressed unless `allowResend` is true.
+Full legacy AC options remain pending.
 
 For distinct mode-specific `data.heat` / `data.cool`, use
 [HeaterCooler](remaining-accessories.md#heatercooler).

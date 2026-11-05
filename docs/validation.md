@@ -55,8 +55,10 @@ addresses, MACs, pairing codes or credentials.
 Start with discovery and one ordinary switch. Add only the accessory types used
 by the installation, supplying actual recorded codes and explicit host selection
 when multiple RMs are present. Enable automatic close/relock or timed movement
-only for the corresponding supervised test. These ports infer movement and lock
-state; they do not integrate contact, obstruction or jam sensors.
+only for the corresponding supervised test. Configure explicit endpoint/bolt and
+obstruction sources if present; otherwise state remains inferred. Jam detection
+and automatic obstruction reversal are not provided. Validate sensor polarity,
+freshness, missing-source handling and actual mechanical outcomes separately.
 
 ## Driver checks
 
@@ -103,13 +105,27 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Accessory group | Additional observations |
 | --- | --- |
 | Switch/outlet | Sequence order, repeat/pause timing, stateless reset, automatic commands; OutletInUse remains an estimate |
-| Fan/purifier | Nearest speed, power, supported mode, direction/swing/control lock; repeated toggle controls do not reverse accidentally |
-| Light | Brightness/white/color presets, power-on delay and supported saturation requests |
+| Fan/purifier | Nearest speed, cycle wrap/reset assumptions, defaults/timers, supported mode and direction/swing/control lock; repeated toggles do not reverse accidentally |
+| Light | Brightness/white/color presets, power-on delay, exclusives, automatic timers and supported saturation requests |
 | Thermostat/HeaterCooler | Correct mode/temperature code, Celsius/configured unit handling, measured temperature versus target, and failed-send state |
 | Humidity controller | Humidify/idle/dehumidify selection and no new automatic command on unavailable measurements |
 | Window/covering | Calibrated full travel, intermediate stop, reversal, hold, endpoint resend and initial-position assumption |
-| Garage/lock | Actual open/close/lock action, inferred travel completion, automatic command and cancellation; no claim of verified contact or security state |
+| Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
 | Sensors | Native/file/MQTT readings, offsets, invalid/missing values and shutdown cleanup |
+
+## Power and feedback checks
+
+Test configured power detection with a reachable appliance, genuine no reply,
+missing utility, stale ARP entry and shutdown during a probe. Confirm polling
+alone sends no IR, matching state suppresses a guarded toggle, and unknown state
+blocks it. Observe physical power separately; reachability alone is an estimate.
+
+For configured feedback, exercise each endpoint and bolt, contradictory endpoints,
+obstruction, invalid payloads, expiry and disconnect. Confirm a closed-only contact
+never establishes Open or Secured, source failure blocks new guarded commands,
+and automatic close/relock waits for the required confirmation. Obstruction
+updates during travel do not stop or reverse the motor automatically. Repeat
+these checks using the actual producer and its signal polarity.
 
 ## MQTT checks
 

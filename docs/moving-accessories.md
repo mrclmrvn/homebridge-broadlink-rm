@@ -80,10 +80,14 @@ Supplying both `data.lock` and `data.unlock` exposes the garage service's option
 lock controls. Lock state begins Unknown and is inferred immediately after a
 successful code transmission. These controls do not interlock door movement.
 
-Contact and obstruction sensors are not integrated in this port. The required
-ObstructionDetected characteristic reports false because no obstruction source
-is available; it does not confirm a clear doorway. Travel completion is inferred
-from timers and cannot confirm that a physical door moved or reached its limit.
+The above behavior applies without endpoint sensors. Optional `closedSensor`,
+`openSensor` and `obstructionSensor` accept file/MQTT sources; see
+[physical feedback](power-and-feedback.md#file-and-mqtt-binary-feedback).
+Configured endpoints confirm completion; a closed-only contact cannot confirm
+Open. Configured obstruction feedback blocks closing when obstructed or
+unavailable. Without it, ObstructionDetected reports false and does not establish
+a clear doorway. Feedback-based auto-close requires an open endpoint sensor.
+No automatic stop/reversal on obstruction or jam detection is implemented.
 
 ## Lock
 
@@ -109,8 +113,11 @@ Unknown until its travel timer completes. Durations fall back to the legacy
 Optional `autoLockDelay` (seconds, default 0/disabled) starts after unlocking
 completes and sends a real lock command. A successful new command cancels earlier
 transition and automatic timers. Failed transmissions retain the last successful
-state and target; automatic failures are logged. Lock/contact feedback and jam
-detection are not implemented, so timer completion cannot verify physical security.
+state and target; automatic failures are logged. Optional `lockSensor` accepts
+file/MQTT bolt feedback and requires confirmation rather than assuming completion
+from a timer. With feedback, auto-lock starts after a confirmed requested unlock.
+See [lock feedback](power-and-feedback.md#garage-and-lock-behavior-with-feedback).
+Door contact state cannot establish bolt state; jam detection is not implemented.
 
 ## Configuration and validation
 
@@ -125,8 +132,9 @@ Platform shutdown cancels timers and prevents queued commands from sending.
 Invalid accessory configuration is logged and skipped without preventing other
 accessories from starting. Unsupported accessory types are not newly registered.
 
-These implementations accept single hex strings/Buffers, not legacy structured
-code sequences. External sensor integrations and full legacy compatibility remain
-roadmap work. `npm test` covers transitions, time estimates, failures, stale timer
-cancellation, startup validation, and shutdown using controlled clocks; physical
-hardware and live Homebridge validation remain outstanding.
+Command leaves accept strings, arrays and repetition objects through the
+[shared command compiler](power-and-feedback.md#shared-structured-commands).
+`npm test` covers transitions, time estimates, feedback confirmation/faults,
+obstruction blocking, failed sends, stale timers, startup validation and shutdown.
+Physical hardware, live Homebridge validation and full legacy compatibility
+remain outstanding.

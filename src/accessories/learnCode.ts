@@ -49,6 +49,7 @@ export class LearnCodeAccessory extends BaseAccessory {
 
   public override dispose(): void {
     this.disposed = true;
+    super.dispose();
     this.controller?.abort();
     if (this.start) clearImmediate(this.start);
     this.start = undefined;
