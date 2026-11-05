@@ -1,6 +1,7 @@
 import { PlatformAccessory, Service, Logging } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { RMDevice } from '../broadlink';
+import { compileCommands } from '../helpers/commands';
 
 export abstract class BaseAccessory {
   protected readonly platform: BroadlinkRMPlatform;
@@ -8,6 +9,7 @@ export abstract class BaseAccessory {
   protected readonly config: Record<string, any>;
   protected readonly log: Logging;
   protected readonly name: string;
+  private readonly commandShutdown = new AbortController();
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     this.platform = platform;
@@ -29,7 +31,7 @@ export abstract class BaseAccessory {
   }
 
   /** Release accessory-owned resources on platform shutdown or removal. */
-  public dispose(): void {}
+  public dispose(): void { this.commandShutdown.abort(); }
 
   /**
    * Resolve the Broadlink RM device for this accessory
@@ -45,19 +47,26 @@ export abstract class BaseAccessory {
   /**
    * Send an IR or RF hex code
    */
-  protected async sendCode(code: string | Buffer): Promise<void> {
+  protected async sendCode(code: unknown): Promise<void> {
+    const steps = compileCommands(code);
+    const signal = this.commandShutdown.signal;
+    if (signal.aborted) throw new Error('Accessory has shut down');
     const device = this.getDevice();
-    if (!device) {
-      throw new Error(`Device unreachable or not found for host: ${this.config.host}`);
+    if (!device) throw new Error(`Device unreachable or not found for host: ${this.config.host}`);
+    for (const step of steps) {
+      if (signal.aborted) throw new Error('Accessory has shut down');
+      if ('delay' in step) {
+        await new Promise<void>((resolve, reject) => {
+          const aborted = () => { clearTimeout(timer); reject(new Error('Accessory has shut down')); };
+          const timer = setTimeout(() => { signal.removeEventListener('abort', aborted); resolve(); }, step.delay * 1000);
+          signal.addEventListener('abort', aborted, { once: true });
+        });
+      } else {
+        try { await device.sendData(step.code); }
+        catch (error) { this.log.error(`[${this.name}] Code transmission failed`); throw error; }
+        if (signal.aborted) throw new Error('Accessory has shut down');
+      }
     }
-
-    try {
-      await device.sendData(code);
-      this.log.debug(`[${this.name}] Successfully transmitted code to ${device.host} (${device.macAddress})`);
-    } catch (err: any) {
-      this.log.error(`[${this.name}] Error transmitting code: ${err.message}`);
-      throw err;
-    }
+    this.log.debug(`[${this.name}] Transmitted code to ${device.host}`);
   }
 }
-

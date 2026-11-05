@@ -1,147 +1,156 @@
-import { BroadlinkDevice } from './device';
+import { performance } from 'node:perf_hooks';
+import { BroadlinkDevice, BroadlinkError } from './device';
 import { PacketCommand, RMSubCommand } from './constants';
+import { convertProntoCode } from '../helpers/convertProntoCode';
 
-export class RMDevice extends BroadlinkDevice {
-  /**
-   * Helper to format inner RM payload depending on whether the device is RM4 or RM2/3
-   */
-  private formatRMPayload(subCommand: number, data?: Buffer): Buffer {
-    const isRM4 = this.typeInfo.isRM4;
-    const dataLen = data ? data.length : 0;
-
-    if (isRM4) {
-      // RM4 protocol: <H (len + 4), <I (command), payload
-      const packet = Buffer.alloc(6 + dataLen);
-      packet.writeUInt16LE(dataLen + 4, 0);
-      packet.writeUInt32LE(subCommand, 2);
-      if (data) {
-        data.copy(packet, 6);
-      }
-      return packet;
-    } else {
-      // Legacy RM2/3 protocol: 4-byte command prefix, payload
-      const header = Buffer.alloc(4);
-      header.writeUInt32LE(subCommand, 0);
-      return data ? Buffer.concat([header, data]) : header;
-    }
-  }
-
-  /**
-   * Send raw IR or RF data bytes
-   * @param data Buffer or hex string representing the code
-   */
-  public async sendData(data: Buffer | string): Promise<void> {
-    const buffer = typeof data === 'string' ? Buffer.from(data.replace(/\s+/g, ''), 'hex') : data;
-
-    return this.synchronized(async () => {
-      if (!this.isAuthenticated) {
-        await this.auth();
-      }
-
-      const payload = this.formatRMPayload(RMSubCommand.SEND_DATA, buffer);
-      await this.sendPacket(PacketCommand.COMMAND, payload);
-    });
-  }
-
-  /**
-   * Put the device into IR learning mode
-   */
-  public async enterLearning(): Promise<void> {
-    return this.synchronized(async () => {
-      if (!this.isAuthenticated) {
-        await this.auth();
-      }
-
-      const payload = this.formatRMPayload(RMSubCommand.ENTER_LEARN);
-      await this.sendPacket(PacketCommand.COMMAND, payload);
-    });
-  }
-
-  /**
-   * Check if a learned code is available
-   */
-  public async checkData(): Promise<Buffer | null> {
-    return this.synchronized(async () => {
-      if (!this.isAuthenticated) {
-        await this.auth();
-      }
-
-      const payload = this.formatRMPayload(RMSubCommand.CHECK_DATA);
-      try {
-        const response = await this.sendPacket(PacketCommand.COMMAND, payload);
-        if (!response || response.length <= 4) {
-          return null;
-        }
-
-        const dataOffset = this.typeInfo.isRM4 ? 6 : 4;
-        if (response.length <= dataOffset) {
-          return null;
-        }
-
-        const learnedCode = response.slice(dataOffset);
-        // Verify non-empty
-        if (learnedCode.length > 0 && learnedCode.some((b) => b !== 0)) {
-          return Buffer.from(learnedCode);
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    });
-  }
-
-  /**
-   * Poll for a learned code until timeout
-   * @param timeoutMs Maximum milliseconds to wait (default 30 seconds)
-   * @param intervalMs Polling interval (default 1 second)
-   * @returns Hex string of the captured code
-   */
-  public async learnData(timeoutMs: number = 30000, intervalMs: number = 1000): Promise<string> {
-    await this.enterLearning();
-
-    const startTime = Date.now();
-    while (Date.now() - startTime < timeoutMs) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-      const code = await this.checkData();
-      if (code && code.length > 0) {
-        return code.toString('hex');
-      }
-    }
-
-    throw new Error(`Learning timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
-  }
-
-  /**
-   * Query built-in or external cable sensors (temperature / humidity)
-   */
-  public async checkSensors(): Promise<{ temperature?: number; humidity?: number }> {
-    return this.synchronized(async () => {
-      if (!this.isAuthenticated) {
-        await this.auth();
-      }
-
-      const payload = this.formatRMPayload(RMSubCommand.CHECK_SENSORS);
-      const response = await this.sendPacket(PacketCommand.COMMAND, payload);
-
-      if (this.typeInfo.isRM4) {
-        // RM4 HTS2 sensor layout:
-        // offset 6: integer temp, offset 7: decimal temp
-        // offset 8: integer humidity, offset 9: decimal humidity
-        if (response.length >= 10) {
-          const temp = response[6] + response[7] / 100.0;
-          const humidity = response[8] + response[9] / 100.0;
-          return { temperature: temp, humidity };
-        }
-      } else {
-        // Legacy RM2/RM Pro sensors
-        if (response.length >= 8) {
-          const temp = (response[4] * 10 + response[5]) / 10.0;
-          return { temperature: temp };
-        }
-      }
-
-      return {};
-    });
-  }
+export interface RFLearningOptions {
+  timeoutMs?: number;
+  intervalMs?: number;
+  signal?: AbortSignal;
+  onProgress?: (stage: 'frequency' | 'packet') => void;
 }
 
+export class RMDevice extends BroadlinkDevice {
+  private learning = false;
+
+  private async command(command: number, data: Buffer = Buffer.alloc(0), signal?: AbortSignal): Promise<Buffer> {
+    return this.synchronized(async () => {
+      await this.ensureAuthenticated(signal);
+      const offset = this.typeInfo.isRM4 ? 6 : 4;
+      const payload = Buffer.alloc(offset + data.length);
+      if (offset === 6) payload.writeUInt16LE(data.length + 4, 0);
+      payload.writeUInt32LE(command, offset - 4);
+      data.copy(payload, offset);
+      const response = await this.sendPacket(PacketCommand.COMMAND, payload, 5000, signal);
+      if (response.length < offset) throw new Error('Truncated RM response');
+      if (offset === 6) {
+        const length = response.readUInt16LE(0);
+        if (length < 4 || length + 2 > response.length) throw new Error('Invalid RM4 response length');
+        return response.subarray(6, length + 2);
+      }
+      return response.subarray(4);
+    });
+  }
+
+  public async sendData(data: Buffer | string): Promise<void> {
+    if (this.learning) throw new Error('Cannot send a code while learning is in progress');
+    if (typeof data === 'string') {
+      if (/^(?:0000|0100)\s/i.test(data.trim())) data = convertProntoCode(data);
+      const clean = data.replace(/\s+/g, '');
+      if (!clean.length || clean.length % 2 || !/^[0-9a-f]+$/i.test(clean)) throw new Error('Code must contain complete hexadecimal bytes');
+      data = Buffer.from(clean, 'hex');
+    }
+    if (!data.length) throw new Error('Cannot send an empty code');
+    await this.command(RMSubCommand.SEND_DATA, data);
+  }
+
+  public async enterLearning(signal?: AbortSignal): Promise<void> {
+    await this.command(RMSubCommand.ENTER_LEARN, undefined, signal);
+  }
+
+  public async checkData(signal?: AbortSignal): Promise<Buffer | null> {
+    try {
+      const code = await this.command(RMSubCommand.CHECK_DATA, undefined, signal);
+      if (!code.some(byte => byte !== 0)) return null;
+      if (code.length < 4) throw new Error('Truncated learned code');
+      const length = code.readUInt16LE(2) + 4;
+      if (length <= 4 || length > code.length) throw new Error('Invalid learned code length');
+      return Buffer.from(code.subarray(0, length));
+    } catch (error) {
+      if (error instanceof BroadlinkError && error.code === 0xfff6) return null;
+      throw error;
+    }
+  }
+
+  private validateLearning(timeoutMs: number, intervalMs: number): void {
+    for (const value of [timeoutMs, intervalMs]) {
+      if (!Number.isFinite(value) || value <= 0 || value > 2147483647) throw new Error('Learning times must be positive finite milliseconds');
+    }
+    if (this.learning) throw new Error('A learning operation is already in progress');
+    this.assertOpen();
+  }
+
+  private async pause(milliseconds: number, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted || this.shutdown.signal.aborted) throw new Error('Learning aborted');
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', aborted);
+        this.shutdown.signal.removeEventListener('abort', aborted);
+      };
+      const aborted = () => { cleanup(); reject(new Error('Learning aborted')); };
+      const timer = setTimeout(() => { cleanup(); resolve(); }, milliseconds);
+      signal?.addEventListener('abort', aborted, { once: true });
+      this.shutdown.signal.addEventListener('abort', aborted, { once: true });
+    });
+  }
+
+  public async learnData(timeoutMs = 30000, intervalMs = 1000, signal?: AbortSignal): Promise<string> {
+    this.validateLearning(timeoutMs, intervalMs);
+    this.learning = true;
+    try {
+      await this.enterLearning(signal);
+      const deadline = performance.now() + timeoutMs;
+      while (performance.now() < deadline) {
+        await this.pause(Math.min(intervalMs, deadline - performance.now()), signal);
+        const code = await this.checkData(signal);
+        if (code) return code.toString('hex');
+      }
+      throw new Error('IR learning timed out');
+    } finally { this.learning = false; }
+  }
+
+  public async learnRFData(options: RFLearningOptions = {}): Promise<string> {
+    if (!this.typeInfo.hasRF) throw new Error('RF learning is not supported by this device model');
+    const { timeoutMs = 60000, intervalMs = 500, signal, onProgress } = options;
+    this.validateLearning(timeoutMs, intervalMs);
+    this.learning = true;
+    let swept = false;
+    try {
+      const deadline = performance.now() + timeoutMs;
+      await this.command(RMSubCommand.ENTER_RF_LEARN, undefined, signal);
+      swept = true;
+      onProgress?.('frequency');
+      let frequency: Buffer | undefined;
+      while (performance.now() < deadline) {
+        await this.pause(Math.min(intervalMs, deadline - performance.now()), signal);
+        let response: Buffer;
+        try { response = await this.command(RMSubCommand.CHECK_RF_FREQUENCY, undefined, signal); }
+        catch (error) {
+          if (error instanceof BroadlinkError && error.code === 0xfff6) continue;
+          throw error;
+        }
+        if (!response.length) throw new Error('Truncated RF frequency response');
+        if (response[0]) {
+          frequency = response.length >= 5 && response.readUInt32LE(1) > 0 ? response.subarray(1, 5) : Buffer.alloc(0);
+          break;
+        }
+      }
+      if (!frequency) throw new Error('RF frequency sweep timed out');
+      await this.command(RMSubCommand.FIND_RF_PACKET, frequency, signal);
+      onProgress?.('packet');
+      while (performance.now() < deadline) {
+        await this.pause(Math.min(intervalMs, deadline - performance.now()), signal);
+        const code = await this.checkData(signal);
+        if (code) return code.toString('hex');
+      }
+      throw new Error('RF packet learning timed out');
+    } finally {
+      if (swept && !this.shutdown.signal.aborted) {
+        try { await this.command(RMSubCommand.CANCEL_RF_LEARN); } catch { /* Do not hide the original result. */ }
+      }
+      this.learning = false;
+    }
+  }
+
+  public async checkSensors(): Promise<{ temperature?: number; humidity?: number }> {
+    if (this.learning) throw new Error('Sensor polling is paused while learning');
+    const body = await this.command(this.typeInfo.isRM4 ? RMSubCommand.CHECK_SENSORS_RM4 : RMSubCommand.CHECK_SENSORS);
+    if (this.typeInfo.isRM4) {
+      if (body.length < 4) throw new Error('Truncated RM4 sensor response');
+      return { temperature: body.readInt8(0) + body.readInt8(1) / 100, humidity: body[2] + body[3] / 100 };
+    }
+    if (body.length < 2) throw new Error('Truncated RM sensor response');
+    return { temperature: body.readInt8(0) + body.readInt8(1) / 10 };
+  }
+}

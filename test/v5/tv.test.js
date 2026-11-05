@@ -12,6 +12,7 @@ function fixture() {
       });
       return this.controls.get(key);
     }
+    updateCharacteristic(key, value) { this.getCharacteristic(key).value = value; return this; }
     setCharacteristic(key, value) { this.getCharacteristic(key).value = value; return this; }
     setPrimaryService() { this.primary = true; }
     addLinkedService(service) { this.links.add(service); }
@@ -64,6 +65,24 @@ test('failed TV transmissions preserve state and stale input services are remove
   f.config.data.inputs = [];
   new TelevisionAccessory(f.platform, f.accessory);
   assert.equal(f.accessory.getService(f.S.InputSource), undefined);
+});
+
+test('TV guards power from a fresh probe and accepts structured remote commands', async t => {
+  t.mock.method(require('node:child_process'), 'execFile', (file, args, options, callback) => {
+    setImmediate(() => callback(null, 'TTL=64'));
+  });
+  const f = fixture();
+  f.config.pingIPAddress = '192.0.2.1';
+  f.config.data.remote.arrowUp = { data: 'up', sendCount: 2, interval: 0 };
+  const instance = new TelevisionAccessory(f.platform, f.accessory);
+  t.after(() => instance.dispose());
+  const tv = f.accessory.getService(f.S.Television);
+  await tv.getCharacteristic(f.C.Active).set(1);
+  assert.deepEqual(f.sent, []);
+  await tv.getCharacteristic(f.C.RemoteKey).set(4);
+  await tv.getCharacteristic(f.C.Active).set(0);
+  assert.deepEqual(f.sent, ['up', 'up', 'off']);
+  assert.equal(tv.getCharacteristic(f.C.Active).get(), 0);
 });
 
 test('platform publishes TVs externally, migrates bridged cache, and keeps switches bridged', async () => {

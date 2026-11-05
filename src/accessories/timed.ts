@@ -1,4 +1,5 @@
 import { BaseAccessory } from './base';
+import { PowerMonitor } from '../sensors/power';
 
 /** Serializes commands and owns cancellable timers for moving accessories. */
 export abstract class TimedAccessory extends BaseAccessory {
@@ -6,6 +7,27 @@ export abstract class TimedAccessory extends BaseAccessory {
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly delays = new Map<NodeJS.Timeout, () => void>();
   protected disposed = false;
+  protected power?: PowerMonitor;
+
+  protected watchPower(update: (on: boolean) => void): void {
+    if (!this.config.pingIPAddress) return;
+    this.power = new PowerMonitor(this.config);
+    this.power.start(on => { if (!this.disposed) update(on); });
+  }
+
+  protected validatePowerTimers(): void {
+    if (this.config.enableAutoOff || this.config.disableAutomaticOff === false) this.seconds(this.config.onDuration, 60, true);
+    if (this.config.enableAutoOn || this.config.disableAutomaticOn === false) this.seconds(this.config.offDuration, 60, true);
+  }
+
+  protected automaticPower(on: boolean, setPower: (on: boolean) => Promise<void>): void {
+    this.cancelTimer('power-auto');
+    if (on && (this.config.enableAutoOff || this.config.disableAutomaticOff === false)) {
+      this.schedule('power-auto', this.seconds(this.config.onDuration, 60, true) * 1000, () => setPower(false));
+    } else if (!on && (this.config.enableAutoOn || this.config.disableAutomaticOn === false)) {
+      this.schedule('power-auto', this.seconds(this.config.offDuration, 60, true) * 1000, () => setPower(true));
+    }
+  }
 
   protected serialize(action: () => Promise<void>): Promise<void> {
     const result = this.queue.then(async () => {
@@ -69,6 +91,8 @@ export abstract class TimedAccessory extends BaseAccessory {
 
   public override dispose(): void {
     this.disposed = true;
+    super.dispose();
+    this.power?.dispose();
     for (const key of this.timers.keys()) this.cancelTimer(key);
     for (const [timer, resolve] of this.delays) {
       clearTimeout(timer);

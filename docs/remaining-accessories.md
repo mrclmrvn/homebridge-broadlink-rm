@@ -110,7 +110,7 @@ commands. No air-quality or filter-life sensor is supplied.
 ```
 
 Temperature sensors also expose a separate HumiditySensor service unless
-`noHumidity` is true. Humidity-only accessories use `type: "humiditySensor"`.
+`noHumidity` is true or the configured 1-wire/pseudo source has no humidity source. Humidity-only accessories use `type: "humiditySensor"`.
 Native measurements require a Broadlink device with the relevant built-in or
 cable sensor. Unsupported or missing measurements report errors, never a
 fabricated zero. Polling starts immediately, repeats after each completed read,
@@ -142,10 +142,14 @@ out-of-range data reports an error. Native temperature is Celsius; use
 is applied in Celsius after conversion, while humidity adjustment is in
 percentage points. Native Broadlink readings are never converted as Fahrenheit.
 
-MQTT, 1-wire and pseudo-device sources are not implemented by this new source
-reader; their options report a configuration error. Battery data and Eve history
-are not yet exposed. These limitations also apply to the new humidity and
-HeaterCooler source readers, not the older Thermostat implementation.
+MQTT is supported through the legacy broker/topic options; see the
+[MQTT guide](mqtt.md). Linux `w1DeviceID` readings validate CRC and signed
+millidegrees; `pseudoDeviceTemperature` supplies an explicitly configured Celsius
+constant. Optional `batteryAlerts` exposes file/MQTT percentage telemetry without
+inventing a default battery level. See [sensor sources](sensor-sources.md) for
+precedence, examples, units and failure behavior. The shared reader also supplies
+humidity controllers, HeaterCooler and Thermostat-style AC. Optional Eve history
+is excluded from the current scope.
 
 ## HeaterCooler
 
@@ -198,22 +202,23 @@ Temperature entries may nest `rotationSpeedXX` and `swingOn`/`swingOff` codes,
 matching the legacy hierarchy. Speed selects the nearest code and reports that
 selected speed. `swingToggle` with `swingDnd` supports toggle-based remotes:
 the toggle is used for explicit swing changes; other changes use swingDnd.
-Optional speed/swing controls are detected from configured code keys. Unsupported
-structured sequence objects report an error.
+Optional speed/swing controls are detected from configured code keys. Command
+leaves also support [structured sequences](power-and-feedback.md#shared-structured-commands).
 
 ## Outlet, Window and Fan v1
 
 Outlet uses the standard switch `data.on`/`data.off` configuration. OutletInUse
-mirrors inferred power, not measured electrical load. Ping/ARP use detection is
-not implemented.
+mirrors inferred power by default, not measured electrical load. Optional
+[Ping/ARP detection](power-and-feedback.md#ping-and-arp-power-estimates) can supply
+a reachability estimate; state-only mode updates OutletInUse independently of On.
 
 Window uses `type: "window"` and the timing/code options from
-[v5-moving-accessories.md](v5-moving-accessories.md), with Service.Window.
+[moving-accessories.md](moving-accessories.md), with Service.Window.
 
 Fan v1 uses `type: "fanv1"` and the fan's on/off, `fanSpeedXX`, stepSize/speedSteps,
 and clockwise/counterClockwise codes. It exposes Service.Fan with On instead of
-Active and no swing control. Legacy fan speed cycling, reset defaults and power
-timers remain pending as documented in [v5-fan.md](v5-fan.md).
+Active and no swing control. Speed cycling, reset defaults and power timers
+use the options documented in [fan.md](fan.md).
 
 ## Switch variants and sequences
 
@@ -261,6 +266,6 @@ for characteristic warnings. Live Homebridge pairing and physical operation
 remain unvalidated.
 
 All legacy type names now resolve, but advanced options remain incomplete.
-Sensor integrations, history, RF learning, shared structured-code support outside
-switch/outlet, Pronto conversion, and complete legacy accessory behavior remain
-separate roadmap work. These ports add no runtime dependencies.
+Complete legacy accessory behavior and physical validation remain roadmap work.
+Optional Eve history is excluded from scope. MQTT support adds MQTT.js as a
+runtime dependency; the core Broadlink driver uses Node standard libraries.

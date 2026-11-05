@@ -1,14 +1,19 @@
 import { Service, CharacteristicValue } from 'homebridge';
-import { BaseAccessory } from './base';
+import { TimedAccessory } from './timed';
+import { SensorSource } from './sensorSource';
+import { BatteryStatus } from './battery';
 import type { BroadlinkRMPlatform } from '../platform';
 import { PlatformAccessory } from 'homebridge';
 
-export class AirConditionerAccessory extends BaseAccessory {
+export class AirConditionerAccessory extends TimedAccessory {
   private service: Service;
   private currentHeatingCoolingState: number = 0;
   private targetHeatingCoolingState: number = 0;
   private targetTemperature: number;
-  private currentTemperature: number;
+  private readonly source: SensorSource;
+  private readonly battery: BatteryStatus;
+  private readonly pollInterval: number;
+  private humidityService?: Service;
   private minTemperature: number;
   private maxTemperature: number;
   private coolOnly: boolean;
@@ -19,7 +24,18 @@ export class AirConditionerAccessory extends BaseAccessory {
     this.minTemperature = this.config.minTemperature ?? 16;
     this.maxTemperature = this.config.maxTemperature ?? 30;
     this.targetTemperature = this.config.defaultCoolTemperature ?? 24;
-    this.currentTemperature = this.targetTemperature;
+    const step = this.config.tempStepSize ?? 1;
+    if (![this.minTemperature, this.maxTemperature, this.targetTemperature, step].every(value => typeof value === 'number' && Number.isFinite(value))
+      || this.minTemperature < -270 || this.maxTemperature > 100 || this.minTemperature >= this.maxTemperature
+      || step <= 0 || step > this.maxTemperature - this.minTemperature
+      || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature) throw new Error('Invalid Thermostat temperature configuration');
+    const saved = accessory.context.broadlinkRMState?.targetTemperature;
+    if (typeof saved === 'number' && Number.isFinite(saved) && saved >= this.minTemperature && saved <= this.maxTemperature
+      && Math.abs((saved - this.minTemperature) / step - Math.round((saved - this.minTemperature) / step)) < 0.000001) {
+      this.targetTemperature = saved;
+    }
+    this.source = new SensorSource(this.config, () => this.getDevice());
+    this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
     this.coolOnly = this.config.coolOnly ?? false;
 
     // Use Thermostat service
@@ -36,33 +52,28 @@ export class AirConditionerAccessory extends BaseAccessory {
     const targetStateChar = this.service
       .getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
       .onGet(this.getTargetHeatingCoolingState.bind(this))
-      .onSet(this.setTargetHeatingCoolingState.bind(this));
+      .onSet(value => this.serialize(() => this.setTargetHeatingCoolingState(value)));
 
-    if (this.coolOnly) {
-      targetStateChar.setProps({
-        validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.OFF,
-          this.platform.Characteristic.TargetHeatingCoolingState.COOL,
-        ],
-      });
-    }
+    const modes = platform.Characteristic.TargetHeatingCoolingState;
+    targetStateChar.setProps({ validValues: this.coolOnly ? [modes.OFF, modes.COOL] : [modes.OFF, modes.HEAT, modes.COOL] });
 
     // Target Temperature
     this.service
       .getCharacteristic(this.platform.Characteristic.TargetTemperature)
+      .updateValue(this.targetTemperature)
       .setProps({
         minValue: this.minTemperature,
         maxValue: this.maxTemperature,
         minStep: this.config.tempStepSize ?? 1,
       })
       .onGet(this.getTargetTemperature.bind(this))
-      .onSet(this.setTargetTemperature.bind(this));
+      .onSet(value => this.serialize(() => this.setTargetTemperature(value)));
 
     // Current Temperature
     this.service
       .getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .setProps({
-        minValue: -50,
+        minValue: -270,
         maxValue: 100,
         minStep: 0.1,
       })
@@ -88,11 +99,16 @@ export class AirConditionerAccessory extends BaseAccessory {
     );
     this.service.updateCharacteristic(
       this.platform.Characteristic.CurrentTemperature,
-      this.currentTemperature,
+      new Error('Waiting for a sensor reading'),
     );
 
-    // Start background sensor polling if supported
-    this.startSensorPolling();
+    this.humidityService = accessory.getService(platform.Service.HumiditySensor);
+    if ((this.config.noHumidity || this.source.temperatureOnly) && this.humidityService) { accessory.removeService(this.humidityService); this.humidityService = undefined; }
+    this.battery = new BatteryStatus(platform, accessory, this.source);
+    this.source.onUpdate(quantity => {
+      if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.pollSensors());
+    });
+    if (this.pollInterval > 0) this.schedule('sensors', 0, () => this.pollSensors());
   }
 
   private getCurrentHeatingCoolingState(): CharacteristicValue {
@@ -104,111 +120,82 @@ export class AirConditionerAccessory extends BaseAccessory {
   }
 
   private async setTargetHeatingCoolingState(value: CharacteristicValue): Promise<void> {
-    const newState = value as number;
-    const previousState = this.targetHeatingCoolingState;
-    this.targetHeatingCoolingState = newState;
-
+    const state = Number(value);
+    const C = this.platform.Characteristic;
+    const modes = C.TargetHeatingCoolingState;
+    const allowed = this.coolOnly ? [modes.OFF, modes.COOL] : [modes.OFF, modes.HEAT, modes.COOL];
+    if (!allowed.includes(state)) throw new Error('Unsupported Thermostat mode');
+    if (state === this.targetHeatingCoolingState && !this.config.allowResend) return;
     const data = this.config.data || {};
-
-    if (newState === this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
-      this.log.info(`[${this.name}] Turning OFF`);
-      if (data.off) {
-        await this.sendCode(data.off);
-      }
-      this.currentHeatingCoolingState = this.platform.Characteristic.CurrentHeatingCoolingState.OFF;
-      this.service.updateCharacteristic(
-        this.platform.Characteristic.CurrentHeatingCoolingState,
-        this.currentHeatingCoolingState,
-      );
-    } else {
-      // Turning ON (COOL or HEAT)
-      this.log.info(`[${this.name}] Turning ON (Mode: ${newState})`);
-      const tempKey = `temperature${Math.round(this.targetTemperature)}`;
-      const tempEntry = data[tempKey];
-
-      let codeToSend: string | undefined;
-      if (tempEntry) {
-        codeToSend = typeof tempEntry === 'string' ? tempEntry : tempEntry.data;
-      } else if (data.on) {
-        codeToSend = data.on;
-      }
-
-      if (codeToSend) {
-        await this.sendCode(codeToSend);
-      }
-
-      this.currentHeatingCoolingState =
-        newState === this.platform.Characteristic.TargetHeatingCoolingState.HEAT
-          ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
-          : this.platform.Characteristic.CurrentHeatingCoolingState.COOL;
-
-      this.service.updateCharacteristic(
-        this.platform.Characteristic.CurrentHeatingCoolingState,
-        this.currentHeatingCoolingState,
-      );
-    }
+    const code = state === modes.OFF ? data.off : data[`temperature${this.targetTemperature}`] ?? data.on;
+    if (!code) throw new Error('No IR/RF code configured for the requested Thermostat mode/temperature');
+    await this.sendCode(code);
+    this.targetHeatingCoolingState = state;
+    this.currentHeatingCoolingState = state === modes.OFF ? C.CurrentHeatingCoolingState.OFF
+      : state === modes.HEAT ? C.CurrentHeatingCoolingState.HEAT : C.CurrentHeatingCoolingState.COOL;
+    this.service.updateCharacteristic(C.TargetHeatingCoolingState, state);
+    this.service.updateCharacteristic(C.CurrentHeatingCoolingState, this.currentHeatingCoolingState);
   }
 
   private getTargetTemperature(): CharacteristicValue {
     return this.targetTemperature;
   }
 
+  private saveTargetTemperature(): void {
+    this.accessory.context.broadlinkRMState = { targetTemperature: this.targetTemperature };
+    this.platform.updateAccessoryContext(this.accessory);
+  }
+
   private async setTargetTemperature(value: CharacteristicValue): Promise<void> {
-    const temp = Math.round(value as number);
-    this.targetTemperature = temp;
-    this.log.info(`[${this.name}] Setting Target Temperature to ${temp}°C`);
-
-    // Only send IR code if AC is currently active
+    const requested = Number(value);
+    if (!Number.isFinite(requested) || requested < this.minTemperature || requested > this.maxTemperature) throw new Error('Thermostat temperature is outside the configured range');
+    const step = this.config.tempStepSize ?? 1;
+    const temp = Number(Math.min(this.maxTemperature, this.minTemperature + Math.round((requested - this.minTemperature) / step) * step).toFixed(6));
+    if (temp === this.targetTemperature && !this.config.allowResend) return;
     if (this.targetHeatingCoolingState !== this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
-      const data = this.config.data || {};
-      const tempKey = `temperature${temp}`;
-      const tempEntry = data[tempKey];
+      const code = this.config.data?.[`temperature${temp}`];
+      if (!code) throw new Error(`No IR/RF code configured for temperature${temp}`);
+      await this.sendCode(code);
+    }
+    this.targetTemperature = temp;
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
+    this.saveTargetTemperature();
+  }
 
-      if (tempEntry) {
-        const code = typeof tempEntry === 'string' ? tempEntry : tempEntry.data;
-        if (code) {
-          await this.sendCode(code);
-        }
-      } else {
-        this.log.warn(`[${this.name}] No IR code configured for temperature ${temp}°C ("${tempKey}")`);
+  private async getCurrentTemperature(): Promise<number> {
+    return this.source.read('temperature');
+  }
+
+  private async pollSensors(): Promise<void> {
+    const C = this.platform.Characteristic;
+    try {
+      try {
+        const temperature = await this.source.read('temperature');
+        if (!this.disposed) this.service.updateCharacteristic(C.CurrentTemperature, temperature);
+      } catch (error) {
+        if (!this.disposed) this.service.updateCharacteristic(C.CurrentTemperature, error as Error);
       }
+      if (!this.config.noHumidity && !this.source.temperatureOnly) {
+        try {
+          const humidity = await this.source.read('humidity');
+          if (this.disposed) return;
+          this.humidityService ||= this.accessory.getService(this.platform.Service.HumiditySensor)
+            || this.accessory.addService(this.platform.Service.HumiditySensor, `${this.name} Humidity`);
+          this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+          this.humidityService.updateCharacteristic(C.CurrentRelativeHumidity, humidity);
+        } catch (error) {
+          if (!this.disposed) this.humidityService?.updateCharacteristic(C.CurrentRelativeHumidity, error as Error);
+        }
+      }
+    } finally {
+      await this.battery.update();
+      if (this.pollInterval > 0) this.schedule('sensors', this.pollInterval * 1000, () => this.pollSensors());
     }
   }
 
-  private getCurrentTemperature(): CharacteristicValue {
-    return this.currentTemperature;
-  }
-
-  private startSensorPolling(): void {
-    const pollInterval = (this.config.sensorPollInterval ?? 60) * 1000;
-    if (pollInterval <= 0) return;
-
-    setInterval(async () => {
-      const dev = this.getDevice();
-      if (!dev || !dev.typeInfo.hasSensors) return;
-
-      try {
-        const reading = await dev.checkSensors();
-        if (reading.temperature !== undefined && reading.temperature > -50 && reading.temperature < 100) {
-          this.currentTemperature = reading.temperature;
-          this.service.updateCharacteristic(
-            this.platform.Characteristic.CurrentTemperature,
-            this.currentTemperature,
-          );
-        }
-        if (reading.humidity !== undefined) {
-          const humidityService =
-            this.accessory.getService(this.platform.Service.HumiditySensor) ||
-            this.accessory.addService(this.platform.Service.HumiditySensor, `${this.name} Humidity`);
-          humidityService.updateCharacteristic(
-            this.platform.Characteristic.CurrentRelativeHumidity,
-            reading.humidity,
-          );
-        }
-      } catch (err: any) {
-        this.log.debug(`[${this.name}] Sensor read failed: ${err.message}`);
-      }
-    }, pollInterval);
+  public override dispose(): void {
+    super.dispose();
+    this.battery.dispose();
+    this.source.dispose();
   }
 }
-

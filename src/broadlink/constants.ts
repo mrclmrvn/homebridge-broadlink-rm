@@ -15,9 +15,12 @@ export enum RMSubCommand {
   SEND_DATA = 0x02,
   ENTER_LEARN = 0x03,
   CHECK_DATA = 0x04,
-  CHECK_SENSORS = 0x19,
+  CHECK_SENSORS = 0x01,
+  CHECK_SENSORS_RM4 = 0x24,
   ENTER_RF_LEARN = 0x19,
-  CHECK_RF_DATA = 0x1a,
+  CHECK_RF_FREQUENCY = 0x1a,
+  FIND_RF_PACKET = 0x1b,
+  CANCEL_RF_LEARN = 0x1e,
 }
 
 export interface DeviceTypeInfo {
@@ -29,6 +32,7 @@ export interface DeviceTypeInfo {
 
 export const DEVICE_TYPES: Record<number, DeviceTypeInfo> = {
   // RM Mini / Mini 3
+  0x27d0: { name: 'RM Mini 3', isRM4: false, hasRF: false, hasSensors: false },
   0x2714: { name: 'RM Mini', isRM4: false, hasRF: false, hasSensors: false },
   0x2737: { name: 'RM Mini 3 (v1)', isRM4: false, hasRF: false, hasSensors: false },
   0x278b: { name: 'RM Mini 3 (v2)', isRM4: false, hasRF: false, hasSensors: false },
@@ -76,7 +80,7 @@ export function getDeviceInfo(devType: number): DeviceTypeInfo {
   }
 
   // Fallback heuristic: IDs >= 0x5000 are typically RM4 series
-  const isRM4 = (devType >= 0x5000 && devType <= 0x6fff) || (devType & 0x04) !== 0;
+  const isRM4 = devType >= 0x5000 && devType <= 0x6fff;
   return {
     name: `Unknown Broadlink (0x${devType.toString(16)})`,
     isRM4,

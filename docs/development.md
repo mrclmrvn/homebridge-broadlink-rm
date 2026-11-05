@@ -30,15 +30,20 @@ presence as evidence that their behaviors are supported by the new code.
 | src/broadlink/ | UDP packets, crypto, discovery, IR learning and native sensors |
 | src/accessories/ | HomeKit service and code mappings |
 | src/accessories/timed.ts | Serialized commands, cancellable timers/delays for newer controllers |
-| src/accessories/sensorSource.ts | Native/file readings, validation and unit conversion |
+| src/accessories/sensorSource.ts | Native/file/MQTT/1-wire and explicit pseudo readings, validation and units |
+| src/accessories/battery.ts | Optional battery telemetry and low-battery service |
+| src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
+| src/sensors/power.ts, feedback.ts | Power probes and explicit file/MQTT binary feedback |
+| src/helpers/commands.ts | Bounded structured command compilation |
 | src/cli.ts | Standalone diagnostics |
 | config.schema.json | Shared Homebridge visual configuration schema |
 | test/v5/ | New tests, controlled clocks and service fixtures |
 | accessories/, helpers/, base/, index.js, platform.js | Legacy reference implementation |
 
 The package entry point is dist/index.js, not the root legacy index.js. Dist is
-generated and gitignored. Runtime npm dependencies are empty; development tools
-and the Homebridge test dependency have their own dependency trees.
+generated and gitignored. MQTT.js is a runtime dependency for configured MQTT
+sources and is loaded lazily. The Broadlink driver uses standard libraries.
+Development tools and the Homebridge test dependency have their own trees.
 
 ## Test expectations
 
@@ -49,9 +54,11 @@ setImmediate callback on a loaded CI runner; increasing a delay only hides that
 race. The suite also constructs remaining services with real HAP classes to
 check initial values and characteristic warnings.
 
-These tests do not establish packet correctness, RF performance, physical state,
-or live HomeKit pairing. Driver-focused tests and hardware checks remain on the
-[roadmap](v5-roadmap.md). When changing public options, update the relevant v5
+Driver-focused tests now exercise authentication, AES vectors, packet checksums,
+response handling, discovery, RF sequencing, and cancellation using in-memory
+sockets. They do not establish real firmware compatibility, RF performance,
+physical state or live HomeKit pairing. Hardware checks remain on the
+[roadmap](roadmap.md). When changing public options, update the relevant v5
 guide and schema alongside the implementation.
 
 ## GitHub Actions
@@ -75,21 +82,23 @@ npm pack --dry-run
 npm pack
 ```
 
-Build first: prepublishOnly runs before npm publish, not before npm pack. Check
-the dry-run inventory and tarball, including dist/index.js, declarations, schema,
-README, and license. There is not yet an explicit files allowlist, so legacy and
-test files may also be included. Packaging cleanup is still outstanding.
+prepack builds automatically for packing; prepublishOnly runs npm test before
+publication. Check the dry-run inventory and tarball, including dist/index.js,
+declarations, schema, README, license, and the CLI bin entry. An explicit files
+allowlist excludes legacy source and tests. Review the resulting artifact before
+any release; no publication is performed by these inspection commands.
 
-Install the tarball into an isolated Homebridge environment. Test startup,
+Use the [validation runbook](validation.md) and [report template](validation-report-template.md)
+when installing into an isolated Homebridge environment. Test startup,
 restored cache, each used accessory type, missing hardware, command failures,
 shutdown, TV external pairing, and actual appliance responses. Do not substitute
 mocked service tests for this validation.
 
 ## Release work still required
 
-Before publishing an alpha for others, reconcile package.json's broader declared
-Node/Homebridge engines with actual tested compatibility, review the tarball
-inventory, complete driver tests and a recorded hardware test pass, and check
+Before publishing an alpha for others, validate the declared Homebridge range
+beyond the development dependency, review the tarball inventory, expand driver
+coverage with real-device fixtures and a recorded hardware test pass, and check
 migration documentation. Verify the package version and final changelog, and
 confirm the npm scope/account and dist-tag intended for that release.
 

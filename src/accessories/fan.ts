@@ -10,15 +10,26 @@ export class FanAccessory extends TimedAccessory {
   private speed = 0;
   private direction = 0;
   private swing = 0;
+  private cycleStep?: number;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
+    this.validatePowerTimers();
     const steps = Number(this.config.speedSteps);
+    if (this.config.speedCycle && (!Number.isInteger(steps) || steps < 1 || steps > 100 || !this.config.data?.fanSpeed)) {
+      throw new Error('speedCycle requires speedSteps (1..100) and data.fanSpeed');
+    }
+    this.seconds(this.config.speedCycleInterval, 0.1);
+    if (this.config.defaultFanSpeed !== undefined && (typeof this.config.defaultFanSpeed !== 'number'
+      || !Number.isFinite(this.config.defaultFanSpeed) || this.config.defaultFanSpeed <= 0 || this.config.defaultFanSpeed > 100)) throw new Error('Invalid defaultFanSpeed');
+    if (this.config.defaultSpeedStep !== undefined && (!Number.isInteger(this.config.defaultSpeedStep) || this.config.defaultSpeedStep < 1
+      || this.config.defaultSpeedStep > (Number.isInteger(steps) ? steps : 100))) throw new Error('Invalid defaultSpeedStep');
     const configuredStep = Number(this.config.stepSize ?? 1);
     this.stepSize = Number.isInteger(steps) && steps >= 1 && steps <= 100
       ? Math.floor(100 / steps)
       : Number.isFinite(configuredStep) && configuredStep >= 1 && configuredStep <= 100
         ? configuredStep : 1;
+    if (this.config.defaultSpeedStep !== undefined && this.config.defaultSpeedStep * this.stepSize > 100) throw new Error('Default fan speed exceeds 100 percent');
     const kind = String(this.config.type).toLowerCase();
     const legacy = kind === 'fanv1';
     const serviceType = legacy ? platform.Service.Fan : kind === 'air-purifier'
@@ -33,7 +44,7 @@ export class FanAccessory extends TimedAccessory {
       this.service.getCharacteristic(C.Active).onGet(() => this.active)
         .onSet(value => this.serialize(() => this.setActive(value)));
     }
-    const hasSpeed = kind === 'fan' || legacy || Object.keys(this.config.data || {}).some(key => /^fanSpeed\d+$/.test(key));
+    const hasSpeed = kind === 'fan' || legacy || this.config.speedCycle || Object.keys(this.config.data || {}).some(key => /^fanSpeed\d+$/.test(key));
     if (hasSpeed) this.service.getCharacteristic(C.RotationSpeed)
       .setProps({ minValue: 0, maxValue: 100, minStep: this.stepSize })
       .onGet(() => this.speed).onSet(value => this.serialize(() => this.setSpeed(value)));
@@ -70,7 +81,21 @@ export class FanAccessory extends TimedAccessory {
         && this.service.getCharacteristic(C.SwingMode);
       if (characteristic) this.service.removeCharacteristic(characteristic);
     }
+    if (kind === 'fan' || legacy) this.watchFanPower();
   }
+
+  protected watchFanPower(): void {
+    this.watchPower(on => {
+      if (this.active !== Number(on)) this.cancelTimer('power-auto');
+      this.active = Number(on);
+      if (!on) { this.speed = 0; this.cycleStep = undefined; }
+      this.publishPower();
+      if (this.service.testCharacteristic(this.platform.Characteristic.RotationSpeed)) this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+      this.observedActiveChanged();
+    });
+  }
+
+  protected observedActiveChanged(): void {}
 
   protected setupPhysicalLock(): void {
     const C = this.platform.Characteristic;
@@ -95,11 +120,27 @@ export class FanAccessory extends TimedAccessory {
     await this.transmit(key);
   }
 
-  protected async setActive(value: CharacteristicValue): Promise<void> {
+  protected async setActive(value: CharacteristicValue, applyDefaults = true): Promise<void> {
     const target = Number(value) ? 1 : 0;
-    if (target === this.active) return;
+    const required = this.power ? await this.power.requiresSend(Boolean(target)) : target !== this.active;
+    if (!required) {
+      this.active = target;
+      if (!target) {
+        this.speed = 0; this.cycleStep = undefined;
+        if (this.service.testCharacteristic(this.platform.Characteristic.RotationSpeed)) this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, 0);
+      }
+      this.publishPower();
+      this.observedActiveChanged();
+      return;
+    }
     await this.sendConfigured(target ? 'on' : 'off');
+    this.power?.recordSent(Boolean(target));
+    this.cycleStep = target && this.config.speedCycle ? this.config.defaultSpeedStep ?? 1 : undefined;
     this.active = target;
+    if (this.cycleStep !== undefined) {
+      this.speed = this.cycleStep * this.stepSize;
+      this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+    }
     this.publishPower();
     if (!target) {
       this.speed = 0;
@@ -108,6 +149,11 @@ export class FanAccessory extends TimedAccessory {
       }
     }
     await this.activeChanged();
+    this.automaticPower(Boolean(target), on => this.setActive(on));
+    if (target && applyDefaults && this.config.alwaysResetToDefaults) {
+      const desired = this.config.defaultSpeedStep ? this.config.defaultSpeedStep * this.stepSize : this.config.defaultFanSpeed ?? 100;
+      await this.setSpeed(desired);
+    }
   }
 
   protected async activeChanged(): Promise<void> {}
@@ -129,6 +175,25 @@ export class FanAccessory extends TimedAccessory {
       await this.setActive(0);
       return;
     }
+    if (this.config.speedCycle) {
+      await this.setActive(1, false);
+      if (this.cycleStep === undefined) throw new Error('Fan cycle position is unknown; turn off and on before selecting speed');
+      const steps = Array.from({ length: this.config.speedSteps }, (_, index) => index + 1);
+      const target = steps.reduce((best, step) => Math.abs(step * this.stepSize - requested) < Math.abs(best * this.stepSize - requested) ? step : best);
+      const count = (target - this.cycleStep + steps.length) % steps.length;
+      for (let i = 0; i < count; i++) {
+        try { await this.sendConfigured('fanSpeed'); }
+        catch (error) { this.cycleStep = undefined; throw error; }
+        this.cycleStep = this.cycleStep % steps.length + 1;
+        this.speed = this.cycleStep * this.stepSize;
+        this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+        if (i < count - 1) await this.delay(this.seconds(this.config.speedCycleInterval, 0.1));
+      }
+      this.speed = target * this.stepSize;
+      this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+      this.automaticPower(true, on => this.setActive(on));
+      return;
+    }
     const speeds = Object.keys(this.config.data || {})
       .filter(key => /^fanSpeed\d+$/.test(key))
       .map(key => Number(key.slice(8)))
@@ -138,10 +203,11 @@ export class FanAccessory extends TimedAccessory {
     const closest = speeds.reduce((best, speed) =>
       Math.abs(speed - requested) < Math.abs(best - requested) ? speed : best);
     if (this.active && closest === this.speed) return;
-    await this.setActive(1);
+    await this.setActive(1, false);
     await this.sendConfigured(`fanSpeed${closest}`);
     this.speed = closest;
     this.publishPower();
     this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, closest);
+    this.automaticPower(true, on => this.setActive(on));
   }
 }

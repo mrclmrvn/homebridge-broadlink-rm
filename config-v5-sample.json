@@ -40,6 +40,15 @@
           "disabled": true,
           "noHumidity": true,
           "sensorPollInterval": 10
+        },
+        {
+          "name": "Example MQTT Sensor",
+          "type": "temperatureSensor",
+          "disabled": true,
+          "mqttURL": "mqtt://broker.invalid:1883",
+          "mqttTopic": "zigbee2mqtt/room",
+          "mqttMaxAge": 300,
+          "sensorPollInterval": 0
         }
       ]
     }

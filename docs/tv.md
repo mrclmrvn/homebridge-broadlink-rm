@@ -50,10 +50,13 @@ uses relative up/down commands; absolute volume is not exposed. Input selection
 does not automatically power on the TV. Missing codes and transmission failures
 are reported to HomeKit.
 
-Ping/ARP power detection, automatic power timers, structured code sequences, and
-picture modes remain unimplemented. This port does not yet provide full legacy
-compatibility. Use discrete power codes where possible: toggle-only remotes can
-lose synchronization after changes from another remote or plugin restart.
+Optional [Ping/ARP power detection](power-and-feedback.md#ping-and-arp-power-estimates)
+updates Active and checks observed state before a power command. Monitoring sends
+no IR. Without detection, toggle-only remotes can lose synchronization after
+changes from another remote or plugin restart. All command leaves accept
+[structured sequences](power-and-feedback.md#shared-structured-commands), and
+writes are serialized. Automatic TV power timers and picture modes remain
+unimplemented; full legacy compatibility remains a goal.
 
 `npm test` checks controls, failure handling, input cleanup, external publishing,
 and migration using mocks. Live Homebridge pairing and physical TV operation

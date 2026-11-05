@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- AC/Thermostat target persistence in Homebridge accessory context, restoring valid
+  setpoints after restart while leaving startup power Off without transmission.
+- Anonymized legacy cooling-config fixture and real HAP regression coverage for
+  complete temperature maps, per-host routing, deferred writes and a disabled fan.
 - TypeScript dynamic platform and a Node.js standard-library Broadlink driver.
 - IR diagnostic CLI, native sensor queries, and core implementations for all legacy accessory type names.
 - Fan, external television, light, window covering/window, garage door, lock, purifier, humidifier/dehumidifier, standalone sensor, outlet, and switch sequence/repeat controls.
@@ -15,17 +19,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v5 unit tests, real HAP service-construction checks, and GitHub Actions across Node 22/24/26 on Linux, Windows, and Intel macOS.
 - v5 setup, migration, troubleshooting, accessory, development/release, and roadmap documentation plus a dedicated sample configuration.
 
+- RF learning with cancellation and stage prompts, raw Pronto conversion, an installed CLI, and packet-level regression tests.
+- Exact static host device IDs/ports and discovery address refresh.
+
+- MQTT sensor subscriptions for sensors, AC/Thermostat, HeaterCooler and humidity control, preserving legacy topic/auth options and supporting nested JSON paths.
+- Receipt-age expiry, reconnect/resubscription, invalid-reading errors and push-based HomeKit updates with broker/credential-safe diagnostics.
+- MQTT protocol integration test using the real client and an in-process broker stream.
+
+- Hardware/Homebridge/MQTT validation runbook and a blank report template for recording actual test evidence and rollback results.
+
+- Shared structured command leaves, Ping/ARP power estimates and guarded toggles,
+  fan speed cycling/default resets/power timers, and light exclusives/power timers.
+- Explicit file/MQTT garage endpoint/obstruction and standalone lock-bolt feedback.
+
+- Linux 1-wire temperature readings with CRC validation, signed millidegrees and
+  cancellable reads; explicit Celsius pseudo-temperature configuration.
+- Optional battery percentage/low-battery telemetry from files and MQTT across
+  sensor and climate accessories, with independent freshness and no assumed full battery.
+
+### Fixed
+
+- Thermostat rejects unsupported modes and invalid temperatures, preserves structured
+  temperature commands, and commits requested state only after successful sends.
+- Thermostat measurements no longer substitute the target temperature; shared MQTT/file/native reads and polling resources are cleaned up on shutdown.
+- Authentication queue deadlock, session-key offsets, AES padding, sensor subcommands, discovery fields, and pending socket cleanup.
+- CLI operational failures now return nonzero status; learned-code polling preserves authorization and transport errors.
+
 ### Changed
 
+- Node engines now match the locked development dependency and CI majors; package files are allowlisted and packing builds automatically.
 - Package identity to `@mrclmrvn/homebridge-broadlink-rm` with `dist/index.js` as the entry point.
 - `heater-cooler` now uses HeaterCooler instead of the earlier v5 Thermostat alias.
-- README now introduces v5; the historical README is preserved under docs/legacy-readme.md.
+- README now introduces v5; the historical README is preserved under docs/v4-readme.md.
 
 ### Known limitations
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
-- RF learning, MQTT/1-wire integrations, ping/ARP, Pronto conversion, history, and several advanced per-accessory behaviors remain outstanding.
-- Engine compatibility, driver/hardware validation, packaging cleanup, release publication, and Homebridge verification remain pending; see docs/v5-roadmap.md.
+- Several advanced per-accessory behaviors remain outstanding. 1-wire, pseudo and battery sources still require live validation. Optional Eve history is excluded from the current scope.
+- Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/roadmap.md.
 
 ## [4.4.21 - 2026-05-10]
 ### Fixed

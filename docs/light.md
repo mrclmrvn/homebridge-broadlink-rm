@@ -55,10 +55,19 @@ the reported state. Similarly, a successful hue send is retained when a later
 saturation send fails. Color temperature and hue/saturation are separate inferred
 states; no physical color conversion or feedback is available.
 
-Legacy exclusives, automatic on/off timers, structured code sequences, and other
-advanced switch options remain unimplemented. Full legacy compatibility remains
-a roadmap goal. Restart Homebridge after changing configuration; optional cached
-controls are removed when their corresponding code groups are removed.
+`exclusives: ["Other Light Name"]` marks named lights Off locally when this
+light turns on; the relationship is reciprocal and does not send their off
+codes. Use it for alternate presets that physically replace one another, rather
+than independent lights needing an off transmission.
+
+`enableAutoOff` / `enableAutoOn` schedule real Off/On commands after `onDuration`
+/ `offDuration` (default 60 seconds). Explicit legacy `disableAutomaticOff: false`
+/ `disableAutomaticOn: false` also enable them. Durations must be positive when
+enabled. No automatic command runs at startup; shutdown cancels timers and
+power-on delays. Commands accept [structured sequences](power-and-feedback.md#shared-structured-commands).
+Other advanced legacy options remain roadmap work. Restart Homebridge after
+changing configuration; cached optional controls are removed when their
+corresponding code groups are removed.
 
 Run `npm test` for mocked control, queue ordering, and transmission failure tests.
 Live Homebridge and physical light validation remain outstanding.

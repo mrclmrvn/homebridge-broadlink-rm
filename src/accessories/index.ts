@@ -86,6 +86,7 @@ export function createAccessoryInstance(
     case 'switch-repeat':
       return new SwitchAccessory(platform, accessory);
 
+    case 'learn-rf':
     case 'learn-code':
     case 'learn-ir':
       return new LearnCodeAccessory(platform, accessory);

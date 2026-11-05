@@ -4,6 +4,8 @@ import { RMDevice, discoverDevices, getDeviceInfo } from './broadlink';
 export interface HostConfig {
   address: string;
   mac: string;
+  devType?: number | string;
+  port?: number;
   isRM4?: boolean;
   isRFSupported?: boolean;
 }
@@ -26,13 +28,20 @@ export class DeviceManager {
     const ip = device.host;
     const macKey = this.normalizeMac(device.macAddress);
 
-    if (this.devicesByMac.has(macKey)) {
-      return;
-    }
+    const existing = this.devicesByMac.get(macKey);
+    if (existing === device) return;
+    if (existing) {
+      if (existing.host === device.host && existing.devType === device.devType && existing.port === device.port) {
+        device.close();
+        return;
+      }
+      existing.close();
+      if (this.devicesByIp.get(existing.host) === existing) this.devicesByIp.delete(existing.host);
+      this.allDevices[this.allDevices.indexOf(existing)] = device;
+    } else this.allDevices.push(device);
 
     this.devicesByIp.set(ip, device);
     this.devicesByMac.set(macKey, device);
-    this.allDevices.push(device);
 
     const info = getDeviceInfo(device.devType);
     this.log.info(`[DeviceManager] Registered ${info.name} at ${ip} (${device.macAddress})`);
@@ -41,24 +50,23 @@ export class DeviceManager {
   public async initHosts(hosts?: HostConfig[]): Promise<void> {
     if (hosts && Array.isArray(hosts) && hosts.length > 0) {
       for (const host of hosts) {
-        if (!host.address || !host.mac) {
+        if (!host || typeof host !== 'object' || !host.address || !host.mac) {
           this.log.warn(`[DeviceManager] Skipping invalid host config: ${JSON.stringify(host)}`);
           continue;
         }
 
-        // Determine devType
-        let devType = 0x2221;
-        if (host.isRFSupported) devType |= 0x02;
-        if (host.isRM4) devType |= 0x04;
-        // RM4 Pro real devType 0x520b
-        if (devType === 0x2227 || (host.isRM4 && host.isRFSupported)) {
-          devType = 0x520b;
-        } else if (host.isRM4) {
-          devType = 0x520c;
+        try {
+          let devType = host.isRM4 ? host.isRFSupported ? 0x520b : 0x520c : host.isRFSupported ? 0x2712 : 0x2737;
+          if (host.devType !== undefined) {
+            if (typeof host.devType === 'number') devType = host.devType;
+            else if (/^(?:0x)?[0-9a-f]{1,4}$/i.test(host.devType)) devType = parseInt(host.devType.replace(/^0x/i, ''), 16);
+            else throw new Error('devType must be an integer or a hexadecimal string');
+          }
+          const device = new RMDevice(host.address, host.mac, devType, host.port);
+          this.registerDevice(device);
+        } catch (error) {
+          this.log.warn(`[DeviceManager] Skipping invalid host: ${error instanceof Error ? error.message : error}`);
         }
-
-        const device = new RMDevice(host.address, host.mac, devType);
-        this.registerDevice(device);
       }
     }
   }

@@ -1,11 +1,11 @@
 import type { Characteristic, CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
-import { BaseAccessory } from './base';
+import { TimedAccessory } from './timed';
 
 type CodeStep = { value: number; key: string };
 
 /** Discrete IR light controls, using legacy brightnessXX and hueXX code names. */
-export class LightAccessory extends BaseAccessory {
+export class LightAccessory extends TimedAccessory {
   private readonly service: Service;
   private on = false;
   private brightness = 0;
@@ -13,10 +13,13 @@ export class LightAccessory extends BaseAccessory {
   private hue = 0;
   private saturation = 100;
   private colorTemperature = 140;
-  private queue: Promise<void> = Promise.resolve();
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
+    this.validatePowerTimers();
+    this.seconds(this.config.onDelay, 0.1);
+    if (this.config.exclusives !== undefined && (!Array.isArray(this.config.exclusives)
+      || this.config.exclusives.some((name: unknown) => typeof name !== 'string' || !name))) throw new Error('exclusives must be an array of accessory names');
     const C = platform.Characteristic;
     this.service = accessory.getService(platform.Service.Lightbulb)
       || accessory.addService(platform.Service.Lightbulb, this.name);
@@ -53,9 +56,7 @@ export class LightAccessory extends BaseAccessory {
   }
 
   private enqueue(action: () => Promise<void>): Promise<void> {
-    const result = this.queue.then(action);
-    this.queue = result.catch(() => {});
-    return result;
+    return this.serialize(action);
   }
 
   private number(value: CharacteristicValue, min: number, max: number): number {
@@ -95,11 +96,10 @@ export class LightAccessory extends BaseAccessory {
     if (this.on) return;
     if (this.config.data?.on) {
       await this.sendConfigured('on');
-      this.on = true;
-      this.service.updateCharacteristic(this.platform.Characteristic.On, true);
+      this.markOn();
       const delay = Number(this.config.onDelay ?? 0.1);
       if (Number.isFinite(delay) && delay > 0) {
-        await new Promise<void>(resolve => setTimeout(resolve, delay * 1000));
+        await this.delay(delay);
       }
     }
   }
@@ -107,6 +107,17 @@ export class LightAccessory extends BaseAccessory {
   private markOn(): void {
     this.on = true;
     this.service.updateCharacteristic(this.platform.Characteristic.On, true);
+    this.automaticPower(true, on => this.setOn(on));
+    for (const instance of this.platform.instances?.values() || []) {
+      if (instance !== this && instance instanceof LightAccessory
+        && ((this.config.exclusives || []).includes(instance.name) || (instance.config.exclusives || []).includes(this.name))) {
+        instance.on = false;
+        instance.brightness = 0;
+        instance.cancelTimer('power-auto');
+        instance.service.updateCharacteristic(this.platform.Characteristic.On, false);
+        if (instance.service.testCharacteristic(this.platform.Characteristic.Brightness)) instance.service.updateCharacteristic(this.platform.Characteristic.Brightness, 0);
+      }
+    }
   }
 
   private async setOn(target: boolean): Promise<void> {
@@ -119,6 +130,8 @@ export class LightAccessory extends BaseAccessory {
     }
     await this.sendConfigured(target ? 'on' : 'off');
     this.on = target;
+    if (target) this.markOn();
+    else this.automaticPower(false, on => this.setOn(on));
     if (!target) {
       this.brightness = 0;
       if (this.service.testCharacteristic(this.platform.Characteristic.Brightness)) {

@@ -26,7 +26,7 @@ Positive speed requests select the nearest configured `fanSpeedXX` percentage.
 Ties select the lower speed. A positive speed request powers on an inactive fan
 before sending its speed code. Zero sends `data.off` and resets speed to zero.
 `speedSteps: 3` sets HomeKit's percentage increment to 33; alternatively configure
-`stepSize` from 1 to 100. Direct power-on sends only `data.on`.
+`stepSize` from 1 to 100. Direct power-on sends only `data.on` unless default reset is enabled.
 
 Direction uses `data.clockwise` and `data.counterClockwise`. Swing uses
 `data.swingOn` / `data.swingOff`, falling back to `data.swingToggle`.
@@ -35,11 +35,28 @@ Hide controls using `hideRotationDirection` / `hideSwingMode`, or set the legacy
 `showRotationDirection` / `showSwingMode` options to false. Missing codes report
 an error to HomeKit; failed sends do not commit the affected control's state.
 
-State is inferred from successful transmissions and starts off on plugin startup.
-External remote changes cannot be detected. Legacy `speedCycle`, automatic power
-timers, default speed/reset options, ping/ARP detection, and structured code
-sequences are not implemented in this v5 fan port yet. Full legacy configuration
-compatibility remains a roadmap goal.
+For a single speed-cycle button, set `speedCycle: true`, integer `speedSteps`
+(1–100), and `data.fanSpeed`. The plugin assumes power-on starts at
+`defaultSpeedStep` (default 1), then sends the forward pulse count, wrapping
+at the last speed. `speedCycleInterval` defaults to 0.1 seconds between pulses.
+Configure the assumed startup step to match the appliance. An external power-on
+or failed pulse leaves cycle position unknown; turn off/on to establish it again.
+Power cycling must actually reset the appliance to that step.
+
+`alwaysResetToDefaults: true` applies `defaultFanSpeed` (default 100), or
+`defaultSpeedStep * stepSize` when supplied, on direct power-on. A speed request
+uses its requested speed instead. Successful power changes remain reported if a
+later default-speed command fails. `enableAutoOff` / `enableAutoOn` send actual
+power commands after `onDuration` / `offDuration` (default 60 seconds). Explicit
+legacy `disableAutomaticOff: false` / `disableAutomaticOn: false` also enable
+them. Durations must be positive when enabled; no automatic command starts at
+plugin startup. Shutdown cancels owned timers.
+
+State starts off and otherwise follows successful sends or optional
+[Ping/ARP observations](power-and-feedback.md#ping-and-arp-power-estimates).
+Each command accepts [structured sequences](power-and-feedback.md#shared-structured-commands).
+Speed, direction and swing remain inferred; full legacy configuration parity
+and physical device validation remain roadmap work.
 
 Run `npm test` to build and run the v5 tests. These tests use an accessory mock
 and a fake Broadlink sender; hardware and live Homebridge validation remain

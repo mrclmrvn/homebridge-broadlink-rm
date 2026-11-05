@@ -1,133 +1,67 @@
+#!/usr/bin/env node
 import { discoverDevices, RMDevice, getDeviceInfo } from './broadlink';
+import { convertProntoCode } from './helpers/convertProntoCode';
 
-async function main() {
-  const args = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)): Promise<void> {
   const command = args[0] || 'help';
-
-  switch (command) {
-    case 'discover': {
-      console.log('🔍 Scanning local network for Broadlink devices...');
-      const devices = await discoverDevices(4000);
-      if (devices.length === 0) {
-        console.log('No Broadlink devices responded to discovery broadcast.');
-      } else {
-        console.log(`\nFound ${devices.length} Broadlink device(s):`);
-        for (const d of devices) {
-          const info = getDeviceInfo(d.devType);
-          console.log(` • [${info.name}] IP: ${d.host} | MAC: ${d.macAddress} | devType: 0x${d.devType.toString(16)} (isRM4: ${info.isRM4})`);
-          d.device.close();
-        }
-      }
-      break;
+  if (command === 'help' || command === '--help' || command === '-h') {
+    console.log(`Broadlink RM CLI
+Usage: node dist/cli.js <command>
+  discover
+  auth <ip> <mac> [devTypeHex]
+  send <ip> <mac> <hexOrQuotedPronto> [devTypeHex]
+  learn <ip> <mac> [devTypeHex]
+  learn-rf <ip> <mac> [devTypeHex]
+  sensors <ip> <mac> [devTypeHex]
+  convert-pronto "0000 ..."
+Device type defaults to 0x520b. Use the actual discovered type where possible.`);
+    return;
+  }
+  if (command === 'convert-pronto') {
+    if (args.length !== 2) throw new Error('Usage: convert-pronto "0000 ..."');
+    console.log(convertProntoCode(args[1]));
+    return;
+  }
+  if (command === 'discover') {
+    const devices = await discoverDevices(4000);
+    try {
+      if (!devices.length) console.log('No Broadlink devices responded.');
+      for (const item of devices) console.log(`${item.host} ${item.macAddress} 0x${item.devType.toString(16)} ${getDeviceInfo(item.devType).name}`);
+    } finally { for (const item of devices) item.device.close(); }
+    return;
+  }
+  if (!['auth', 'send', 'learn', 'learn-rf', 'sensors'].includes(command)) throw new Error(`Unknown command: ${command}`);
+  const sending = command === 'send';
+  const expectedMin = sending ? 4 : 3;
+  if (args.length < expectedMin || args.length > expectedMin + 1) {
+    throw new Error(`Usage: ${command} <ip> <mac>${sending ? ' <hexOrQuotedPronto>' : ''} [devTypeHex]`);
+  }
+  const rawType = args[sending ? 4 : 3] || '0x520b';
+  if (!/^(?:0x)?[0-9a-f]{1,4}$/i.test(rawType)) throw new Error('Invalid hexadecimal device type');
+  const device = new RMDevice(args[1], args[2], parseInt(rawType.replace(/^0x/i, ''), 16));
+  const controller = new AbortController();
+  const interrupt = () => controller.abort();
+  process.once('SIGINT', interrupt);
+  try {
+    switch (command) {
+      case 'auth': await device.auth(controller.signal); console.log('Authentication successful.'); break;
+      case 'send': await device.sendData(args[3]); console.log('Code sent.'); break;
+      case 'learn': console.log('Press one IR remote button.'); console.log(await device.learnData(30000, 1000, controller.signal)); break;
+      case 'learn-rf':
+        console.log(await device.learnRFData({ signal: controller.signal, onProgress: stage => console.log(stage === 'frequency'
+          ? 'Hold the RF remote button while the device searches for its frequency.' : 'Frequency found. Release and press the remote button to capture the code.') }));
+        break;
+      case 'sensors': console.log(JSON.stringify(await device.checkSensors())); break;
     }
-
-    case 'auth': {
-      const host = args[1];
-      const mac = args[2];
-      const devType = args[3] ? parseInt(args[3], 16) : 0x520b;
-
-      if (!host || !mac) {
-        console.error('Usage: cli auth <ip> <mac> [devTypeHex]');
-        process.exit(1);
-      }
-
-      console.log(`Authenticating with ${host} (${mac}, devType: 0x${devType.toString(16)})...`);
-      const device = new RMDevice(host, mac, devType);
-      try {
-        await device.auth();
-        console.log('✅ Authentication successful! Session established.');
-      } catch (err: any) {
-        console.error('❌ Authentication failed:', err.message);
-      } finally {
-        device.close();
-      }
-      break;
-    }
-
-    case 'send': {
-      const host = args[1];
-      const mac = args[2];
-      const hex = args[3];
-      const devType = args[4] ? parseInt(args[4], 16) : 0x520b;
-
-      if (!host || !mac || !hex) {
-        console.error('Usage: cli send <ip> <mac> <hexCode> [devTypeHex]');
-        process.exit(1);
-      }
-
-      console.log(`Sending code to ${host} (${mac})...`);
-      const device = new RMDevice(host, mac, devType);
-      try {
-        await device.sendData(hex);
-        console.log('✅ Code sent successfully!');
-      } catch (err: any) {
-        console.error('❌ Failed to send code:', err.message);
-      } finally {
-        device.close();
-      }
-      break;
-    }
-
-    case 'learn': {
-      const host = args[1];
-      const mac = args[2];
-      const devType = args[3] ? parseInt(args[3], 16) : 0x520b;
-
-      if (!host || !mac) {
-        console.error('Usage: cli learn <ip> <mac> [devTypeHex]');
-        process.exit(1);
-      }
-
-      console.log(`Entering IR learning mode on ${host} (${mac})...`);
-      console.log('👉 Point your remote at the RM4 and press the button now...');
-      const device = new RMDevice(host, mac, devType);
-      try {
-        const hex = await device.learnData(30000, 1000);
-        console.log(`\n🎉 Code captured!\nHex: ${hex}\n`);
-      } catch (err: any) {
-        console.error('❌ Learning failed:', err.message);
-      } finally {
-        device.close();
-      }
-      break;
-    }
-
-    case 'sensors': {
-      const host = args[1];
-      const mac = args[2];
-      const devType = args[3] ? parseInt(args[3], 16) : 0x520b;
-
-      if (!host || !mac) {
-        console.error('Usage: cli sensors <ip> <mac> [devTypeHex]');
-        process.exit(1);
-      }
-
-      console.log(`Querying sensors on ${host} (${mac})...`);
-      const device = new RMDevice(host, mac, devType);
-      try {
-        const reading = await device.checkSensors();
-        console.log('📊 Sensor Reading:', reading);
-      } catch (err: any) {
-        console.error('❌ Failed to read sensors:', err.message);
-      } finally {
-        device.close();
-      }
-      break;
-    }
-
-    default:
-      console.log(`
-Broadlink RM TypeScript CLI
-
-Usage:
-  npx ts-node src/cli.ts discover
-  npx ts-node src/cli.ts auth <ip> <mac> [devTypeHex]
-  npx ts-node src/cli.ts send <ip> <mac> <hexCode> [devTypeHex]
-  npx ts-node src/cli.ts learn <ip> <mac> [devTypeHex]
-  npx ts-node src/cli.ts sensors <ip> <mac> [devTypeHex]
-`);
+  } finally {
+    process.removeListener('SIGINT', interrupt);
+    device.close();
   }
 }
 
-main().catch(console.error);
-
+if (require.main === module) {
+  void main().catch(error => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
