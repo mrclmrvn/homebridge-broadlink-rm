@@ -31,6 +31,7 @@ presence as evidence that their behaviors are supported by the new code.
 | src/accessories/ | HomeKit service and code mappings |
 | src/accessories/timed.ts | Serialized commands, cancellable timers/delays for newer controllers |
 | src/accessories/sensorSource.ts | Native/file readings, validation and unit conversion |
+| src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
 | src/cli.ts | Standalone diagnostics |
 | config.schema.json | Shared Homebridge visual configuration schema |
 | test/v5/ | New tests, controlled clocks and service fixtures |
@@ -84,7 +85,8 @@ declarations, schema, README, license, and the CLI bin entry. An explicit files
 allowlist excludes legacy source and tests. Review the resulting artifact before
 any release; no publication is performed by these inspection commands.
 
-Install the tarball into an isolated Homebridge environment. Test startup,
+Use the [validation runbook](validation.md) and [report template](validation-report-template.md)
+when installing into an isolated Homebridge environment. Test startup,
 restored cache, each used accessory type, missing hardware, command failures,
 shutdown, TV external pairing, and actual appliance responses. Do not substitute
 mocked service tests for this validation.

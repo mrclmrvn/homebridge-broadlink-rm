@@ -70,7 +70,7 @@ RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
 
 Reported power, movement, and lock state are generally inferred from successful
 commands and timers. Real sensor readings are available only from supported
-Broadlink hardware or the implemented file sources. See each guide for failure
+Broadlink hardware, file sources, or MQTT measurements. See each guide for failure
 handling and unsupported options.
 
 ## Diagnostics and development
@@ -85,6 +85,8 @@ handling and unsupported options.
   IR learning, sending codes, sensor checks, and useful issue details.
 - [Development and release](docs/development.md): source layout, tests, CI,
   packaging, and release validation still needed.
+- [Validation runbook](docs/validation.md) and [report template](docs/validation-report-template.md):
+  reproducible hardware, Homebridge, MQTT, and rollback checks.
 - [Roadmap](docs/roadmap.md): outstanding integrations, compatibility, testing,
   and packaging work.
 - [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.

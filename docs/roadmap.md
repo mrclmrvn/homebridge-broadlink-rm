@@ -55,7 +55,8 @@ not verify Broadlink packets or real devices.
 
 ## Documentation follow-up after validation
 
-Record which hardware models, firmware and Homebridge/Node versions were actually
+Use the [validation runbook](validation.md) and [report template](validation-report-template.md)
+to record which hardware models, firmware and Homebridge/Node versions were actually
 tested; add reproducible examples from those checks. Update the setup and
 migration guides when compatibility gaps close. Keep historical v4 samples and
 references clearly marked until they are deliberately replaced or archived.

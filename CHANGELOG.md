@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Receipt-age expiry, reconnect/resubscription, invalid-reading errors and push-based HomeKit updates with broker/credential-safe diagnostics.
 - MQTT protocol integration test using the real client and an in-process broker stream.
 
+- Hardware/Homebridge/MQTT validation runbook and a blank report template for recording actual test evidence and rollback results.
+
 ### Fixed
 
 - Thermostat measurements no longer substitute the target temperature; shared MQTT/file/native reads and polling resources are cleaned up on shutdown.

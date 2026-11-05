@@ -16,7 +16,9 @@ have been ported. Existing learned hex codes can be reused.
    possible; physical hardware validation is still outstanding.
 4. Start with one RM and one accessory. Test discovery or explicit hosts, basic
    power, code selection, failures, and restart behavior before adding the rest.
-5. For a replacement installation, stop the old plugin instance, install v5 in
+5. Use the [validation runbook](validation.md) to record the exact artifact,
+   cache/pairing behavior and rollback results.
+6. For a replacement installation, stop the old plugin instance, install v5 in
    the Homebridge service's environment, apply the reviewed config, and restart.
 
 The new npm package is `@mrclmrvn/homebridge-broadlink-rm`; the platform alias
