@@ -8,7 +8,7 @@ export class FeedbackSource {
   private disposed = false;
   private readonly maxAge: number;
 
-  constructor(private readonly config: Record<string, any>, private readonly quantity: Extract<Quantity, 'contact' | 'lock' | 'obstruction'>) {
+  constructor(private readonly config: Record<string, any>, private readonly quantity: Extract<Quantity, 'contact' | 'lock' | 'obstruction' | 'jam'>) {
     if (!config || typeof config !== 'object' || Boolean(config.mqttURL) === Boolean(config.filePath)) {
       throw new Error('Feedback source requires exactly one of mqttURL or filePath');
     }
@@ -19,7 +19,7 @@ export class FeedbackSource {
     this.interval = interval * 1000;
     this.maxAge = maxAge * 1000;
     if (config.mqttURL) this.mqtt = new MQTTSensor({ ...config, mqttMaxAge: maxAge,
-      type: quantity === 'lock' ? 'lock' : quantity === 'obstruction' ? 'obstruction' : 'garage-door-opener' });
+      type: quantity === 'lock' ? 'lock' : quantity === 'obstruction' ? 'obstruction' : quantity === 'jam' ? 'jam' : 'garage-door-opener' });
     else if (typeof config.filePath !== 'string' || !config.filePath) throw new Error('Invalid feedback filePath');
   }
 
@@ -37,7 +37,7 @@ export class FeedbackSource {
       try { value = JSON.parse(trimmed); } catch { value = trimmed; }
       if (value && typeof value === 'object') {
         const object = value as Record<string, unknown>;
-        value = object[this.quantity] ?? (this.quantity === 'lock' ? object.locked : this.quantity === 'contact' ? object.closed : object.obstructed);
+        value = object[this.quantity] ?? (this.quantity === 'lock' ? object.locked : this.quantity === 'contact' ? object.closed : this.quantity === 'jam' ? object.jammed : object.obstructed);
       }
     }
     if (this.disposed) throw new Error('Feedback source is closed');

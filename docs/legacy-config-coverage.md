@@ -22,9 +22,9 @@ bytes and must not be used to operate appliances.
 | Two `air-conditioner` accessories with `coolOnly: true` | Thermostat services expose Off/Cool |
 | `defaultCoolTemperature: 25`, bounds 16–30, step 1 | Initial/fallback target 25°C; valid saved targets are restored from the Homebridge cache |
 | All `temperature16` through `temperature30` entries | Each nested data string is selected and routed to its configured host in tests |
-| `{ "pseudo-mode": "cool", "data": "..." }` | The data wrapper works. Mode metadata is not interpreted; it is redundant for these cooling-only units |
+| `{ "pseudo-mode": "cool", "data": "..." }` | The data wrapper works. Heat/cool mode metadata is interpreted after successful sends; cool is consistent with these units |
 | `ignoreTemperatureWhenOff: true` | The requested effect matches v5's existing rule: temperature writes while Off are stored without sending IR. False/omitted legacy behavior is not reproduced |
-| `defaultMode: "cool"` | No separate AC startup-mode handling is implemented. Both units start Off and Cool is their only active mode |
+| `defaultMode: "cool"` | Used as the fixed mode hint for explicit off-state activation. Both units start Off; Cool is their only active mode |
 | Distinct `data.on` and `temperature25` codes | Turning on prefers the selected temperature code. A separate On command is not automatically sent first |
 | Disabled fan, three speeds at 33/66/99 | Skipped during registration; an existing cached disabled accessory is removed. The same fan mapping works when explicitly enabled in a test |
 | `defaultFanSpeed: 33` | Does not itself send a reset-speed command; default reset requires `alwaysResetToDefaults` |
@@ -43,7 +43,9 @@ accepted target is persisted in Homebridge context and restored for the same
 identity/cache after restart. If a user chooses 27°C while Off, v5 stores 27°C
 without transmitting, then sends `temperature27` when Cool is enabled.
 The legacy mode-change path resets to `defaultCoolTemperature` when entering
-Cool; this behavior is not yet reproduced. Test the desired user flow explicitly.
+Cool. V5 now offers `resetTemperatureOnModeChange: true` to request that behavior;
+it stays disabled by default to preserve the saved setpoint. See
+[Thermostat options](air-conditioner.md) and test the desired user flow explicitly.
 
 Cooling activity is inferred from successful sends, not compressor feedback.
 Current room temperature/humidity require an actual supported sensor; there is
@@ -74,7 +76,8 @@ across serialized cache restoration, startup without sends, invalid saved values
 failed command handling and cache-update errors. An additional regression changes
 an active AC from 25°C to 18°C, turns it Off, restores snapshots captured by the
 cache API and checks that two ACs retain independent targets without startup
-commands. `npm test` now passes 120 tests.
+commands. Subsequent mode/ambient automation coverage extends that checkpoint;
+the full `npm test` suite now passes 156 tests.
 This exercises Homebridge's cache API boundary, not live on-disk crash recovery.
 Record actual installation, discovery/authentication, sensor capabilities,
 temperature-code appliance responses, startup/pairing and Off/On flow using the

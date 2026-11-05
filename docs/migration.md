@@ -6,7 +6,9 @@ have been ported. Existing learned hex codes can be reused.
 
 The [contributed cooling configuration review](legacy-config-coverage.md) records
 which paths are covered by anonymized regression tests and which mode/default
-differences still need attention. This is software evidence, not a hardware pass.
+differences still need attention. The [source audit](legacy-compatibility-audit.md)
+records additional fallback/layout findings and remaining concrete gaps.
+This is software evidence, not a hardware pass.
 
 ## Prepare an isolated trial
 
@@ -28,17 +30,21 @@ differences still need attention. This is software evidence, not a hardware pass
 The new npm package is `@mrclmrvn/homebridge-broadlink-rm`; the platform alias
 remains `BroadlinkRM`. The old package name is not an installation alias for v5.
 The Node engine range matches the locked dependency and CI majors. The declared
-Homebridge range still needs validation beyond the development dependency.
+Homebridge range now has [representative automated coverage](homebridge-compatibility.md)
+beyond the development dependency; live integration and release-head CI results
+remain separate requirements.
 
 ## Configuration differences to review
 
 | Existing configuration | Current v5 behavior |
 | --- | --- |
 | Ordinary hex strings | Reused as accessory data; no re-learning required just for the rebuild |
+| AC sparse-map fallback | Disabled by default; true selects mode defaults, legacy selects the heatTemperature boundary/generic-default rule |
+| AC units / persistState | Display units supported; persistState false disables target persistence, not a general restoration of legacy power/movement state |
 | Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |
-| `air-conditioner` | Thermostat service with temperatureXX codes; advanced legacy mode logic is incomplete |
+| `air-conditioner` | Flat heat/cool/auto temperature codes, explicit device Auto, measured ambient thresholds and linked platform gates; saved setpoint preserved by default. See the Thermostat guide |
 | `temperatureSensor`, `humiditySensor` | Accepted with original casing; kebab-case aliases also available |
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
 | MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
@@ -48,7 +54,9 @@ Homebridge range still needs validation beyond the development dependency.
 | RF scan/learn buttons | Explicit learn-rf switch supports frequency sweep and packet capture; the old separate scan button is not recreated |
 | Pronto strings | Raw modulated 0000 strings with whitespace are converted before transmission |
 | Fan speedCycle/default-reset/timers, light exclusives | Supported; review assumptions and timer behavior in the fan/light guides |
-| Garage endpoint/obstruction and lock-bolt feedback | Explicit file/MQTT source objects; see the power and feedback guide |
+| Garage endpoint/obstruction, lock-bolt and jam feedback | Explicit file/MQTT source objects; jams require an explicit signal, not a missed deadline |
+| TV power timers / picture modes | Power timers supported; pictureMode is an explicit v5 code map rather than the old placeholder |
+| Light allowResend / stateless | Repeat power/brightness commands and local reset are supported; local reset sends no Off |
 | hideLearnButton/hideScanFrequencyButton | No automatic legacy helper-button creation; explicitly configure an IR learning accessory |
 
 See the type-specific guides for exact options. The old sample configs at the
@@ -78,13 +86,15 @@ appliance. Restarting the plugin or using another remote can desynchronize it.
 Locks start Unknown; garage doors start Stopped. These are deliberate unknown
 physical-state representations. The AC/Thermostat's last accepted target temperature
 is saved in Homebridge accessory context and restored for the same identity/cache;
-its power mode still starts Off without sending. Invalid saved targets fall back
+its power mode still starts Off without sending. Explicit ambient thresholds
+may act afterward on fresh measurements if the linked gate permits it. Invalid saved targets fall back
 to the configured default. This cache-based persistence does not preserve v4
 identities or survive cache removal. Window position starts from initialPosition
 (default 0), not a position sensor. Optional file/MQTT garage endpoint,
 obstruction and standalone lock-bolt sources provide explicit feedback; see
 [power and feedback](power-and-feedback.md). Configured unavailable sources fault
-rather than authorizing a command. Jam detection remains unimplemented.
+rather than authorizing a command. Explicit jamSensor feedback reports jam state
+and cancels automatic actions; it does not transmit stop/reversal or recover a motor.
 
 Sensor readers, including the Thermostat, report invalid/missing readings as
 errors rather than inventing zero values or displaying the AC target as measured

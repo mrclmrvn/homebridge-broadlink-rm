@@ -227,7 +227,7 @@ test('humidifier activation within the target band sends idle and failed activat
 });
 
 test('remaining services construct with real HAP classes without characteristic warnings', () => {
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const warnings = [];
   const platform = { Service: hap.Service, Characteristic: hap.Characteristic,
     log: { debug() {}, warn() {}, error() {}, info() {} }, deviceManager: { getDevice() {} } };

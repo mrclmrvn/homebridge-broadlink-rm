@@ -1,7 +1,7 @@
 import { PlatformAccessory, Service, Logging } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { RMDevice } from '../broadlink';
-import { compileCommands } from '../helpers/commands';
+import { compileCommands, type CommandStep } from '../helpers/commands';
 
 export abstract class BaseAccessory {
   protected readonly platform: BroadlinkRMPlatform;
@@ -48,7 +48,10 @@ export abstract class BaseAccessory {
    * Send an IR or RF hex code
    */
   protected async sendCode(code: unknown): Promise<void> {
-    const steps = compileCommands(code);
+    await this.sendCommands(compileCommands(code));
+  }
+
+  protected async sendCommands(steps: readonly CommandStep[]): Promise<void> {
     const signal = this.commandShutdown.signal;
     if (signal.aborted) throw new Error('Accessory has shut down');
     const device = this.getDevice();

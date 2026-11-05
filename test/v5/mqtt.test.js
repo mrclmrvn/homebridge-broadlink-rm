@@ -274,7 +274,7 @@ test('native Thermostat readings use the shared reader and its poll timer is dis
 });
 
 test('real HAP Thermostat construction does not warn about temperature defaults', () => {
-  const hap = require('@homebridge/hap-nodejs');
+  const hap = require('./helpers/homebridgeRuntime').hap;
   const { createAccessoryInstance } = require('../../dist/accessories');
   const accessory = new hap.Accessory('AC', hap.uuid.generate('mqtt-ac-test'));
   accessory.context = { config: { type: 'air-conditioner', coolOnly: true, sensorPollInterval: 0 } };

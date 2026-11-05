@@ -8,8 +8,10 @@ validation remain outstanding.
 ## Build and install a local package
 
 Use Node 22.12+ within 22.x, or Node 24/26, for the locked development dependency
-set. The Node engine declaration now matches that range; the declared Homebridge
-range still needs validation beyond the current development dependency. From your selected v5 checkout:
+set. The Node engine declaration matches that range. Representative Homebridge
+1.6.0/1.11.4/2.0.0/2.5.0 releases have [automated coverage](homebridge-compatibility.md);
+choose a Node version supported by both packages. Live integration remains
+outstanding. From your selected v5 checkout:
 
 ```bash
 npm ci
@@ -125,16 +127,19 @@ sequences are supported at command leaves across controllers; see
 This creates a Thermostat, not HeaterCooler. `airconditioner` is also accepted.
 Target temperatures use `tempStepSize` (default 1°C), rounded relative to the
 configured minimum, and matching keys such as `temperature24` or
-`temperature24.5`. Entries accept strings and structured commands. Turning on
-prefers the current temperature code, falling back to `on`; missing both is an
-error. Changing an active target requires its temperature code. Missing/failed
+`temperature24.5`. Mode-prefixed `heatXX` / `coolXX` take precedence over generic
+keys. Entries accept strings and structured commands. Mode changes can send a
+separate `data.heat` / `data.cool` command before the temperature code; `on` remains
+an activation fallback when no mode/temperature code is supplied. Changing an active target requires its temperature code. Missing/failed
 commands retain the previous state; off-state temperature changes are deferred.
 Set bounds and supply all temperature codes you intend to expose.
 
 `coolOnly` restricts modes to Off/Cool. It defaults to false in code, while the
 visual schema defaults to true; set it explicitly. Otherwise modes are Off,
-Heat and Cool; plugin-controlled Auto regulation is not offered. The current port
-does not select separate heat/cool code trees. Current activity is inferred from successful sends,
+Heat and Cool; `heatOnly` restricts to Off/Heat. Device Auto requires explicit
+mappings, while optional ambient control uses configured thresholds and measured
+temperature. Mode-specific flat codes, metadata and fixed Auto replacement
+are described in [Thermostat modes](air-conditioner.md). Current activity is inferred from successful sends,
 and temperature waits for a real reading instead of displaying the target as a
 measurement. The shared reader supports MQTT, files, Linux 1-wire and native RM
 sensors, plus an explicitly configured pseudo constant. Optional battery telemetry
@@ -146,8 +151,11 @@ and repeated identical commands are suppressed unless `allowResend` is true.
 Full legacy AC options remain pending.
 
 Accepted target-temperature changes are saved in the accessory's Homebridge cache,
-including changes made while Off. After a normal restart with the same accessory
-identity/cache, the last target is restored; startup stays Off and sends no IR.
+including changes made while Off, unless `persistState: false` disables target
+restore/cache updates. After a normal restart with the same accessory
+identity/cache, the last target is restored without sending IR. Startup starts
+Off; explicitly configured ambient automation can subsequently act on a fresh
+reading when its optional gate allows it.
 For example, 18°C → Off → restart → Cool sends the 18°C code. Failed active
 transmissions do not overwrite the saved target. Missing, malformed, out-of-range
 or step-incompatible saved values use `defaultCoolTemperature` (default 24) instead.
@@ -156,7 +164,12 @@ Removing the accessory/cache or changing its name/host can lose this saved value
 Homebridge owns the cache write; a persistence error is logged and sudden process
 or storage failure is not guaranteed to preserve the latest change.
 
-For distinct mode-specific `data.heat` / `data.cool`, use
+See [Thermostat modes and legacy options](air-conditioner.md) for On/mode delays,
+dry-off, power timers, resend aliases and opt-in default resets/fallback. Without
+reset-on-mode-change, the saved setpoint behavior above remains unchanged.
+See [ambient control and enable switches](air-conditioner.md#ambient-threshold-automation-and-linked-switches)
+for opt-in regulation, manual overrides and virtual gates.
+For nested setting maps under `data.heat` / `data.cool`, use
 [HeaterCooler](remaining-accessories.md#heatercooler).
 
 ## Switches and IR learning

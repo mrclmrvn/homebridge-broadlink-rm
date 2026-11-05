@@ -15,16 +15,21 @@ export abstract class TimedAccessory extends BaseAccessory {
     this.power.start(on => { if (!this.disposed) update(on); });
   }
 
+  protected powerTimerEnabled(on: boolean): boolean {
+    const disabled = this.config[on ? 'disableAutomaticOff' : 'disableAutomaticOn'];
+    return disabled !== undefined ? disabled === false : Boolean(this.config[on ? 'enableAutoOff' : 'enableAutoOn']);
+  }
+
   protected validatePowerTimers(): void {
-    if (this.config.enableAutoOff || this.config.disableAutomaticOff === false) this.seconds(this.config.onDuration, 60, true);
-    if (this.config.enableAutoOn || this.config.disableAutomaticOn === false) this.seconds(this.config.offDuration, 60, true);
+    if (this.powerTimerEnabled(true)) this.seconds(this.config.onDuration, 60, true);
+    if (this.powerTimerEnabled(false)) this.seconds(this.config.offDuration, 60, true);
   }
 
   protected automaticPower(on: boolean, setPower: (on: boolean) => Promise<void>): void {
     this.cancelTimer('power-auto');
-    if (on && (this.config.enableAutoOff || this.config.disableAutomaticOff === false)) {
+    if (on && this.powerTimerEnabled(true)) {
       this.schedule('power-auto', this.seconds(this.config.onDuration, 60, true) * 1000, () => setPower(false));
-    } else if (!on && (this.config.enableAutoOn || this.config.disableAutomaticOn === false)) {
+    } else if (!on && this.powerTimerEnabled(false)) {
       this.schedule('power-auto', this.seconds(this.config.offDuration, 60, true) * 1000, () => setPower(true));
     }
   }

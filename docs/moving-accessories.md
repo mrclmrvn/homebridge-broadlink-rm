@@ -87,7 +87,9 @@ Configured endpoints confirm completion; a closed-only contact cannot confirm
 Open. Configured obstruction feedback blocks closing when obstructed or
 unavailable. Without it, ObstructionDetected reports false and does not establish
 a clear doorway. Feedback-based auto-close requires an open endpoint sensor.
-No automatic stop/reversal on obstruction or jam detection is implemented.
+Optional `jamSensor` faults current state and cancels estimates/automatic close;
+see [jam feedback](power-and-feedback.md#explicit-jam-feedback). No automatic
+motor stop/reversal is transmitted.
 
 ## Lock
 
@@ -117,7 +119,10 @@ state and target; automatic failures are logged. Optional `lockSensor` accepts
 file/MQTT bolt feedback and requires confirmation rather than assuming completion
 from a timer. With feedback, auto-lock starts after a confirmed requested unlock.
 See [lock feedback](power-and-feedback.md#garage-and-lock-behavior-with-feedback).
-Door contact state cannot establish bolt state; jam detection is not implemented.
+Door contact state cannot establish bolt state. Explicit `jamSensor` reports
+JAMMED, guards commands and cancels automatic actions; see
+[jam feedback](power-and-feedback.md#explicit-jam-feedback). No jam is inferred
+solely from a missed bolt deadline.
 
 ## Configuration and validation
 

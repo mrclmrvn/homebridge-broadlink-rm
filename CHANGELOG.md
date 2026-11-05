@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exact Homebridge 1.6.0/1.11.4/2.0.0 compatibility jobs on Node 22/24 alongside
+  locked 2.5.0's existing Node/OS matrix, with version/engine preflight checks.
+- Real Homebridge registration, external TV publication and serialized cache
+  restoration tests; HAP tests resolve the selected Homebridge's own dependency.
+- Opt-in legacy AC sparse-map fallback using heatTemperature and generic default
+  keys, Thermostat display units, and persistState false for target persistence.
+
+- Appliance Auto commands/temperature maps and auto metadata without fabricated
+  compressor activity; fixed Auto replacement remains available.
+- Opt-in measured ambient AC thresholds, minimum action intervals, manual ownership,
+  bounded retry decisions and named platform switch/outlet gates.
+- Explicit virtual switch/outlet gates without IR/RF commands or power probes.
+- Thermostat flat heat/cool mappings, mode/On sequences, heat-only and fixed Auto
+  replacement, dry-off/power timers, and opt-in mode-default reset/code fallback.
+- TV automatic power timers and explicit picture-mode code maps; light resend
+  aliases and stateless local resets.
+- Explicit file/MQTT jam feedback for locks/garage doors, cancelling inferred
+  completion and automatic actions while keeping motor recovery under device control.
 - AC/Thermostat target persistence in Homebridge accessory context, restoring valid
   setpoints after restart while leaving startup power Off without transmission.
 - Anonymized legacy cooling-config fixture and real HAP regression coverage for
@@ -39,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Enabled but missing AC fallback codes now reject before On/mode transmissions.
+- AC composite plans preserve nested user sequence gaps independently of controller
+  delays, with one aggregate expansion limit checked before any stage sends.
 - Thermostat rejects unsupported modes and invalid temperatures, preserves structured
   temperature commands, and commits requested state only after successful sends.
 - Thermostat measurements no longer substitute the target temperature; shared MQTT/file/native reads and polling resources are cleaned up on shutdown.
@@ -56,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
 - Several advanced per-accessory behaviors remain outstanding. 1-wire, pseudo and battery sources still require live validation. Optional Eve history is excluded from the current scope.
-- Homebridge compatibility, hardware validation, release publication, and Homebridge verification remain pending; see docs/roadmap.md.
+- Live Homebridge/hardware validation, release-head CI results, publication and Homebridge verification remain pending; representative automated version coverage is documented.
 
 ## [4.4.21 - 2026-05-10]
 ### Fixed

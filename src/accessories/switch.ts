@@ -14,6 +14,9 @@ export class SwitchAccessory extends TimedAccessory {
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
+    if (this.config.virtual !== undefined && typeof this.config.virtual !== 'boolean') throw new Error('virtual must be a boolean');
+    if (this.config.virtual && (!['switch', 'outlet'].includes(String(this.config.type).toLowerCase())
+      || this.config.data !== undefined || this.config.pingIPAddress !== undefined)) throw new Error('Virtual switches/outlets cannot configure data or power probes');
     this.outlet = String(this.config.type).toLowerCase() === 'outlet';
     this.onDuration = this.seconds(this.config.onDuration, this.config.enableAutoOff ? 60 : 0);
     this.offDuration = this.seconds(this.config.offDuration, 60);
@@ -34,12 +37,15 @@ export class SwitchAccessory extends TimedAccessory {
     });
   }
 
+  /** Read-only gate for named AC ambient automation; undefined means no name match. */
+  public automationState(name: string): boolean | undefined { return name === this.name ? this.state : undefined; }
+
   private async setOn(target: boolean): Promise<void> {
     const requiresSend = !this.power || await this.power.requiresSend(target);
     const data = this.config.data;
     const actionOnly = typeof data === 'string' || Buffer.isBuffer(data) || Array.isArray(data);
     const code = actionOnly ? target ? data : undefined : target ? data?.on : data?.off;
-    if (requiresSend && !code && !(target === false && (actionOnly || this.config.stateless))) {
+    if (!this.config.virtual && requiresSend && !code && !(target === false && (actionOnly || this.config.stateless))) {
       throw new Error(`No IR/RF code configured for "${target ? 'on' : 'off'}"`);
     }
     let steps: CommandStep[] = [];

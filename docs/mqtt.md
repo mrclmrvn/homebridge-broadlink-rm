@@ -77,7 +77,7 @@ Battery accepts percentage scalars or numeric JSON fields/paths; combined JSON
 recognizes battery/batteryLevel/battery_level/batteryPercentage/battery_percentage
 case-insensitively. `batteryAlerts` exposes a separate Battery service on sensor
 and climate accessories; see [sensor sources](sensor-sources.md#optional-battery-status).
-Binary sources also use contact, lock and obstruction identifiers as described
+Binary sources also use contact, lock, obstruction and jam identifiers as described
 in the feedback guide. combined requires object measurements; unknown follows the combined
 JSON/scalar behavior described above. Topic filters support MQTT + and # rules,
 including the special handling of $-prefixed topics. Shared-subscription filters
@@ -126,11 +126,14 @@ consumer update timers. A late callback cannot re-enable a disposed source.
 ## Effect on appliance control
 
 MQTT supplies temperature display/feedback for AC/Thermostat and HeaterCooler.
-It does not add plugin-controlled automatic heating/cooling regulation, and does
-not alter the selected IR temperature code. The AC no longer presents its target
-temperature as a measured startup value: it waits for an actual reading. Native
-and file readings now use the same source reader on that accessory, with owned
-poll timers that stop on shutdown.
+With explicit AC `autoHeatTemperature` / `autoCoolTemperature`, valid temperature
+updates also drive [ambient-threshold control](air-conditioner.md#ambient-threshold-automation-and-linked-switches),
+subject to manual ownership, minimum intervals and linked switch gates. Without
+those options, receiving temperature data does not add ambient automation.
+HeaterCooler remains command-driven. The AC does not present its target as a
+measured startup value: it waits for an actual reading. Missing, invalid, stale
+or disconnected temperatures issue no ambient command; manual Off remains
+available. Native/file sources use the same reader and owned poll timers.
 
 For humidifier-dehumidifier, valid humidity updates re-evaluate the existing
 mode/threshold logic. Missing, stale, invalid or disconnected measurements cannot

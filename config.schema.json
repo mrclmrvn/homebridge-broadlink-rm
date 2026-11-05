@@ -252,7 +252,72 @@
                 "array",
                 "string"
               ],
-              "description": "Accessory code mappings; each command can be a string, sequence array, or {data, sendCount, interval, pause}. Top-level string/array data is for switches only."
+              "description": "Accessory code mappings; each command can be a string, sequence array, or {data, sendCount, interval, pause}. Top-level string/array data is for switches only.",
+              "properties": {
+                "pictureMode": {
+                  "title": "TV Picture Mode Codes",
+                  "type": "object",
+                  "properties": {
+                    "other": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "standard": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "calibrated": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "calibratedDark": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "vivid": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "game": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "computer": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    },
+                    "custom": {
+                      "type": [
+                        "string",
+                        "array",
+                        "object"
+                      ]
+                    }
+                  },
+                  "description": "TV only. Named presets or numeric HomeKit keys 0\u20137; each code accepts a shared sequence."
+                }
+              }
             },
             "speedSteps": {
               "title": "Number of Fan Speeds",
@@ -288,7 +353,7 @@
               "default": false
             },
             "onDelay": {
-              "title": "Light Power-on Delay (seconds)",
+              "title": "Light / Thermostat Power-on Delay (seconds)",
               "type": "number",
               "minimum": 0
             },
@@ -370,7 +435,7 @@
               "default": false
             },
             "allowResend": {
-              "title": "Covering: Allow Repeated Target Commands",
+              "title": "Covering / Thermostat / Light: Allow Resend",
               "type": "boolean",
               "default": false
             },
@@ -451,19 +516,19 @@
               "type": "boolean"
             },
             "turnOnWhenOff": {
-              "title": "HeaterCooler: Activate When Changing Settings",
+              "title": "Thermostat / HeaterCooler: Send On When Activating",
               "type": "boolean"
             },
             "stateless": {
-              "title": "Stateless Switch Button",
+              "title": "Switch / Light: Stateless Local Reset",
               "type": "boolean"
             },
             "enableAutoOff": {
-              "title": "Switch / Fan / Light: Send Off Automatically",
+              "title": "Automatic Power: Send Off Automatically",
               "type": "boolean"
             },
             "enableAutoOn": {
-              "title": "Switch / Fan / Light: Send On Automatically",
+              "title": "Automatic Power: Send On Automatically",
               "type": "boolean"
             },
             "temperatureFilePath": {
@@ -507,7 +572,9 @@
               "type": "string",
               "enum": [
                 "c",
-                "f"
+                "f",
+                "C",
+                "F"
               ]
             },
             "tempSourceUnits": {
@@ -515,16 +582,20 @@
               "type": "string",
               "enum": [
                 "c",
-                "f"
+                "f",
+                "C",
+                "F"
               ]
             },
             "defaultMode": {
-              "title": "HeaterCooler Default Mode",
+              "title": "Thermostat / HeaterCooler Default Mode",
               "type": "string",
               "enum": [
                 "heat",
-                "cool"
-              ]
+                "cool",
+                "auto"
+              ],
+              "description": "auto is Thermostat-only and requires device Auto mappings or replaceAutoMode."
             },
             "defaultRotationSpeed": {
               "title": "HeaterCooler Default Fan Speed (%)",
@@ -664,12 +735,12 @@
             "disableAutomaticOff": {
               "title": "Disable Legacy Automatic Off",
               "type": "boolean",
-              "description": "Explicit false enables timed off for fan/light controllers. Omitted leaves it disabled."
+              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag."
             },
             "disableAutomaticOn": {
               "title": "Disable Legacy Automatic On",
               "type": "boolean",
-              "description": "Explicit false enables timed on for fan/light controllers. Omitted leaves it disabled."
+              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag."
             },
             "closedSensor": {
               "title": "Garage Closed Endpoint Feedback",
@@ -723,6 +794,7 @@
                           "contact",
                           "lock",
                           "obstruction",
+                          "jam",
                           "combined",
                           "unknown"
                         ]
@@ -732,7 +804,7 @@
                       },
                       "path": {
                         "type": "string",
-                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                        "description": "Optional explicit binary measurement path, including jam."
                       }
                     },
                     "required": [
@@ -795,6 +867,7 @@
                           "contact",
                           "lock",
                           "obstruction",
+                          "jam",
                           "combined",
                           "unknown"
                         ]
@@ -804,7 +877,7 @@
                       },
                       "path": {
                         "type": "string",
-                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                        "description": "Optional explicit binary measurement path, including jam."
                       }
                     },
                     "required": [
@@ -867,6 +940,7 @@
                           "contact",
                           "lock",
                           "obstruction",
+                          "jam",
                           "combined",
                           "unknown"
                         ]
@@ -876,7 +950,7 @@
                       },
                       "path": {
                         "type": "string",
-                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                        "description": "Optional explicit binary measurement path, including jam."
                       }
                     },
                     "required": [
@@ -939,6 +1013,7 @@
                           "contact",
                           "lock",
                           "obstruction",
+                          "jam",
                           "combined",
                           "unknown"
                         ]
@@ -948,7 +1023,7 @@
                       },
                       "path": {
                         "type": "string",
-                        "description": "Optional dot-separated field path for an explicit contact, lock or obstruction identifier."
+                        "description": "Optional explicit binary measurement path, including jam."
                       }
                     },
                     "required": [
@@ -989,6 +1064,204 @@
               "title": "Battery Percentage File",
               "type": "string",
               "description": "Plain number, JSON battery field or battery: line; MQTT takes precedence when configured."
+            },
+            "heatOnly": {
+              "title": "Thermostat: Heat Only",
+              "type": "boolean",
+              "description": "Restricts modes to Off/Heat; set coolOnly false."
+            },
+            "defaultHeatTemperature": {
+              "title": "Thermostat Default Heat Temperature (Celsius)",
+              "type": "number"
+            },
+            "replaceAutoMode": {
+              "title": "Thermostat: Replace Auto Selection",
+              "type": "string",
+              "enum": [
+                "heat",
+                "cool"
+              ],
+              "description": "Maps Auto to a fixed supported mode; does not regulate automatically."
+            },
+            "resetTemperatureOnModeChange": {
+              "title": "Thermostat: Reset to Mode Default",
+              "type": "boolean",
+              "description": "Opt-in legacy behavior. Otherwise the saved setpoint is preserved."
+            },
+            "fallbackToDefaultTemperature": {
+              "title": "Thermostat: Allow Missing-Code Fallback",
+              "type": [
+                "boolean",
+                "string"
+              ],
+              "description": "False disables fallback; true uses mode defaults; legacy uses heatTemperature and generic temperature defaults. Missing selected fallback codes fail before any send.",
+              "enum": [
+                false,
+                true,
+                "legacy"
+              ]
+            },
+            "ignoreTemperatureWhenOff": {
+              "title": "Thermostat: Defer Temperature While Off",
+              "type": "boolean",
+              "description": "Defaults to true. Explicit false activates the last/default mode when temperature changes."
+            },
+            "sendOnWhenOff": {
+              "title": "Thermostat: Legacy Turn-on Alias",
+              "type": "boolean",
+              "description": "Used when turnOnWhenOff is absent."
+            },
+            "modeChangeDelay": {
+              "title": "Thermostat: Mode-to-Temperature Delay (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "preventResendHex": {
+              "title": "Thermostat / Light: Suppress Identical Requests",
+              "type": "boolean",
+              "description": "Explicit false enables resend; allowResend takes precedence."
+            },
+            "jamSensor": {
+              "title": "Garage / Lock Jam Feedback",
+              "type": "object",
+              "description": "Explicit file/MQTT jam signal. True means jammed. Unavailable or jammed blocks commands and cancels automatic actions; no motor stop/reversal is transmitted.",
+              "properties": {
+                "filePath": {
+                  "title": "Feedback File Path",
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "title": "Feedback Poll Interval (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483
+                },
+                "maxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "description": "Defaults to 300. For files uses modification time; MQTT uses receipt time. 0 disables expiry."
+                },
+                "mqttURL": {
+                  "title": "MQTT Broker URL",
+                  "type": "string",
+                  "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+                },
+                "mqttUsername": {
+                  "title": "MQTT Username",
+                  "type": "string"
+                },
+                "mqttPassword": {
+                  "title": "MQTT Password",
+                  "type": "string",
+                  "format": "password"
+                },
+                "mqttTopic": {
+                  "title": "MQTT Topic(s)",
+                  "type": [
+                    "string",
+                    "array"
+                  ],
+                  "description": "A combined topic string or entries with identifier and topic; see the MQTT setup guide.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": {
+                        "type": "string",
+                        "enum": [
+                          "contact",
+                          "lock",
+                          "obstruction",
+                          "jam",
+                          "combined",
+                          "unknown"
+                        ]
+                      },
+                      "topic": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Optional explicit binary measurement path, including jam."
+                      }
+                    },
+                    "required": [
+                      "identifier",
+                      "topic"
+                    ]
+                  }
+                }
+              }
+            },
+            "defaultAutoTemperature": {
+              "title": "Thermostat Device Auto Default Temperature (Celsius)",
+              "type": "number"
+            },
+            "autoHeatTemperature": {
+              "title": "Thermostat Ambient Heat Threshold (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Opt-in: fresh measured temperature below this threshold selects Heat. No pseudo source."
+            },
+            "autoCoolTemperature": {
+              "title": "Thermostat Ambient Cool Threshold (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Opt-in: fresh measured temperature above this threshold selects Cool. First valid poll/message may activate after startup."
+            },
+            "minimumAutoOnOffDuration": {
+              "title": "Thermostat Ambient Minimum Action Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647,
+              "description": "Defaults to 120; also delays reevaluation after manual changes or failed automatic sends. 0 disables the interval."
+            },
+            "autoMinimumDuration": {
+              "title": "Thermostat Legacy Ambient Interval Alias (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2147483.647
+            },
+            "autoSwitchName": {
+              "title": "Thermostat Ambient Enable Switch Name",
+              "type": "string",
+              "description": "Requires exactly one enabled switch/outlet accessory with this name and On=true; missing/ambiguous names block ambient actions."
+            },
+            "autoSwitch": {
+              "title": "Thermostat Legacy Enable Switch Alias",
+              "type": "string"
+            },
+            "virtual": {
+              "title": "Virtual Switch / Outlet",
+              "type": "boolean",
+              "description": "Local state only, useful as an ambient automation gate. Omit data and pingIPAddress. Starts Off after restart."
+            },
+            "heatTemperature": {
+              "title": "Thermostat Legacy Fallback Boundary (Celsius)",
+              "type": "number",
+              "minimum": -270,
+              "maximum": 100,
+              "description": "Used only by fallbackToDefaultTemperature: legacy. Defaults to 22; requests at/above it choose the heat default, lower requests choose the cool default."
+            },
+            "units": {
+              "title": "Thermostat Display Units",
+              "type": "string",
+              "enum": [
+                "c",
+                "f",
+                "C",
+                "F"
+              ],
+              "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius."
+            },
+            "persistState": {
+              "title": "Thermostat: Persist Target Temperature",
+              "type": "boolean",
+              "description": "Defaults to true. Explicit false ignores saved targets and skips target cache updates. Power mode always starts Off."
             }
           }
         }

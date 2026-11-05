@@ -50,8 +50,9 @@ Read the [migration guide](docs/migration.md) before replacing an installation.
 This is a source/tarball installation path, not confirmation that an npm release
 or alpha dist-tag has been published. Source development uses Node 22.12+ on the
 22.x line, or Node 24/26, matching the locked Homebridge development dependency.
-The declared Homebridge range still needs a compatibility audit beyond the
-current development dependency before release.
+[Automated version coverage](docs/homebridge-compatibility.md) exercises Homebridge
+1.6.0, 1.11.4, 2.0.0 and 2.5.0. Choose a Node version supported by both packages;
+live integration and release-head CI validation remain required.
 
 See [installation and configuration](docs/setup.md) for static hosts, multiple
 RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
@@ -60,7 +61,8 @@ RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
 
 | Accessories | Configuration |
 | --- | --- |
-| Air conditioner / Thermostat, switches, IR learning | [Setup guide](docs/setup.md) |
+| Air conditioner / Thermostat | [Setup](docs/setup.md), [mode/default options](docs/air-conditioner.md) |
+| Switches, IR learning | [Setup guide](docs/setup.md) |
 | Fan / Fanv2 | [Fan](docs/fan.md) |
 | Television, inputs, remote, volume | [TV and pairing](docs/tv.md) |
 | Light, brightness, color presets | [Light](docs/light.md) |
@@ -87,10 +89,14 @@ handling and unsupported options.
 
 - [CLI and troubleshooting](docs/troubleshooting.md): discovery, authentication,
   IR learning, sending codes, sensor checks, and useful issue details.
+- [Homebridge version coverage](docs/homebridge-compatibility.md): exact targets,
+  selected HAP dependencies, real API/cache tests and CI scope.
 - [Development and release](docs/development.md): source layout, tests, CI,
   packaging, and release validation still needed.
 - [Validation runbook](docs/validation.md) and [report template](docs/validation-report-template.md):
   reproducible hardware, Homebridge, MQTT, and rollback checks.
+- [Legacy compatibility audit](docs/legacy-compatibility-audit.md): fallback rules,
+  configuration differences and remaining concrete gaps.
 - [Roadmap](docs/roadmap.md): outstanding integrations, compatibility, testing,
   and packaging work.
 - [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.

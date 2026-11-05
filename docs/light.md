@@ -49,7 +49,8 @@ sent first if configured, followed by `onDelay` seconds (default 0.1). Without
 per light to keep power delays and multi-command color changes in order.
 
 State reflects successful sends, starts off after restart, and cannot detect
-changes from another remote. Missing codes and failed sends report errors to
+changes from another remote. Legacy light Ping/ARP monitoring is not ported;
+setting pingIPAddress on a light does not enable it. Missing codes and failed sends report errors to
 HomeKit. If power-on succeeds but a later preset fails, the light remains on in
 the reported state. Similarly, a successful hue send is retained when a later
 saturation send fails. Color temperature and hue/saturation are separate inferred
@@ -65,6 +66,17 @@ than independent lights needing an off transmission.
 / `disableAutomaticOn: false` also enable them. Durations must be positive when
 enabled. No automatic command runs at startup; shutdown cancels timers and
 power-on delays. Commands accept [structured sequences](power-and-feedback.md#shared-structured-commands).
+Explicit `disableAutomaticOff` / `disableAutomaticOn` override enable flags when
+both are supplied. `allowResend: true` retransmits identical power/brightness
+requests; without allowResend, `preventResendHex: false` is the equivalent alias.
+The default suppresses those repeated writes.
+
+`stateless: true` resets On/brightness locally after `onDuration` (default 0.5
+seconds) without sending Off, unless automatic Off is enabled. The reset does
+not schedule automatic On. New successful writes restart the reset timer;
+exclusives and shutdown cancel it. Use this only for deliberate button/preset
+behavior, since local Off does not establish physical Off.
+
 Other advanced legacy options remain roadmap work. Restart Homebridge after
 changing configuration; cached optional controls are removed when their
 corresponding code groups are removed.

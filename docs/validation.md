@@ -25,6 +25,11 @@ npm test
 npm pack
 ```
 
+Use `npm run test:homebridge` as well when recording automated version checks;
+[the compatibility guide](homebridge-compatibility.md) lists exact targets and
+local results. The script verifies the actual selected Homebridge/HAP/Node;
+this is not evidence that the live Homebridge service uses those versions.
+
 Record any uncommitted modifications. The Homebridge version reported by npm ls
 here is the development dependency; separately record the version actually
 running on the test host, its Node version, OS/architecture and installation type.
@@ -57,7 +62,8 @@ by the installation, supplying actual recorded codes and explicit host selection
 when multiple RMs are present. Enable automatic close/relock or timed movement
 only for the corresponding supervised test. Configure explicit endpoint/bolt and
 obstruction sources if present; otherwise state remains inferred. Jam detection
-and automatic obstruction reversal are not provided. Validate sensor polarity,
+and automatic obstruction reversal are not provided; explicit jam feedback
+reports faults without transmitting motor recovery commands. Validate sensor polarity,
 freshness, missing-source handling and actual mechanical outcomes separately.
 
 ## Driver checks
@@ -113,6 +119,24 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
 | Sensors | Native/file/MQTT/1-wire readings, explicit pseudo constants, offsets, CRC failures, battery telemetry, missing values and shutdown cleanup |
 
+For sparse AC maps, test the explicitly selected fallback policy at/below/above
+its boundary; confirm the physical command and reported accepted target agree.
+Verify units changes affect presentation only, and persistState false ignores
+saved targets without restoring power. Validate user sequence gaps separately
+from controller On/mode delays.
+
+## AC automation checks
+
+On an isolated appliance, validate device Auto codes and the selected setpoint;
+confirm the plugin does not claim observed compressor activity. For configured
+ambient thresholds, exercise below/equal/above boundaries, manual takeover,
+return-to-band Off only for automatic runs, the minimum interval and failed sends.
+Check missing/invalid/stale/disconnected sensor data, missing/ambiguous/Off gates,
+virtual gate restart state, and shutdown during commands. Gate Off suspends future
+ambient actions; it does not stop an already running appliance. Record that
+explicitly configured ungated automation may act on the first valid startup
+reading, while saved-target restoration itself sends nothing.
+
 ## 1-wire, pseudo and battery checks
 
 On a Linux test host, confirm the intended w1_device ID and file access from the
@@ -139,7 +163,9 @@ blocks it. Observe physical power separately; reachability alone is an estimate.
 For configured feedback, exercise each endpoint and bolt, contradictory endpoints,
 obstruction, invalid payloads, expiry and disconnect. Confirm a closed-only contact
 never establishes Open or Secured, source failure blocks new guarded commands,
-and automatic close/relock waits for the required confirmation. Obstruction
+and automatic close/relock waits for the required confirmation. For jamSensor,
+exercise clear/jammed/invalid/stale states, confirm timer cancellation, no false
+obstruction signal and no automatic retry after clearing. Obstruction
 updates during travel do not stop or reverse the motor automatically. Repeat
 these checks using the actual producer and its signal polarity.
 

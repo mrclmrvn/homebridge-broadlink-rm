@@ -19,15 +19,28 @@ configuration parity remains a goal.
   CRC-checked readings, explicit pseudo temperatures and optional battery telemetry.
 - Ping/ARP power estimates and guarded toggles on switch/outlet, TV and fan/purifier;
   ARP inspects cached neighbors and is not fresh physical power confirmation.
-- Fan cycling/default resets/timers and light exclusives/timers.
-- Explicit file/MQTT garage endpoint/obstruction and standalone bolt feedback.
+- Fan cycling/default resets/timers; light exclusives/timers, resend and stateless
+  local resets; TV power timers and explicit picture-mode mappings.
+- Thermostat flat heat/cool codes, mode/On sequencing, metadata, dry-off, fixed
+  Auto replacement and opt-in mode-default resets/fallback without losing the
+  default saved-setpoint behavior.
+- Explicit appliance Auto with unavailable compressor activity, measured ambient
+  thresholds with minimum intervals/manual ownership, and linked physical/virtual
+  switch gates that block on missing or ambiguous names.
+- Explicit file/MQTT garage endpoint/obstruction, standalone bolt and jam feedback;
+  faults cancel inferred transitions and automatic actions without motor commands.
 - Thermostat mode/temperature validation, state commits after successful sends,
   and saved target restoration through Homebridge accessory context without
   restoring power mode or transmitting at startup.
 - MQTT subscriptions with legacy config support, validated messages, receipt-age
   expiry, reconnect handling, push updates and connection cleanup.
-- v5 tests, real HAP service-construction checks, and a three-OS/three-Node CI matrix.
+- v5 tests, real HAP service checks and real Homebridge API/cache serialization
+  checks using the selected version's own HAP dependency.
+- A three-OS/three-Node locked-Homebridge CI matrix plus Ubuntu Homebridge
+  1.6.0/1.11.4/2.0.0 checks on Node 22/24; see [coverage](homebridge-compatibility.md).
 - Setup, migration, diagnostics, accessory, and development/release documentation.
+- Explicit legacy sparse-map fallback, display-unit preference and AC target
+  persistence opt-out, with independent nested sequence timing and aggregate limits.
 - Anonymized regression coverage for a contributed two-host legacy cooling config,
   including all 16–30°C mappings, disabled fan handling and host routing; see the
   [compatibility review](legacy-config-coverage.md) for remaining behavior differences.
@@ -43,17 +56,25 @@ not verify Broadlink packets or real devices.
   remains device-dependent. Expand coverage for uncommon device IDs.
 - Validate 1-wire CRC behavior, file access and container mounts on a real Linux
   host; validate battery producers, units and HomeKit presentation in live use.
-- Audit advanced light options, jam detection, TV timers/picture modes and advanced
-  legacy air-conditioner behavior. Core feedback does not supply motor interlocks
-  or automatic obstruction reversal.
+- Audit further real migration cases beyond current fixtures; see the
+  [source compatibility audit](legacy-compatibility-audit.md) for supported fallback
+  policies and intentional differences.
+- Port legacy light Ping/ARP monitoring if required by migration cases; current
+  light power state remains inferred. General legacy accessory-state persistence
+  and non-switch ambient gate types are not reproduced. External HomeKit gates
+  remain outside platform-local linking.
+- Validate explicit jam producers and physical recovery. Feedback faults/cancels
+  software actions; it does not transmit motor stop/reversal or supply an interlock.
 - Validate power utilities, cycle reset assumptions and feedback polarity/freshness
   against actual appliances and producers. Optional Eve history is excluded from
   the current implementation scope by user decision.
 
 ## Validation and release work
 
-- Audit the declared Homebridge range beyond the development dependency.
-  Node engines now match the locked dependency/CI majors (22.12+ in 22.x, 24, 26).
+- Run the new Homebridge matrix on the pushed/release head and validate live
+  installations; representative version checks are not exhaustive range proof.
+  Node engines match the locked dependency/CI majors (22.12+ in 22.x, 24, 26),
+  but each Homebridge release must also support the selected Node version.
 - Validate configuration schema behavior in a live Homebridge UI, especially
   scalar/array switch data, MQTT topic forms and options shared across accessories.
 - Exercise hardware across device families and record actual auth, send, IR learn,

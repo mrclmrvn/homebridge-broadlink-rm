@@ -18,6 +18,7 @@ export class LightAccessory extends TimedAccessory {
     super(platform, accessory);
     this.validatePowerTimers();
     this.seconds(this.config.onDelay, 0.1);
+    if (this.config.stateless) this.seconds(this.config.onDuration, 0.5, true);
     if (this.config.exclusives !== undefined && (!Array.isArray(this.config.exclusives)
       || this.config.exclusives.some((name: unknown) => typeof name !== 'string' || !name))) throw new Error('exclusives must be an array of accessory names');
     const C = platform.Characteristic;
@@ -106,6 +107,14 @@ export class LightAccessory extends TimedAccessory {
 
   private markOn(): void {
     this.on = true;
+    this.cancelTimer('light-reset');
+    if (this.config.stateless && !this.powerTimerEnabled(true)) {
+      this.schedule('light-reset', this.seconds(this.config.onDuration, 0.5, true) * 1000, async () => {
+        this.on = false; this.brightness = 0;
+        this.service.updateCharacteristic(this.platform.Characteristic.On, false);
+        if (this.service.testCharacteristic(this.platform.Characteristic.Brightness)) this.service.updateCharacteristic(this.platform.Characteristic.Brightness, 0);
+      });
+    }
     this.service.updateCharacteristic(this.platform.Characteristic.On, true);
     this.automaticPower(true, on => this.setOn(on));
     for (const instance of this.platform.instances?.values() || []) {
@@ -114,14 +123,17 @@ export class LightAccessory extends TimedAccessory {
         instance.on = false;
         instance.brightness = 0;
         instance.cancelTimer('power-auto');
+        instance.cancelTimer('light-reset');
         instance.service.updateCharacteristic(this.platform.Characteristic.On, false);
         if (instance.service.testCharacteristic(this.platform.Characteristic.Brightness)) instance.service.updateCharacteristic(this.platform.Characteristic.Brightness, 0);
       }
     }
   }
 
+  private get resend(): boolean { return this.config.allowResend ?? this.config.preventResendHex === false; }
+
   private async setOn(target: boolean): Promise<void> {
-    if (target === this.on) return;
+    if (target === this.on && !this.resend) return;
     if (target && this.steps('brightness', 1, 100).length) {
       const requested = this.config.useLastKnownBrightness && this.lastBrightness > 0
         ? this.lastBrightness : this.number(this.config.defaultBrightness ?? 100, 1, 100);
@@ -131,7 +143,7 @@ export class LightAccessory extends TimedAccessory {
     await this.sendConfigured(target ? 'on' : 'off');
     this.on = target;
     if (target) this.markOn();
-    else this.automaticPower(false, on => this.setOn(on));
+    else { this.cancelTimer('light-reset'); this.automaticPower(false, on => this.setOn(on)); }
     if (!target) {
       this.brightness = 0;
       if (this.service.testCharacteristic(this.platform.Characteristic.Brightness)) {
@@ -146,7 +158,7 @@ export class LightAccessory extends TimedAccessory {
       return;
     }
     const step = this.closest('brightness', value, 1, 100);
-    if (this.on && step.value === this.brightness) return;
+    if (this.on && step.value === this.brightness && !this.resend) return;
     await this.ensureOn();
     await this.sendConfigured(step.key);
     this.brightness = this.lastBrightness = step.value;

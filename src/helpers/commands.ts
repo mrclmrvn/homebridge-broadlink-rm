@@ -1,5 +1,17 @@
 export type CommandStep = { code: string | Buffer } | { delay: number };
 
+/** Join independently timed command leaves, without adding gaps between controller stages. */
+export function compileCommandPlan(commands: unknown[]): CommandStep[] {
+  if (!commands.length) throw new Error('Code sequence must not be empty');
+  const steps: CommandStep[] = [];
+  for (const command of commands) {
+    const compiled = compileCommands(command);
+    if (steps.length + compiled.length > 10000) throw new Error('Code sequence is too long');
+    steps.push(...compiled);
+  }
+  return steps;
+}
+
 /** Compile the entire sequence before any transmission, with bounded expansion. */
 export function compileCommands(value: unknown, arrayInterval = 0.1): CommandStep[] {
   const steps: CommandStep[] = [];

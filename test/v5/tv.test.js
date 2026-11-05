@@ -8,12 +8,14 @@ function fixture() {
     constructor(type, name, subtype) { this.UUID = type.UUID; this.subtype = subtype; this.controls = new Map(); this.links = new Set(); }
     getCharacteristic(key) {
       if (!this.controls.has(key)) this.controls.set(key, {
-        onGet(fn) { this.get = fn; return this; }, onSet(fn) { this.set = fn; return this; },
+        onGet(fn) { this.get = fn; return this; }, onSet(fn) { this.set = fn; return this; }, setProps(props) { this.props = props; return this; }, updateValue(value) { this.value = value; return this; },
       });
       return this.controls.get(key);
     }
     updateCharacteristic(key, value) { this.getCharacteristic(key).value = value; return this; }
     setCharacteristic(key, value) { this.getCharacteristic(key).value = value; return this; }
+    testCharacteristic(key) { return this.controls.has(key); }
+    removeCharacteristic(characteristic) { for (const [key, value] of this.controls) if (value === characteristic) this.controls.delete(key); }
     setPrimaryService() { this.primary = true; }
     addLinkedService(service) { this.links.add(service); }
     removeLinkedService(service) { this.links.delete(service); }

@@ -12,7 +12,8 @@ npm run watch
 ```
 
 `npm test` runs TypeScript compilation, then Node's built-in test runner over
-`test/v5/*.test.js`. Tests use built JavaScript from dist; running the test runner
+`test/v5/*.test.js`. `npm run test:homebridge` first verifies/reports the selected
+Homebridge/HAP/Node versions and engines, then runs the same full suite. Tests use built JavaScript from dist; running the test runner
 directly after a source edit without rebuilding can test stale output. `npm run
 watch` continuously builds and stays running until stopped.
 
@@ -34,7 +35,8 @@ presence as evidence that their behaviors are supported by the new code.
 | src/accessories/battery.ts | Optional battery telemetry and low-battery service |
 | src/sensors/mqtt.ts | MQTT parsing, subscriptions, freshness and connection lifecycle |
 | src/sensors/power.ts, feedback.ts | Power probes and explicit file/MQTT binary feedback |
-| src/helpers/commands.ts | Bounded structured command compilation |
+| src/helpers/commands.ts | Bounded structured command and composite plan compilation |
+| src/helpers/thermostatCodes.ts | Exact and explicit sparse/default AC code selection |
 | src/cli.ts | Standalone diagnostics |
 | config.schema.json | Shared Homebridge visual configuration schema |
 | test/v5/ | New tests, controlled clocks and service fixtures |
@@ -63,10 +65,13 @@ guide and schema alongside the implementation.
 
 ## GitHub Actions
 
-.github/workflows/pipeline.yml runs npm ci and npm test on pushes, pull requests,
-and manual dispatch. The matrix uses Node 22/24/26 across ubuntu-latest,
-windows-latest, and macos-15-intel. Intel macOS was selected after ARM64 runner
-capacity failures; it does not provide ARM64 CI coverage. Both push and PR events
+.github/workflows/pipeline.yml installs dependencies and runs test:homebridge on
+pushes, pull requests and manual dispatch. The main locked-Homebridge matrix uses
+Node 22/24/26 across Ubuntu, Windows and Intel macOS. A second Ubuntu matrix
+selects exact Homebridge 1.6.0/1.11.4/2.0.0 releases on Node 22/24, preserving the
+committed lockfile. See [version coverage and local results](homebridge-compatibility.md).
+Intel macOS was selected after ARM64 runner capacity failures; it does not provide
+ARM64 CI coverage. Both push and PR events
 can produce separate matrix runs for the same commit. Tests must pass without
 relying on their scheduling order.
 
@@ -96,10 +101,11 @@ mocked service tests for this validation.
 
 ## Release work still required
 
-Before publishing an alpha for others, validate the declared Homebridge range
-beyond the development dependency, review the tarball inventory, expand driver
-coverage with real-device fixtures and a recorded hardware test pass, and check
-migration documentation. Verify the package version and final changelog, and
+Before publishing an alpha for others, run the configured Homebridge version
+matrix for the release head and validate live installations against the
+[recorded software coverage](homebridge-compatibility.md). Review the tarball,
+expand driver coverage with real-device fixtures and a recorded hardware pass,
+and check migration documentation. Verify the package version and final changelog, and
 confirm the npm scope/account and dist-tag intended for that release.
 
 A scoped alpha publication would use the following command only when release
