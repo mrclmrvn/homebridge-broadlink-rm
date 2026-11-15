@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Accept both `0xEE` and `0xEF` Broadlink command replies, matching the previous
+  driver's firmware handling while retaining sender, sequence and checksum checks.
+- Report failed temperature/humidity HomeKit reads as communication failures
+  with accessory-specific diagnostics instead of unhandled getter warnings.
+  Protocol timeout diagnostics distinguish authentication from command responses.
+  Live confirmation of the November 14 sensor timeout cause remains outstanding.
 - Bound native accessory sensor reads to two seconds including queue wait and
   authentication, share concurrent reads per accessory, cancel timed-out work,
   and reject pending reads on shutdown without substituting stale measurements.

@@ -120,8 +120,11 @@ export class BroadlinkDevice {
         // Unrelated, stale, and truncated datagrams must not finish this request.
         if (remote.address !== this.host || remote.port !== this.port || message.length < 0x38) return;
         if (!message.subarray(0, 8).equals(PACKET_HEADER_MAGIC) || message.readUInt16LE(0x28) !== sequence) return;
-        const expectedCommand = packetType === PacketCommand.AUTH ? 0xe9 : packetType === PacketCommand.COMMAND ? 0xee : undefined;
-        if (expectedCommand !== undefined && message.readUInt16LE(0x26) !== expectedCommand) return;
+        const responseCommand = message.readUInt16LE(0x26);
+        if (packetType === PacketCommand.AUTH && responseCommand !== 0xe9) return;
+        // Firmware supported by the previous driver can answer commands with
+        // either response opcode. Keep sender, sequence and integrity checks.
+        if (packetType === PacketCommand.COMMAND && responseCommand !== 0xee && responseCommand !== 0xef) return;
         try {
           const checked = Buffer.from(message);
           const checksum = checked.readUInt16LE(0x20);
@@ -141,7 +144,8 @@ export class BroadlinkDevice {
           resolve(decoded);
         } catch (error) { fail(error instanceof Error ? error : new Error(String(error))); }
       };
-      timer = setTimeout(() => fail(new Error(`Timeout waiting for response from ${this.host}`)), timeoutMs);
+      const phase = packetType === PacketCommand.AUTH ? 'authentication' : 'command';
+      timer = setTimeout(() => fail(new Error(`Timeout waiting for ${phase} response from ${this.host} (type 0x${this.devType.toString(16)})`)), timeoutMs);
       this.pending.add(fail);
       signal?.addEventListener('abort', onAbort, { once: true });
       this.socket.on('message', onMessage);

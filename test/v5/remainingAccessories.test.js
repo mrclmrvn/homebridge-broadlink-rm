@@ -143,7 +143,7 @@ test('sensor types poll native readings, apply adjustment and expose errors inst
   await f.clock.tick(0);
   assert.equal(f.control('CurrentTemperature').value, 25);
   f.readings.temperature = undefined;
-  await assert.rejects(f.get('CurrentTemperature'), /No valid temperature/);
+  await assert.rejects(f.get('CurrentTemperature'), error => error === -70402);
   await f.clock.tick(1000);
   assert.ok(f.control('CurrentTemperature').value instanceof Error);
   f.instance.dispose();

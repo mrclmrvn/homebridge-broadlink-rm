@@ -315,7 +315,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private async getCurrentTemperature(): Promise<number> {
-    return this.source.read('temperature');
+    return this.readSensor(this.source, 'temperature');
   }
 
   private async pollSensors(): Promise<void> {
@@ -338,7 +338,7 @@ export class AirConditionerAccessory extends TimedAccessory {
           if (this.disposed) return;
           this.humidityService ||= this.accessory.getService(this.platform.Service.HumiditySensor)
             || this.accessory.addService(this.platform.Service.HumiditySensor, `${this.name} Humidity`);
-          this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+          this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
           this.humidityService.updateCharacteristic(C.CurrentRelativeHumidity, humidity);
         } catch (error) {
           if (!this.disposed) this.humidityService?.updateCharacteristic(C.CurrentRelativeHumidity, error as Error);

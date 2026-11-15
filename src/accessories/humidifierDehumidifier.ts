@@ -29,7 +29,7 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
     this.high = this.percentage(this.config.dehumidifierThreshold ?? 60);
     if (this.low > this.high) throw new Error('Humidifier threshold must not exceed dehumidifier threshold');
     this.service.getCharacteristic(C.CurrentHumidifierDehumidifierState).onGet(() => this.current);
-    this.service.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+    this.service.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
     this.service.getCharacteristic(C.TargetHumidifierDehumidifierState).updateValue(this.target).setProps({ validValues: this.modes })
       .onGet(() => this.target).onSet(value => this.serialize(async () => {
         const target = Number(value);
