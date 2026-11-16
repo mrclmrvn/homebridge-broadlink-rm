@@ -15,9 +15,9 @@ test('native sensor reads share a request, fault within two seconds after loss a
     calls++; signal = nextSignal;
     return new Promise(resolve => { release = resolve; });
   };
-  const temperature = assert.rejects(f.get('CurrentTemperature'), /Sensor read timed out/);
+  const temperature = assert.rejects(f.get('CurrentTemperature'), error => error === -70402);
   const humidity = assert.rejects(f.accessory.getService(f.S.HumiditySensor)
-    .getCharacteristic(f.C.CurrentRelativeHumidity).get(), /Sensor read timed out/);
+    .getCharacteristic(f.C.CurrentRelativeHumidity).get(), error => error === -70402);
   assert.equal(calls, 1);
   await f.clock.tick(1999);
   assert.equal(signal.aborted, false);
@@ -30,7 +30,7 @@ test('native sensor reads share a request, fault within two seconds after loss a
   f.device.checkSensors = async () => ({ temperature: 22, humidity: 40 });
   assert.equal(await f.get('CurrentTemperature'), 22);
   f.device.checkSensors = async () => { throw new Error('device offline'); };
-  await assert.rejects(f.get('CurrentTemperature'), /device offline/);
+  await assert.rejects(f.get('CurrentTemperature'), error => error === -70402);
   assert.equal(f.clock.timers.size, 0);
 });
 
@@ -38,7 +38,7 @@ test('shutdown promptly rejects a native sensor read and cancels its deadline', 
   const f = fixture(t, 'temperatureSensor', { sensorPollInterval: 0 });
   let signal;
   f.device.checkSensors = nextSignal => { signal = nextSignal; return new Promise(() => {}); };
-  const pending = assert.rejects(f.get('CurrentTemperature'), /closed/);
+  const pending = assert.rejects(f.get('CurrentTemperature'), error => error === -70402);
   f.instance.dispose();
   await pending;
   assert.equal(signal.aborted, true);
@@ -53,10 +53,10 @@ test('real HAP sensor and climate getters report bounded failures and recover af
       const accessory = new hap.Accessory('Room', hap.uuid.generate(`lost-native-${type}`));
       accessory.context = { config: { type, sensorPollInterval: 0, noHumidity: true, coolOnly: true,
         data: { cool: { on: '260002000102', off: '260002000102' }, temperature24: '260002000102' } } };
-      const warnings = [];
+      const warnings = [], diagnostics = [];
       accessory.on('characteristic-warning', warning => warnings.push(warning.message));
       const device = { checkSensors: () => new Promise(() => {}) };
-      const platform = { Service: hap.Service, Characteristic: hap.Characteristic, log: {},
+      const platform = { Service: hap.Service, Characteristic: hap.Characteristic, log: { warn: message => diagnostics.push(message) },
         deviceManager: { getDevice: () => device } };
       const instance = createAccessoryInstance(platform, accessory); t.after(() => instance.dispose());
       const serviceType = { temperatureSensor: hap.Service.TemperatureSensor, 'air-conditioner': hap.Service.Thermostat,
@@ -74,9 +74,9 @@ test('real HAP sensor and climate getters report bounded failures and recover af
       assert.equal(timers.size, 0);
       device.checkSensors = async () => ({ temperature: 23, humidity: 45 });
       assert.equal(await characteristic.handleGetRequest(), type === 'humidifier-dehumidifier' ? 45 : 23);
-      assert.equal(warnings.length, 1);
-      assert.match(warnings[0], /Sensor read timed out/);
-      assert.ok(warnings.every(message => !/slow to respond|didn't respond at all/i.test(message)));
+      assert.deepEqual(warnings, []);
+      assert.equal(diagnostics.length, 1);
+      assert.match(diagnostics[0], /Room.*(?:temperature|humidity) unavailable: Sensor read timed out/);
     });
   }
 });

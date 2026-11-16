@@ -151,6 +151,29 @@ test('AC target survives serialized cache restoration while power remains Off an
   assert.deepEqual(restored.warnings, []);
 });
 
+test('Off to Cool resends the retained 18-degree code for both HomeKit temperature/mode write orders', async t => {
+  const f = await setup(t);
+  const accessory = f.registered.find(a => a.getService(hap.Service.Thermostat));
+  const service = accessory.getService(hap.Service.Thermostat);
+  const temperature = service.getCharacteristic(hap.Characteristic.TargetTemperature);
+  const mode = service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
+  await mode.handleSetRequest(2);
+  await temperature.handleSetRequest(18);
+  for (const temperatureFirst of [true, false]) {
+    await mode.handleSetRequest(0);
+    assert.equal(f.sent.at(-1).code, accessory.context.config.data.off);
+    const before = f.sent.length;
+    if (temperatureFirst) await temperature.handleSetRequest(18);
+    await mode.handleSetRequest(2);
+    if (!temperatureFirst) await temperature.handleSetRequest(18);
+    assert.equal(f.sent.length, before + 1);
+    assert.equal(f.sent.at(-1).code, accessory.context.config.data.temperature18.data);
+    assert.equal(await temperature.handleGetRequest(), 18);
+    assert.equal(await mode.handleGetRequest(), 2);
+  }
+  assert.deepEqual(f.warnings, []);
+});
+
 test('cache persistence failure warns without undoing a successful setpoint change', async t => {
   const f = await setup(t);
   const warnings = [];

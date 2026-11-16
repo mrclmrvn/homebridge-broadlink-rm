@@ -2,6 +2,7 @@ import { PlatformAccessory, Service, Logging } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { RMDevice } from '../broadlink';
 import { compileCommands, type CommandStep } from '../helpers/commands';
+import type { SensorSource } from './sensorSource';
 
 export abstract class BaseAccessory {
   protected readonly platform: BroadlinkRMPlatform;
@@ -32,6 +33,17 @@ export abstract class BaseAccessory {
 
   /** Release accessory-owned resources on platform shutdown or removal. */
   public dispose(): void { this.commandShutdown.abort(); }
+
+  /** Expected sensor failures are a HAP status, rather than unhandled getter errors. */
+  protected async readSensor(source: SensorSource, quantity: 'temperature' | 'humidity'): Promise<number> {
+    try { return await source.read(quantity); }
+    catch (error) {
+      this.log.warn?.(`[${this.name}] ${quantity} unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      // HAP SERVICE_COMMUNICATION_FAILURE. Numeric statuses are supported by
+      // every supported Homebridge version without importing a second HAP copy.
+      throw -70402;
+    }
+  }
 
   /**
    * Resolve the Broadlink RM device for this accessory

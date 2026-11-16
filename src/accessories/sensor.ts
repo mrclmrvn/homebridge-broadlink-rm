@@ -22,14 +22,14 @@ export class SensorAccessory extends TimedAccessory {
     const type = this.humidityOnly ? platform.Service.HumiditySensor : platform.Service.TemperatureSensor;
     this.service = accessory.getService(type) || accessory.addService(type, this.name);
     if (this.humidityOnly) {
-      this.service.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+      this.service.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
     } else {
       this.service.getCharacteristic(C.CurrentTemperature).setProps({ minValue: -270, maxValue: 100, minStep: 0.1 })
-        .onGet(() => this.source.read('temperature'));
+        .onGet(() => this.readSensor(this.source, 'temperature'));
       if (!this.config.noHumidity && !this.source.temperatureOnly) {
         this.humidityService = accessory.getService(platform.Service.HumiditySensor)
           || accessory.addService(platform.Service.HumiditySensor, `${this.name} Humidity`);
-        this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+        this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
       } else {
         const stale = accessory.getService(platform.Service.HumiditySensor);
         if (stale) accessory.removeService(stale);

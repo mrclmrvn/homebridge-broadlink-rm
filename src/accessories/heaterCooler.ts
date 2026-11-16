@@ -60,7 +60,7 @@ export class HeaterCoolerAccessory extends TimedAccessory {
         else this.mode = mode;
       }));
     this.service.getCharacteristic(C.CurrentTemperature).setProps({ minValue: -270, maxValue: 100, minStep: 0.1 })
-      .onGet(() => this.source.read('temperature'));
+      .onGet(() => this.readSensor(this.source, 'temperature'));
     this.service.getCharacteristic(C.CoolingThresholdTemperature).updateValue(this.settings.cool).setProps({ minValue: this.min, maxValue: this.max, minStep: this.config.tempStepSize ?? 1 })
       .onGet(() => this.settings.cool).onSet(value => this.serialize(() => this.change({ cool: this.temperature(Number(value)) })));
     this.service.getCharacteristic(C.HeatingThresholdTemperature).updateValue(this.settings.heat).setProps({ minValue: this.min, maxValue: this.max, minStep: this.config.tempStepSize ?? 1 })

@@ -68,6 +68,49 @@ can reach the appliance, that the code matches the intended button, and, for RF,
 that the hardware supports the code's frequency. Use learn-rf with a supported
 Pro model for RF learning; a normal IR learning session is not an RF diagnostic.
 
+### Discovery works but authentication times out
+
+RM4 firmware can reply with bytes `e9 03` at offsets `0x26`/`0x27`. The opcode is
+byte `0x26` (`0xE9`); treating both bytes as an opcode caused v5 to ignore a valid
+authentication reply. The fixed driver also accepts command replies `0xEE` and
+`0xEF` with a nonzero adjacent byte, retaining sender, sequence and checksum checks.
+
+For a native Ubuntu install under `/var/lib/homebridge/node_modules`, copy
+`scripts/v5-diagnose-auth.js` from the checkout to the test host. It is a separate
+source script, not included in the npm tarball. Stop Homebridge and wait for its
+child processes to exit before running it, to avoid competing sessions:
+
+```bash
+sudo hb-service stop
+ps -e -o pid=,unit=,comm= | awk '$2 == "homebridge.service"'
+# Proceed only after the process listing is empty; substitute your RM's address.
+sudo /opt/homebridge/bin/node v5-diagnose-auth.js 192.0.2.10
+sudo hb-service start
+```
+
+Restart Homebridge even if the diagnostic fails. This stops all child bridges
+temporarily. The script discovers the requested device, authenticates, then reads
+sensors. It never sends IR or prints raw packets, session IDs, keys or credentials.
+The trace includes request/reply command fields, counters and checksum validity.
+A reply trace followed by a timeout can reveal a response-filter mismatch; no
+reply trace means no datagram reached that device socket during the attempt.
+
+### AC acknowledges Cool but stays physically Off
+
+Some AC configurations require an explicit On code before the selected
+temperature code. If `data.on` is configured, add `"turnOnWhenOff": true` to that
+AC accessory and restart Homebridge. On transition from Off, v5 sends `data.on`,
+waits `onDelay` (default 0.3 seconds), then sends the configured mode/temperature
+sequence. Off-state target edits still send nothing with `ignoreTemperatureWhenOff`.
+Enable this per appliance after checking its codes; a Broadlink acknowledgement
+alone does not establish that the appliance responded.
+
+AC operation logs distinguish incoming HomeKit writes, skipped duplicate
+requests, saved off-state targets and commands acknowledged by Broadlink. They
+do not establish physical AC state. Target-temperature persistence restores the
+selected temperature after restart; HomeKit mode initially remains Off and no
+startup command is sent. Restoring the previous operating mode is separate.
+
 ## Missing or incorrect HomeKit controls
 
 Inspect startup logs for skipped configurations and `Cannot configure` messages.

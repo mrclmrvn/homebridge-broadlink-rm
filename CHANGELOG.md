@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Match response opcodes using byte `0x26`, rather than interpreting the adjacent
+  byte as part of the command. A live RM4 `0x653a` trace showed a valid `e9 03`
+  authentication reply being ignored; regression tests cover authentication,
+  both command-reply opcodes and checksum enforcement with a nonzero byte `0x27`.
+- Accept both `0xEE` and `0xEF` Broadlink command replies, matching the previous
+  driver's firmware handling while retaining sender, sequence and checksum checks.
+- Report failed temperature/humidity HomeKit reads as communication failures
+  with accessory-specific diagnostics instead of unhandled getter warnings.
+  Protocol timeout diagnostics distinguish authentication from command responses.
+  A live RM4 `0x653a` check now confirms authentication and native sensor reads;
+  one AC's Home app power-on and retained 23 C target after restart were also
+  confirmed, using the existing `turnOnWhenOff` option for explicit power-on.
 - Bound native accessory sensor reads to two seconds including queue wait and
   authentication, share concurrent reads per accessory, cancel timed-out work,
   and reject pending reads on shutdown without substituting stale measurements.
@@ -18,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- AC mode/temperature request, duplicate-skip and Broadlink acknowledgement logs
+  without learned code contents, plus a standalone safe-header authentication
+  diagnostic and a [scoped live validation record](docs/live-validation-2026-11-16.md).
 - Scheduled UDP rediscovery with a default 60-minute interval, explicit disable
   settings, late-device/MAC-address recovery, unusable-socket replacement,
   overlap prevention, link-local diagnostics and shutdown cancellation.

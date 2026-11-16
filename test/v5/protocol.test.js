@@ -138,6 +138,35 @@ test('send authenticates once without deadlock, uses the session key and correct
   assert.equal(socket.packets.filter(packet => packet.readUInt16LE(0x26) === 0x65).length, 1);
 });
 
+test('RM4 0x653a accepts authentication and sensor replies with a nonzero byte at 0x27', async t => {
+  for (const opcode of [0xee, 0xef]) await t.test(`command 0x03${opcode.toString(16)}`, async t => {
+    const { socket, device } = fixture(t, 0x653a);
+    socket.onSend = request => {
+      const authenticating = request.readUInt16LE(0x26) === 0x65;
+      const auth = Buffer.alloc(20); auth.writeUInt32LE(0x12345678); sessionKey.copy(auth, 4);
+      const reply = response(request, authenticating ? auth : inner(0x24, Buffer.from([24, 50, 55, 25])),
+        authenticating ? INIT_KEY : sessionKey);
+      reply.writeUInt16LE(0x0300 | (authenticating ? 0xe9 : opcode), 0x26);
+      reply.writeUInt16LE(0, 0x20);
+      reply.writeUInt16LE(checksum(reply), 0x20);
+      socket.emit('message', reply, remote);
+    };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 100);
+    try {
+      assert.equal(await device.auth(controller.signal), true);
+      assert.deepEqual(await device.checkSensors(controller.signal), { temperature: 24.5, humidity: 55.25 });
+      assert.equal(socket.packets.length, 2);
+    } finally { clearTimeout(timeout); }
+    socket.onSend = request => {
+      const reply = response(request, inner(0x24, Buffer.from([24, 50, 55, 25])), sessionKey);
+      reply[0x27] = 3; // Header remains covered by the packet checksum.
+      socket.emit('message', reply, remote);
+    };
+    await assert.rejects(device.checkSensors(), /checksum mismatch/);
+  });
+});
+
 test('packet request ignores unrelated, short and stale packets; validates checksums', async t => {
   const { socket, device } = fixture(t);
   await device.auth();
@@ -199,6 +228,33 @@ test('RM sensor commands and signed decimal readings match legacy and RM4 layout
     return inner(1, Buffer.from([20, 5]), false);
   };
   assert.deepEqual(await legacy.checkSensors(), { temperature: 20.5 });
+});
+
+test('RM4 sensor reads accept the alternate 0xef command response used by legacy-supported firmware', async t => {
+  const { socket, device } = fixture(t);
+  await device.auth();
+  socket.onSend = request => {
+    const unrelated = response(request, inner(0x24, Buffer.from([99, 0, 99, 0])), sessionKey);
+    unrelated.writeUInt16LE(0x72, 0x26);
+    unrelated.writeUInt16LE(0, 0x20);
+    unrelated.writeUInt16LE(checksum(unrelated), 0x20);
+    socket.emit('message', unrelated, remote);
+    const reply = response(request, inner(0x24, Buffer.from([24, 50, 55, 25])), sessionKey);
+    reply.writeUInt16LE(0xef, 0x26);
+    reply.writeUInt16LE(0, 0x20);
+    reply.writeUInt16LE(checksum(reply), 0x20);
+    socket.emit('message', reply, remote);
+  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 100);
+  try { assert.deepEqual(await device.checkSensors(controller.signal), { temperature: 24.5, humidity: 55.25 }); }
+  finally { clearTimeout(timeout); }
+  socket.onSend = request => {
+    const reply = response(request, inner(0x24, Buffer.from([24, 50, 55, 25])), sessionKey);
+    reply.writeUInt16LE(0xef, 0x26); // Deliberately leave the old checksum.
+    socket.emit('message', reply, remote);
+  };
+  await assert.rejects(device.checkSensors(), /checksum mismatch/);
 });
 
 test('RF learning performs sweep, frequency check, packet capture and cancellation', async t => {

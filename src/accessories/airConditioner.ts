@@ -103,7 +103,10 @@ export class AirConditionerAccessory extends TimedAccessory {
     const targetStateChar = this.service
       .getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
       .onGet(this.getTargetHeatingCoolingState.bind(this))
-      .onSet(value => this.serialize(async () => { await this.setTargetHeatingCoolingState(value); this.manualOverride(); this.deferDisplay(); }));
+      .onSet(value => {
+        this.log.info?.(`[${this.name}] HomeKit mode request: ${this.modeLabel(Number(value))}`);
+        return this.serialize(async () => { await this.setTargetHeatingCoolingState(value); this.manualOverride(); this.deferDisplay(); });
+      });
 
     targetStateChar.setProps({ validValues: [...new Set([...this.allowedModes, ...(this.config.replaceAutoMode ? [3] : [])])] });
 
@@ -117,7 +120,10 @@ export class AirConditionerAccessory extends TimedAccessory {
         minStep: this.config.tempStepSize ?? 1,
       })
       .onGet(this.getTargetTemperature.bind(this))
-      .onSet(value => this.serialize(async () => { await this.setTargetTemperature(value); this.manualOverride(); this.deferDisplay(); }));
+      .onSet(value => {
+        this.log.info?.(`[${this.name}] HomeKit target temperature request: ${value} C`);
+        return this.serialize(async () => { await this.setTargetTemperature(value); this.manualOverride(); this.deferDisplay(); });
+      });
 
     // Current Temperature
     this.service
@@ -176,16 +182,24 @@ export class AirConditionerAccessory extends TimedAccessory {
     return this.targetHeatingCoolingState;
   }
 
+  private modeLabel(state: number): string {
+    return ['Off', 'Heat', 'Cool', 'Auto'][state] ?? String(state);
+  }
+
   private async setTargetHeatingCoolingState(value: CharacteristicValue, ambient = false): Promise<void> {
     let state = Number(value);
     if (state === 3 && this.config.replaceAutoMode) state = this.config.replaceAutoMode === 'heat' ? 1 : 2;
     if (!this.allowedModes.includes(state)) throw new Error('Unsupported Thermostat mode');
-    if (state === this.targetHeatingCoolingState && !this.resend) return;
+    if (state === this.targetHeatingCoolingState && !this.resend) {
+      this.log.info?.(`[${this.name}] Mode already ${this.modeLabel(state)}; duplicate request skipped.`);
+      return;
+    }
     if (state === 0) {
       const data = this.config.data || {};
       const off = this.currentHeatingCoolingState === 2 && data.offDryMode !== undefined ? data.offDryMode : data.off;
       if (!off) throw new Error('No IR/RF off code configured');
       await this.sendCode(off);
+      this.log.info?.(`[${this.name}] Broadlink acknowledged Off command.`);
       this.commitMode(0);
     } else {
       const entering = state !== this.targetHeatingCoolingState;
@@ -246,6 +260,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       if (!commands.length) commands.push(data.on);
     }
     await this.sendCommands(compileCommandPlan(commands));
+    this.log.info?.(`[${this.name}] Broadlink acknowledged ${this.modeLabel(state)} command at ${temp} C.`);
     this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : mode === 'auto' ? 3 : state);
     const changed = this.targetTemperature !== temp;
     this.targetTemperature = temp;
@@ -268,7 +283,10 @@ export class AirConditionerAccessory extends TimedAccessory {
     if (!Number.isFinite(requested) || requested < this.minTemperature || requested > this.maxTemperature) throw new Error('Thermostat temperature is outside the configured range');
     const step = this.config.tempStepSize ?? 1;
     const temp = Number(Math.min(this.maxTemperature, this.minTemperature + Math.round((requested - this.minTemperature) / step) * step).toFixed(6));
-    if (temp === this.targetTemperature && !this.resend) return;
+    if (temp === this.targetTemperature && !this.resend) {
+      this.log.info?.(`[${this.name}] Target already ${temp} C; duplicate temperature request skipped.`);
+      return;
+    }
     if (this.targetHeatingCoolingState !== 0 || this.config.ignoreTemperatureWhenOff === false) {
       const resumed = this.lastMode === 3 && this.config.replaceAutoMode ? this.config.replaceAutoMode === 'heat' ? 1 : 2 : this.lastMode;
       await this.applyTemperature(this.targetHeatingCoolingState || resumed, temp, this.targetHeatingCoolingState === 0);
@@ -277,6 +295,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       this.targetTemperature = temp;
       this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
       this.saveTargetTemperature();
+      this.log.info?.(`[${this.name}] Saved target ${temp} C while Off; no command sent.`);
     }
   }
 
@@ -315,7 +334,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   }
 
   private async getCurrentTemperature(): Promise<number> {
-    return this.source.read('temperature');
+    return this.readSensor(this.source, 'temperature');
   }
 
   private async pollSensors(): Promise<void> {
@@ -338,7 +357,7 @@ export class AirConditionerAccessory extends TimedAccessory {
           if (this.disposed) return;
           this.humidityService ||= this.accessory.getService(this.platform.Service.HumiditySensor)
             || this.accessory.addService(this.platform.Service.HumiditySensor, `${this.name} Humidity`);
-          this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.source.read('humidity'));
+          this.humidityService.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
           this.humidityService.updateCharacteristic(C.CurrentRelativeHumidity, humidity);
         } catch (error) {
           if (!this.disposed) this.humidityService?.updateCharacteristic(C.CurrentRelativeHumidity, error as Error);
