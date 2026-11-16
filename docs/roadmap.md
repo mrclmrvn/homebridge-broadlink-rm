@@ -74,8 +74,8 @@ not verify Broadlink packets or real devices.
   [source compatibility audit](legacy-compatibility-audit.md) for supported fallback
   policies and intentional differences.
 - Port legacy light Ping/ARP monitoring if required by migration cases; current
-  light power state remains inferred. General legacy accessory-state persistence
-  and non-switch ambient gate types are not reproduced. External HomeKit gates
+  light power state remains inferred. Validated accessory-state persistence is implemented; non-switch ambient gate
+  types are not reproduced. External HomeKit gates
   remain outside platform-local linking.
 - Validate explicit jam producers and physical recovery. Feedback faults/cancels
   software actions; it does not transmit motor stop/reversal or supply an interlock.
@@ -96,16 +96,14 @@ not verify Broadlink packets or real devices.
 - Validate live Homebridge cache restoration/removal, restart, shutdown, TV pairing,
   migration and rollback with representative existing installations.
 - Validate installation of the narrowed, automatically built tarball, finalize
-  release tooling/changelog, and explicitly publish the scoped alpha when ready.
+  release tooling/changelog, and collect feedback on the public npm release.
 - Complete any Homebridge verification requirements before claiming a verified
   plugin badge.
 
 ## Deferred custom configuration UI
 
-The custom scan/learn/test editor is preserved on the local branch
-`feat/custom-configuration-ui` at checkpoint `24dc8ed`, together with the core
-rediscovery changes it was developed alongside. It is excluded from this upgrade
-branch, its runtime dependencies and release requirements. The existing schema,
+The custom scan/learn/test editor is deferred and is not included in the v5.0.0
+runtime dependencies or release requirements. The existing schema,
 JSON configuration, CLI and learning accessories remain the configuration tools.
 
 Resume the UI as a separate feature after the core upgrade. Its mocked browser

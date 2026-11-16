@@ -39,7 +39,7 @@ Record the filename returned by npm pack and its SHA-256. For the current packag
 version, this portable Node command computes the digest:
 
 ```bash
-node -e 'const fs=require("node:fs");const c=require("node:crypto");console.log(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex"))' ./mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz
+node -e 'const fs=require("node:fs");const c=require("node:crypto");console.log(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex"))' ./mrclmrvn-homebridge-broadlink-rm-5.0.0.tgz
 ```
 
 Preserve that artifact for the test. Packing runs a build automatically. If the

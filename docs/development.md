@@ -99,20 +99,20 @@ restored cache, each used accessory type, missing hardware, command failures,
 shutdown, TV external pairing, and actual appliance responses. Do not substitute
 mocked service tests for this validation.
 
-## Release work still required
+## Release procedure
 
-Before publishing an alpha for others, run the configured Homebridge version
+Before publishing a release, run the configured Homebridge version
 matrix for the release head and validate live installations against the
 [recorded software coverage](homebridge-compatibility.md). Review the tarball,
 expand driver coverage with real-device fixtures and a recorded hardware pass,
 and check migration documentation. Verify the package version and final changelog, and
 confirm the npm scope/account and dist-tag intended for that release.
 
-A scoped alpha publication would use the following command only when release
+A scoped stable publication uses the following command only when release
 preparation and publication are explicitly intended:
 
 ```bash
-npm publish --access public --tag alpha
+npm publish --access public --tag latest
 ```
 
 This guide does not execute a publication or confirm that a package/dist-tag

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v5 rebuild
+## [5.0.0] — 2026-11-16
 
 ### Fixed
 
@@ -115,9 +115,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limitations
 
-- This is unreleased alpha work, not a claim of full v4 configuration compatibility or verified hardware operation.
+- First stable rebuild release; full v4 option parity and broad hardware coverage are not claimed.
 - Several advanced per-accessory behaviors remain outstanding. 1-wire, pseudo and battery sources still require live validation. Optional Eve history is excluded from the current scope.
-- Live Homebridge/hardware validation, release-head CI results, publication and Homebridge verification remain pending; representative automated version coverage is documented.
+- One RM4/AC has live authentication, sensor, power-on and target-persistence results. Broader hardware and new state-persistence feedback remain welcome; Homebridge verification has not been claimed.
 
 ## [4.4.21 - 2026-05-10]
 ### Fixed
