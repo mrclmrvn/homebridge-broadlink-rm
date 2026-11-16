@@ -1,17 +1,39 @@
 # v5 installation and configuration
 
-The plugin is an alpha rebuild. Use a backup of your existing configuration and
+Version 5.0.0 is the first stable release of the rebuild. Back up your configuration and
 review [migration limits](migration.md) before replacing a working v4 setup.
-This guide describes the code in this repository; live hardware and Homebridge
-validation remain outstanding.
+One RM4/AC has recorded live checks; broader hardware coverage remains
+outstanding. The development repository is private, while the npm package is public.
 
-## Build and install a local package
+## Install from npm
+
+Install `@mrclmrvn/homebridge-broadlink-rm` through your Homebridge plugin manager,
+or use the npm environment that runs your Homebridge service:
+
+```bash
+npm install -g @mrclmrvn/homebridge-broadlink-rm@5.0.0
+```
+
+Use `-g` only for a global installation. For the native Ubuntu service layout
+with Node under `/opt/homebridge/bin` and local plugins in `/var/lib/homebridge`,
+the equivalent command is:
+
+```bash
+sudo /opt/homebridge/bin/npm --prefix /var/lib/homebridge install @mrclmrvn/homebridge-broadlink-rm@5.0.0
+```
+
+When replacing v4, back up full Homebridge storage, stop the service, uninstall
+`homebridge-broadlink-rm-pro` in that same npm environment, install v5, and restart.
+Preserve the full configuration and pairing files. Accessory identities differ
+between versions, so scenes and automations may need reassignment.
+
+## Build and install a local package (repository access required)
 
 Use Node 22.12+ within 22.x, or Node 24/26, for the locked development dependency
 set. The Node engine declaration matches that range. Representative Homebridge
 1.6.0/1.11.4/2.0.0/2.5.0 releases have [automated coverage](homebridge-compatibility.md);
-choose a Node version supported by both packages. Live integration remains
-outstanding. From your selected v5 checkout:
+choose a Node version supported by both packages. Broader live integration
+remains outstanding. From your selected v5 checkout:
 
 ```bash
 npm ci
@@ -21,19 +43,18 @@ npm pack
 
 `npm test` compiles TypeScript and runs `test/v5/*.test.js`. The prepack script
 also builds automatically before `npm pack`. The current version
-produces `mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz`.
+produces `mrclmrvn-homebridge-broadlink-rm-5.0.0.tgz`.
 
 Transfer that tarball to the Homebridge host if you built elsewhere. Install it
 in the environment used by Homebridge, then restart Homebridge:
 
 ```bash
-npm install -g ./mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz
+npm install -g ./mrclmrvn-homebridge-broadlink-rm-5.0.0.tgz
 ```
 
 Container, managed UI, and global npm installations may use different package
 locations. Confirm which environment runs your service before installing. These
-instructions do not publish anything to npm or assert that a registry release
-exists.
+local-build instructions do not publish anything to npm.
 
 ## Platform options
 

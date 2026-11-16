@@ -1,7 +1,5 @@
 # Homebridge Broadlink RM v5
 
-[![Build and Test](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml/badge.svg?branch=master)](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml)
-
 Control IR/RF appliances from Apple Home and Siri through Homebridge and Broadlink
 RM hardware. Configure accessories for your appliances and reuse their learned
 remote-control codes.
@@ -9,16 +7,18 @@ remote-control codes.
 This fork continues the Broadlink RM plugin as a TypeScript-based v5 rebuild,
 packaged as `@mrclmrvn/homebridge-broadlink-rm`.
 
-**Alpha status:** every legacy accessory type name now has a v5 implementation,
-but full legacy configuration compatibility and physical-device validation remain
-incomplete. Existing hex codes can be reused; advanced options may need changes.
-Read the [migration guide](docs/migration.md) before replacing an installation.
+**v5.0.0 is the first stable release of the rebuild.** Every legacy accessory
+type name has a v5 implementation. Full legacy option compatibility and broad
+hardware coverage remain incomplete. Existing hex codes can be reused; advanced
+options may need changes.
+Read the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/migration.md) before replacing an installation.
 
 ## Requirements and hardware
 
 - **Homebridge:** declared support is `^1.6.0 || ^2.0.0`.
-  [Automated version coverage](docs/homebridge-compatibility.md) exercises
-  1.6.0, 1.11.4, 2.0.0 and 2.5.0; live integration still needs validation.
+  [Automated version coverage](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/homebridge-compatibility.md) exercises
+  1.6.0, 1.11.4, 2.0.0 and 2.5.0. One RM4/AC has live validation;
+  other hardware and accessory types still need user feedback.
 - **Node.js:** 22.12+ within 22.x, or Node 24/26. Choose a version supported by
   both this plugin and your Homebridge release; older Homebridge versions may
   exclude Node 26.
@@ -28,27 +28,24 @@ Read the [migration guide](docs/migration.md) before replacing an installation.
   relevant built-in or cable sensor. Model-specific operation needs validation.
 - **Network access:** Homebridge must be able to reach the RM on the local
   network. Discovery uses broadcasts; static hosts are available when needed.
-  See [network troubleshooting](docs/troubleshooting.md#discovery-finds-nothing).
+  See [network troubleshooting](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/troubleshooting.md#discovery-finds-nothing).
 
 ## Start here
 
-1. Clone the repository, install development dependencies, and build/check the
-   package. If you already have a checkout, run the npm commands there:
+1. Back up your Homebridge configuration and storage. When replacing v4, stop
+   Homebridge and uninstall `homebridge-broadlink-rm-pro` before installing this
+   package. Keep configuration and pairing data; scene/automation links may need
+   reassignment. Do not run both Broadlink plugins with the same platform config.
+
+2. Install `@mrclmrvn/homebridge-broadlink-rm` through your Homebridge plugin
+   manager, or in the npm environment used by your Homebridge service:
 
    ```bash
-   git clone https://github.com/mrclmrvn/homebridge-broadlink-rm.git
-   cd homebridge-broadlink-rm
-   npm ci
-   npm run test:homebridge
-   npm pack
+   npm install -g @mrclmrvn/homebridge-broadlink-rm@5.0.0
    ```
 
-2. On the machine running Homebridge, install the resulting local tarball using
-   the same installation environment as your Homebridge service:
-
-   ```bash
-   npm install -g ./mrclmrvn-homebridge-broadlink-rm-5.0.0-alpha.1.tgz
-   ```
+   Managed installations may use a local prefix instead of `-g`. See the setup
+   guide for the correct installation environment.
 
 3. Add this `BroadlinkRM` object to the existing `platforms` array in your
    Homebridge config. Start with discovery and an IR learning button, then add
@@ -69,29 +66,34 @@ Read the [migration guide](docs/migration.md) before replacing an installation.
    logged hex code into an accessory's data configuration. TVs require separate
    HomeKit pairing; other types are bridged.
 
-Automatic discovery repeats hourly by default; [rediscovery settings](docs/rediscovery.md)
+Automatic discovery repeats hourly by default; [rediscovery settings](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/rediscovery.md)
 explain interval, disable and MAC-selection behavior. Configure accessories using
 the existing schema or JSON, and capture codes with learning accessories or the CLI.
 
-This is a source/tarball installation path, not confirmation that an npm release
-or alpha dist-tag has been published. Release-head CI and live integration
-validation remain required.
+An AC requiring a separate power-on code should set `"turnOnWhenOff": true`
+and configure `data.on`. Otherwise v5 uses its selected mode/temperature code
+when leaving Off. State persistence restores accepted settings without replaying
+startup IR; live measurements always come from current sensor sources.
 
-See [installation and configuration](docs/setup.md) for static hosts, multiple
-RM devices, platform options, and a [v5 sample config](config-v5-sample.json).
+The development repository is private. Additional guides and sample configuration
+ship inside the installed package; the public documentation links below read
+those files from the published npm package.
+
+See [installation and configuration](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/setup.md) for static hosts, multiple
+RM devices, platform options, and a [v5 sample config](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/config-v5-sample.json).
 
 ## Accessory guides
 
 | Accessories | Configuration |
 | --- | --- |
-| Air conditioner / Thermostat | [Setup](docs/setup.md), [mode/default options](docs/air-conditioner.md) |
-| Switches, IR learning | [Setup guide](docs/setup.md) |
-| Fan / Fanv2 | [Fan](docs/fan.md) |
-| Television, inputs, remote, volume | [TV and pairing](docs/tv.md) |
-| Light, brightness, color presets | [Light](docs/light.md) |
-| Window covering, garage door, lock | [Movement and lock controls](docs/moving-accessories.md) |
-| Humidifier/dehumidifier, purifier, sensors, HeaterCooler | [Remaining types](docs/remaining-accessories.md) |
-| Outlet, Window, Fan v1, switch variants | [Remaining types](docs/remaining-accessories.md#type-coverage) |
+| Air conditioner / Thermostat | [Setup](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/setup.md), [mode/default options](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/air-conditioner.md) |
+| Switches, IR learning | [Setup guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/setup.md) |
+| Fan / Fanv2 | [Fan](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/fan.md) |
+| Television, inputs, remote, volume | [TV and pairing](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/tv.md) |
+| Light, brightness, color presets | [Light](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/light.md) |
+| Window covering, garage door, lock | [Movement and lock controls](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/moving-accessories.md) |
+| Humidifier/dehumidifier, purifier, sensors, HeaterCooler | [Remaining types](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/remaining-accessories.md) |
+| Outlet, Window, Fan v1, switch variants | [Remaining types](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/remaining-accessories.md#type-coverage) |
 
 Reported power, movement, and lock state are generally inferred from successful
 commands and timers. Real sensor readings are available only from supported
@@ -100,13 +102,13 @@ handling and unsupported options.
 
 ## Troubleshooting and bug reports
 
-Documentation is available in the [setup guide](docs/setup.md) and
+Documentation is available in the [setup guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/setup.md) and
 [accessory guides](#accessory-guides). If you still have trouble after reading
-them, [open an issue](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues/new)
-and we'll help as best we can.
+them, include the details listed below when reporting a problem to the maintainer.
+The development repository and its issue tracker require repository access.
 
 If discovery finds nothing, check reachability from the machine or container
-running Homebridge and review [discovery troubleshooting](docs/troubleshooting.md#discovery-finds-nothing).
+running Homebridge and review [discovery troubleshooting](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/troubleshooting.md#discovery-finds-nothing).
 
 ### Unlock local control in the Broadlink app
 
@@ -119,50 +121,50 @@ If your device is locked, follow these steps:
 4. Scroll down and toggle **Lock device** to **Off**.
 5. Tap **OK** when prompted **Confirm to unlock the device**.
 
-<img src="docs/images/broadlink-unlock-device.png" alt="Broadlink app device settings showing Lock device switched off" width="375">
+<img src="https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/images/broadlink-unlock-device.png" alt="Broadlink app device settings showing Lock device switched off" width="375">
 
 Screenshot retained from the [previous maintainer's documentation](https://github.com/kiwi-cam/homebridge-broadlink-rm#documentation).
 App navigation may vary by version. Retry discovery or authentication after
-unlocking; see [authentication troubleshooting](docs/troubleshooting.md#authentication-or-sends-fail)
+unlocking; see [authentication troubleshooting](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/troubleshooting.md#authentication-or-sends-fail)
 if local connections still fail.
 
-For reproducible problems, [open an issue](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues/new)
-with the plugin, Homebridge and Node versions; RM model/device ID; relevant
+For reproducible problems, include the plugin, Homebridge and Node versions; RM model/device ID; relevant
 configuration; and logs showing the error and expected behavior. Redact passwords,
 MQTT credentials and Homebridge pairing codes. Include whether the problem
 occurs after restart or only with a particular command or sensor source.
 
 ## Diagnostics and development
 
-- [Scheduled rediscovery](docs/rediscovery.md): late-device recovery, DHCP address
+- [Scheduled rediscovery](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/rediscovery.md): late-device recovery, DHCP address
   changes, static hosts and shutdown behavior.
-- [Sensor sources](docs/sensor-sources.md): 1-wire, explicit pseudo temperatures,
+- [Sensor sources](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/sensor-sources.md): 1-wire, explicit pseudo temperatures,
   source precedence and optional battery telemetry.
-- [Power and feedback](docs/power-and-feedback.md): Ping/ARP estimates, shared
+- [Power and feedback](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/power-and-feedback.md): Ping/ARP estimates, shared
   command sequences, garage endpoints/obstruction and lock-bolt sensors.
-- [MQTT sensors](docs/mqtt.md): legacy topics, Zigbee2MQTT JSON, credentials,
+- [MQTT sensors](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/mqtt.md): legacy topics, Zigbee2MQTT JSON, credentials,
   freshness, and integration with AC, HeaterCooler and humidity controllers.
-- [Driver and protocol update](docs/protocol.md): RF learning, Pronto conversion,
+- [Driver and protocol update](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/protocol.md): RF learning, Pronto conversion,
   corrected authentication/framing, exact device IDs, and packaging changes.
-- [CLI and troubleshooting](docs/troubleshooting.md): discovery, authentication,
+- [CLI and troubleshooting](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/troubleshooting.md): discovery, authentication,
   IR learning, sending codes, sensor checks, and useful issue details.
-- [Homebridge version coverage](docs/homebridge-compatibility.md): exact targets,
+- [Homebridge version coverage](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/homebridge-compatibility.md): exact targets,
   selected HAP dependencies, real API/cache tests and CI scope.
-- [Development and release](docs/development.md): source layout, tests, CI,
+- [Development and release](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/development.md): source layout, tests, CI,
   packaging, and release validation still needed.
-- [Validation runbook](docs/validation.md) and [report template](docs/validation-report-template.md):
+- [Validation runbook](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/validation.md) and [report template](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/validation-report-template.md):
   reproducible hardware, Homebridge, MQTT, and rollback checks.
-- [Legacy compatibility audit](docs/legacy-compatibility-audit.md): fallback rules,
+- [Legacy compatibility audit](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/legacy-compatibility-audit.md): fallback rules,
   configuration differences and remaining concrete gaps.
-- [Roadmap](docs/roadmap.md): outstanding integrations, compatibility, testing,
+- [Roadmap](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/roadmap.md): outstanding integrations, compatibility, testing,
   and packaging work.
-- [Changelog](CHANGELOG.md): unreleased v5 work and historical v4 releases.
+- [Changelog](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/CHANGELOG.md): v5.0.0 changes and historical v4 releases.
 
 The package entry point is `dist/index.js`, built from `src/`. The Broadlink
 driver uses Node.js standard libraries; configured MQTT sources use MQTT.js,
-without mandatory native compilation. Legacy JavaScript files remain as
-reference material. Contributions and regression tests are welcome; see the
-[development guide](docs/development.md) for the workflow and test expectations.
+without mandatory native compilation. Legacy JavaScript files remain as reference material in the private repository.
+Contributors with repository access can build using `npm ci`, `npm run test:homebridge`
+and `npm pack`. Contributions and regression tests are welcome; see the
+[development guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/development.md) for the workflow and test expectations.
 
 ## Support the project
 
@@ -189,7 +191,7 @@ possible. Credit also goes to the earlier projects by
 [@Faisalthe01](https://github.com/Faisalthe01), and everyone who contributed code,
 testing, documentation, and bug reports.
 
-The [legacy README](docs/v4-readme.md) retains the v4 reference material and
+The [legacy README](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.0/docs/v4-readme.md) retains the v4 reference material and
 acknowledgments with an updated introduction explaining the continuation. The root
 `config-sample.json`, `config-multiple-rm-devices-sample.json`, and
 `config-sample.json-W1` files are legacy references, not v5 compatibility examples.
