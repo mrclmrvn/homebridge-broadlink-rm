@@ -40,11 +40,11 @@ remain separate requirements.
 | --- | --- |
 | Ordinary hex strings | Reused as accessory data; no re-learning required just for the rebuild |
 | AC sparse-map fallback | Disabled by default; true selects mode defaults, legacy selects the heatTemperature boundary/generic-default rule |
-| AC units / persistState | Display units supported; persistState false disables target persistence, not a general restoration of legacy power/movement state |
+| AC units / persistState | Display units supported; persistState false disables AC mode/target persistence; other accessory state restoration remains separate |
 | Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |
-| `air-conditioner` | Flat heat/cool/auto temperature codes, explicit device Auto, measured ambient thresholds and linked platform gates; saved setpoint preserved by default. See the Thermostat guide |
+| `air-conditioner` | Flat heat/cool/auto temperature codes, explicit device Auto, measured ambient thresholds and linked platform gates; saved mode/setpoint preserved by default without startup IR. See the Thermostat guide |
 | `temperatureSensor`, `humiditySensor` | Accepted with original casing; kebab-case aliases also available |
 | `window` and `fanv1` | Window and legacy Fan services, respectively |
 | MQTT sensors | Legacy broker/credential/topic options are supported; see the MQTT guide for freshness and payload rules |
@@ -84,9 +84,10 @@ See [TV setup](tv.md) before changing an existing TV installation.
 Most appliance state is inferred from commands rather than read back from the
 appliance. Restarting the plugin or using another remote can desynchronize it.
 Locks start Unknown; garage doors start Stopped. These are deliberate unknown
-physical-state representations. The AC/Thermostat's last accepted target temperature
-is saved in Homebridge accessory context and restored for the same identity/cache;
-its power mode still starts Off without sending. Explicit ambient thresholds
+physical-state representations. The AC/Thermostat's last accepted mode, target
+temperature and last active mode are saved in Homebridge accessory context and
+restored for the same identity/cache without sending IR. With persistence disabled,
+missing state or an older target-only snapshot, mode starts Off. Explicit ambient thresholds
 may act afterward on fresh measurements if the linked gate permits it. Invalid saved targets fall back
 to the configured default. This cache-based persistence does not preserve v4
 identities or survive cache removal. Window position starts from initialPosition

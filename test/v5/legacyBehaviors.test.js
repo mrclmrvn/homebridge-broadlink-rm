@@ -15,7 +15,7 @@ test('AC mode-specific temperature codes and mode commands preserve the saved se
   await f.set('TargetHeatingCoolingState', 1);
   assert.deepEqual(f.sent, ['cool-mode', 'cool18', 'heat-mode', 'heat18']);
   assert.equal(f.get('TargetTemperature'), 18);
-  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18, targetHeatingCoolingState: 1, lastMode: 1 });
 });
 
 test('AC legacy default reset and missing-code fallback are opt-in and report the actual selected target', async t => {

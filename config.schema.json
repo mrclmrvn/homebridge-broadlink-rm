@@ -1259,9 +1259,9 @@
               "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius."
             },
             "persistState": {
-              "title": "Thermostat: Persist Target Temperature",
+              "title": "Thermostat: Persist AC State",
               "type": "boolean",
-              "description": "Defaults to true. Explicit false ignores saved targets and skips target cache updates. Power mode always starts Off."
+              "description": "Defaults to true. Restores saved AC target temperature, operating mode and last active mode without sending startup IR. Explicit false ignores saved state, skips cache updates and starts Off. Older target-only snapshots start Off until a mode is saved."
             }
           }
         }

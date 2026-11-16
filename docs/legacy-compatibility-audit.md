@@ -18,8 +18,8 @@ neither is evidence of physical appliance or live Homebridge compatibility.
 | Nested commands inside On/mode/temperature stages | User array gaps remain independent of controller delays, including when stage delays are zero |
 | Bound total sequence expansion | One 10000-step limit applies across the complete AC plan, validated before sending |
 | units: c/f, including uppercase | Configures Thermostat display preference; internal values and command keys remain Celsius |
-| persistState: false | Disables AC target restore/cache updates; runtime control still works |
-| Persisted power/mode on restart | Not restored; only accepted AC targets persist by default |
+| persistState: false | Disables AC mode/target restore/cache updates; runtime control still works |
+| Persisted power/mode on restart | AC target, mode and last active mode restore without sending IR; other accessory types remain separate |
 
 Legacy fallback depends on the requested temperature, not the selected mode.
 For example, with boundary 22°C, a missing Cool request at 24°C retries
@@ -39,10 +39,10 @@ or the saved-setpoint behavior requested for the contributed installation.
   explicitly; the contributed installation does not need to enable it.
 - Default bounds differ from the legacy controller. Specify bounds/defaults in
   migrated configs; the supplied example already specifies 16–30°C and 25°C.
-- `persistState: false` is supported for AC targets. V5 does not reproduce the
+- `persistState: false` is supported for AC modes and targets. V5 does not reproduce the
   old plugin's general persistence of power, movement and other accessory states.
-  Disabling target persistence ignores an existing saved value without deleting
-  it; re-enabling can restore that earlier saved target.
+  Disabling AC persistence ignores an existing saved snapshot without deleting
+  it; re-enabling can restore that earlier snapshot.
 - Light power monitoring remains a gap: legacy lights inherited Ping/ARP through
   their switch controller; v5 monitoring currently covers switch/outlet, TV and
   fan/purifier types. Do not assume a light's pingIPAddress is active.

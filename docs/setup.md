@@ -156,14 +156,14 @@ connections are disposed on shutdown. Invalid modes/temperatures are rejected,
 and repeated identical commands are suppressed unless `allowResend` is true.
 Full legacy AC options remain pending.
 
-Accepted target-temperature changes are saved in the accessory's Homebridge cache,
-including changes made while Off, unless `persistState: false` disables target
-restore/cache updates. After a normal restart with the same accessory
-identity/cache, the last target is restored without sending IR. Startup starts
-Off; explicitly configured ambient automation can subsequently act on a fresh
+Accepted AC mode/target changes are saved in the accessory's Homebridge cache,
+including target edits made while Off, unless `persistState: false` disables
+restore/cache updates. After a restart or process crash with the same accessory
+identity/cache, the last saved mode and target are restored without sending IR.
+Missing/older target-only snapshots start Off; explicitly configured ambient automation can subsequently act on a fresh
 reading when its optional gate allows it.
 For example, 18°C → Off → restart → Cool sends the 18°C code. Failed active
-transmissions do not overwrite the saved target. Missing, malformed, out-of-range
+transmissions do not overwrite saved state. Missing, malformed, out-of-range
 or step-incompatible saved values use `defaultCoolTemperature` (default 24) instead.
 The configured default remains the fallback, not a forced reset at every restart.
 Removing the accessory/cache or changing its name/host can lose this saved value.

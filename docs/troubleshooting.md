@@ -108,8 +108,10 @@ alone does not establish that the appliance responded.
 AC operation logs distinguish incoming HomeKit writes, skipped duplicate
 requests, saved off-state targets and commands acknowledged by Broadlink. They
 do not establish physical AC state. Target-temperature persistence restores the
-selected temperature after restart; HomeKit mode initially remains Off and no
-startup command is sent. Restoring the previous operating mode is separate.
+selected temperature and operating mode after restart without sending a startup
+command. With `persistState: false`, or an older target-only snapshot, mode starts
+Off. Select a mode once with the state-persistence build to save it for later
+restarts. See [AC state persistence](air-conditioner.md#saved-state-and-legacy-defaults).
 
 ## Missing or incorrect HomeKit controls
 

@@ -346,12 +346,12 @@ test('only accepted AC temperature writes update persisted state', async t => {
     data: { on: 'on', temperature18: '18', temperature24: '24', off: 'off' } });
   const save = t.mock.method(f.platform, 'updateAccessoryContext', () => {});
   await f.set('TargetTemperature', 18);
-  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18, targetHeatingCoolingState: 0, lastMode: 2 });
   await f.set('TargetHeatingCoolingState', 2);
   f.device.sendData = async () => { throw new Error('offline'); };
   await assert.rejects(f.set('TargetTemperature', 24), /offline/);
   await assert.rejects(f.set('TargetTemperature', 19), /No IR/);
   await assert.rejects(f.set('TargetTemperature', 31), /range/);
-  assert.equal(save.mock.callCount(), 1);
-  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  assert.equal(save.mock.callCount(), 2);
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18, targetHeatingCoolingState: 2, lastMode: 2 });
 });
