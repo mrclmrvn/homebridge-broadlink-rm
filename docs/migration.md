@@ -40,7 +40,7 @@ remain separate requirements.
 | --- | --- |
 | Ordinary hex strings | Reused as accessory data; no re-learning required just for the rebuild |
 | AC sparse-map fallback | Disabled by default; true selects mode defaults, legacy selects the heatTemperature boundary/generic-default rule |
-| AC units / persistState | Display units supported; persistState false disables AC mode/target persistence; other accessory state restoration remains separate |
+| units / persistState | AC display units supported; persistState false disables saved settings for stateful accessories. See [state persistence](state-persistence.md) for each type's limits |
 | Structured code arrays/objects | Shared command leaves support nested sequences/repetitions across controllers |
 | `switch-multi`, `switch-repeat`, `switch-multi-repeat` | Actual sequence/repeat execution, not simple switch aliases |
 | `heater-cooler` with data.heat/data.cool | HeaterCooler service; the earlier v5 Thermostat alias is removed |
@@ -90,8 +90,11 @@ restored for the same identity/cache without sending IR. With persistence disabl
 missing state or an older target-only snapshot, mode starts Off. Explicit ambient thresholds
 may act afterward on fresh measurements if the linked gate permits it. Invalid saved targets fall back
 to the configured default. This cache-based persistence does not preserve v4
-identities or survive cache removal. Window position starts from initialPosition
-(default 0), not a position sensor. Optional file/MQTT garage endpoint,
+identities or survive cache removal. Other stateful accessories restore validated
+settings too; external TVs use a separate state file. Window position restores
+its last completed/held estimate, or initialPosition (default 0) without a cache.
+Interrupted travel requires endpoint recalibration and never resumes on startup.
+See [state persistence](state-persistence.md). Optional file/MQTT garage endpoint,
 obstruction and standalone lock-bolt sources provide explicit feedback; see
 [power and feedback](power-and-feedback.md). Configured unavailable sources fault
 rather than authorizing a command. Explicit jamSensor feedback reports jam state

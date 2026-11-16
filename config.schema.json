@@ -1259,9 +1259,9 @@
               "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius."
             },
             "persistState": {
-              "title": "Thermostat: Persist AC State",
+              "title": "Persist Accessory State",
               "type": "boolean",
-              "description": "Defaults to true. Restores saved AC target temperature, operating mode and last active mode without sending startup IR. Explicit false ignores saved state, skips cache updates and starts Off. Older target-only snapshots start Off until a mode is saved."
+              "description": "Defaults to true for stateful accessories. Restores validated settings without replaying startup commands or timers. Explicit false ignores saved settings and skips state writes. Sensors read fresh values; learning and momentary actions stay idle. Locks/doors require fresh confirmation of physical state."
             }
           }
         }

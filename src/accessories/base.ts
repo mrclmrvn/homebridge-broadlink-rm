@@ -3,6 +3,7 @@ import type { BroadlinkRMPlatform } from '../platform';
 import { RMDevice } from '../broadlink';
 import { compileCommands, type CommandStep } from '../helpers/commands';
 import type { SensorSource } from './sensorSource';
+import { stateKind, type StateFields } from '../helpers/state';
 
 export abstract class BaseAccessory {
   protected readonly platform: BroadlinkRMPlatform;
@@ -11,6 +12,8 @@ export abstract class BaseAccessory {
   protected readonly log: Logging;
   protected readonly name: string;
   private readonly commandShutdown = new AbortController();
+  private stateFields: StateFields = {};
+  private stateDirty = false;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     this.platform = platform;
@@ -18,6 +21,7 @@ export abstract class BaseAccessory {
     this.config = accessory.context.config || {};
     this.log = platform.log;
     this.name = this.config.name || accessory.displayName || 'Broadlink Accessory';
+    if (this.config.persistState !== undefined && typeof this.config.persistState !== 'boolean') throw new Error('persistState must be a boolean');
 
     // Configure standard AccessoryInformation Service
     const infoService =
@@ -33,6 +37,32 @@ export abstract class BaseAccessory {
 
   /** Release accessory-owned resources on platform shutdown or removal. */
   public dispose(): void { this.commandShutdown.abort(); }
+
+  /** Register only explicitly validated settings; derived classes may add fields. */
+  protected restoreState(fields: StateFields): void {
+    Object.assign(this.stateFields, fields);
+    if (this.config.persistState === false) return;
+    const saved = this.accessory.context.broadlinkRMState;
+    if (saved?.version !== 1 || saved.kind !== stateKind(this.config.type)
+      || !saved.values || typeof saved.values !== 'object' || Array.isArray(saved.values)) return;
+    const target = this as unknown as Record<string, unknown>;
+    for (const [key, valid] of Object.entries(fields)) {
+      if (Object.hasOwn(saved.values, key) && valid(saved.values[key], saved.values)) target[key] = structuredClone(saved.values[key]);
+    }
+  }
+
+  protected persistState(): void {
+    if (this.config.persistState === false || !Object.keys(this.stateFields).length) return;
+    const target = this as unknown as Record<string, unknown>;
+    const values: Record<string, unknown> = {};
+    for (const [key, valid] of Object.entries(this.stateFields)) {
+      if (valid(target[key], target)) values[key] = structuredClone(target[key]);
+    }
+    const snapshot = { version: 1, kind: stateKind(this.config.type), values };
+    if (!this.stateDirty && JSON.stringify(snapshot) === JSON.stringify(this.accessory.context.broadlinkRMState)) return;
+    this.accessory.context.broadlinkRMState = snapshot;
+    this.stateDirty = this.platform.updateAccessoryContext(this.accessory) === false;
+  }
 
   /** Expected sensor failures are a HAP status, rather than unhandled getter errors. */
   protected async readSensor(source: SensorSource, quantity: 'temperature' | 'humidity'): Promise<number> {

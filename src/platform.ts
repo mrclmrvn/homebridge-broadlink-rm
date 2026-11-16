@@ -7,6 +7,7 @@ import {
   Service,
   Characteristic,
 } from 'homebridge';
+import { ExternalStateStore } from './helpers/externalState';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { DeviceManager } from './deviceManager';
 import { createAccessoryInstance, BaseAccessory } from './accessories';
@@ -18,6 +19,14 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   public readonly instances: Map<string, BaseAccessory> = new Map();
   public readonly deviceManager: DeviceManager;
   private stopped = false;
+  private readonly externalIds = new Set<string>();
+  private externalStateStore?: ExternalStateStore;
+
+  private externalStore(): ExternalStateStore {
+    this.externalStateStore ||= new ExternalStateStore(this.api.user.storagePath(),
+      `${PLUGIN_NAME}:${this.config._bridge?.username || this.config.name || PLATFORM_NAME}`);
+    return this.externalStateStore;
+  }
 
   constructor(
     public readonly log: Logging,
@@ -50,11 +59,14 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   }
 
   /** Ask Homebridge to persist updated context without replaying accessory commands. */
-  public updateAccessoryContext(accessory: PlatformAccessory): void {
+  public updateAccessoryContext(accessory: PlatformAccessory): boolean {
     try {
-      this.api.updatePlatformAccessories([accessory]);
+      if (this.externalIds.has(accessory.UUID)) this.externalStore().write(accessory.UUID, accessory.context.broadlinkRMState);
+      else this.api.updatePlatformAccessories([accessory]);
+      return true;
     } catch {
       this.log.warn(`[${PLATFORM_NAME}] Could not persist state for "${accessory.displayName}"; it may be lost on restart.`);
+      return false;
     }
   }
 
@@ -119,6 +131,11 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
           accConfig.name, uuid, this.api.hap.Categories.TELEVISION,
         );
         television.context.config = accConfig;
+        this.externalIds.add(uuid);
+        if (accConfig.persistState !== false && this.api.user) {
+          try { television.context.broadlinkRMState = this.externalStore().read(uuid) ?? cached?.context.broadlinkRMState; }
+          catch (error) { this.log.warn(`[${accConfig.name}] Could not load saved TV state: ${(error as Error).message}`); }
+        }
         const instance = this.createInstance(television);
         if (instance) {
           this.api.publishExternalAccessories(PLUGIN_NAME, [television]);

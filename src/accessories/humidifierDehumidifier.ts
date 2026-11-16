@@ -3,6 +3,7 @@ import type { BroadlinkRMPlatform } from '../platform';
 import { FanAccessory } from './fan';
 import { SensorSource } from './sensorSource';
 import { BatteryStatus } from './battery';
+import { stateEnum, stateNumber } from '../helpers/state';
 
 export class HumidifierDehumidifierAccessory extends FanAccessory {
   private readonly source: SensorSource;
@@ -28,7 +29,23 @@ export class HumidifierDehumidifierAccessory extends FanAccessory {
     this.low = this.percentage(this.config.humidifierThreshold ?? 40);
     this.high = this.percentage(this.config.dehumidifierThreshold ?? 60);
     if (this.low > this.high) throw new Error('Humidifier threshold must not exceed dehumidifier threshold');
+    this.active = 0;
+    this.restoreState({ active: (value, saved) => stateEnum(0, 1)(value, saved) && (value === 0 || stateEnum(...this.modes)(saved.target, saved)),
+      target: stateEnum(...this.modes), low: stateNumber(0, 100), high: stateNumber(0, 100),
+      current: stateEnum(C.CurrentHumidifierDehumidifierState.INACTIVE, C.CurrentHumidifierDehumidifierState.IDLE,
+        C.CurrentHumidifierDehumidifierState.HUMIDIFYING, C.CurrentHumidifierDehumidifierState.DEHUMIDIFYING) });
+    if (this.low > this.high) {
+      this.low = this.config.humidifierThreshold ?? 40;
+      this.high = this.config.dehumidifierThreshold ?? 60;
+    }
+    if (!this.active) this.current = C.CurrentHumidifierDehumidifierState.INACTIVE;
+    else if (this.current === C.CurrentHumidifierDehumidifierState.INACTIVE
+      || this.target === 1 && this.current === C.CurrentHumidifierDehumidifierState.DEHUMIDIFYING
+      || this.target === 2 && this.current === C.CurrentHumidifierDehumidifierState.HUMIDIFYING) {
+      this.current = C.CurrentHumidifierDehumidifierState.IDLE;
+    }
     this.service.getCharacteristic(C.CurrentHumidifierDehumidifierState).onGet(() => this.current);
+    this.service.updateCharacteristic(C.Active, this.active);
     this.service.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => this.readSensor(this.source, 'humidity'));
     this.service.getCharacteristic(C.TargetHumidifierDehumidifierState).updateValue(this.target).setProps({ validValues: this.modes })
       .onGet(() => this.target).onSet(value => this.serialize(async () => {

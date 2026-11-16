@@ -2,6 +2,7 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { FeedbackSource } from '../sensors/feedback';
+import { stateEnum } from '../helpers/state';
 
 export class LockAccessory extends TimedAccessory {
   private readonly service: Service;
@@ -20,6 +21,7 @@ export class LockAccessory extends TimedAccessory {
     const C = platform.Characteristic;
     this.current = C.LockCurrentState.UNKNOWN;
     this.target = C.LockTargetState.SECURED;
+    this.restoreState({ target: stateEnum(C.LockTargetState.SECURED, C.LockTargetState.UNSECURED) });
     this.lockDuration = this.seconds(this.config.lockDuration ?? this.config.lockUnlockDuration, 1);
     this.unlockDuration = this.seconds(this.config.unlockDuration ?? this.config.lockUnlockDuration, 1);
     this.autoLockDelay = this.seconds(this.config.autoLockDelay, 0);
@@ -77,6 +79,7 @@ export class LockAccessory extends TimedAccessory {
         this.service.updateCharacteristic(this.platform.Characteristic.LockTargetState, this.target);
       }
       this.service.updateCharacteristic(this.platform.Characteristic.LockCurrentState, this.current);
+      this.persistState();
     } catch (error) {
       if (this.jam) { this.cancelTimer('transition'); this.cancelTimer('autoLock'); this.transitioning = this.pendingAutoLock = false; }
       if (!this.disposed) this.service.updateCharacteristic(this.platform.Characteristic.LockCurrentState, error as Error);

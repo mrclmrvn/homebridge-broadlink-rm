@@ -173,6 +173,9 @@ or storage failure is not guaranteed to preserve the latest change.
 See [Thermostat modes and legacy options](air-conditioner.md) for On/mode delays,
 dry-off, power timers, resend aliases and opt-in default resets/fallback. Without
 reset-on-mode-change, the saved setpoint behavior above remains unchanged.
+Other stateful accessory types also restore validated settings. See
+[state persistence](state-persistence.md) for storage, opt-out and the distinct
+behavior of sensors, learning, momentary actions and interrupted movement.
 See [ambient control and enable switches](air-conditioner.md#ambient-threshold-automation-and-linked-switches)
 for opt-in regulation, manual overrides and virtual gates.
 For nested setting maps under `data.heat` / `data.cool`, use

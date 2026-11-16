@@ -1,6 +1,7 @@
 import type { Characteristic, CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
+import { stateBoolean } from '../helpers/state';
 
 type CodeStep = { value: number; key: string };
 
@@ -21,6 +22,16 @@ export class LightAccessory extends TimedAccessory {
     if (this.config.stateless) this.seconds(this.config.onDuration, 0.5, true);
     if (this.config.exclusives !== undefined && (!Array.isArray(this.config.exclusives)
       || this.config.exclusives.some((name: unknown) => typeof name !== 'string' || !name))) throw new Error('exclusives must be an array of accessory names');
+    this.restoreState({
+      ...(!this.config.stateless ? { on: stateBoolean } : {}),
+      brightness: value => value === 0 || this.steps('brightness', 1, 100).some(step => step.value === value),
+      lastBrightness: value => value === 0 || this.steps('brightness', 1, 100).some(step => step.value === value),
+      hue: value => this.steps('hue', 0, 360).some(step => step.value === value),
+      saturation: value => value === 100 || value === 0 && Boolean(this.config.data?.white)
+        || this.steps('saturation', 0, 100).some(step => step.value === value),
+      colorTemperature: value => this.steps('colorTemperature', 140, 500).some(step => step.value === value),
+    });
+    if (!this.on) this.brightness = 0;
     const C = platform.Characteristic;
     this.service = accessory.getService(platform.Service.Lightbulb)
       || accessory.addService(platform.Service.Lightbulb, this.name);
@@ -43,6 +54,10 @@ export class LightAccessory extends TimedAccessory {
         this.colorTemperature = step.value;
         this.service.updateCharacteristic(C.ColorTemperature, this.colorTemperature);
       });
+    for (const [type, value] of [[C.On, this.on], [C.Brightness, this.brightness], [C.Hue, this.hue],
+      [C.Saturation, this.saturation], [C.ColorTemperature, this.colorTemperature]] as const) {
+      if (this.service.testCharacteristic(type)) this.service.updateCharacteristic(type, value);
+    }
   }
 
   private optional(
@@ -126,6 +141,7 @@ export class LightAccessory extends TimedAccessory {
         instance.cancelTimer('light-reset');
         instance.service.updateCharacteristic(this.platform.Characteristic.On, false);
         if (instance.service.testCharacteristic(this.platform.Characteristic.Brightness)) instance.service.updateCharacteristic(this.platform.Characteristic.Brightness, 0);
+        instance.persistState();
       }
     }
   }
