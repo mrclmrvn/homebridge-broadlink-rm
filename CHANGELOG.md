@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Validated state persistence across switches/outlets, fans, lights, external
+  TVs, HeaterCooler, purifiers, humidity controllers, locks, doors and coverings.
+  External TVs use scoped atomic JSON state files. Startup does not replay
+  commands or timers; live telemetry stays fresh, momentary/learning actions
+  stay idle, and interrupted covering travel requires endpoint recalibration.
+- AC state persistence saves accepted operating mode, target and last active
+  mode through Homebridge's cache API on each successful change. Startup restores
+  them without replaying IR or arming power timers; older target-only snapshots
+  remain compatible and `persistState: false` disables the complete AC snapshot.
 - AC mode/temperature request, duplicate-skip and Broadlink acknowledgement logs
   without learned code contents, plus a standalone safe-header authentication
   diagnostic and a [scoped live validation record](docs/live-validation-2026-11-16.md).

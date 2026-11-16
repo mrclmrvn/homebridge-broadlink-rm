@@ -2,6 +2,7 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { FeedbackSource } from '../sensors/feedback';
+import { stateEnum } from '../helpers/state';
 
 export class GarageDoorOpenerAccessory extends TimedAccessory {
   private readonly service: Service;
@@ -26,6 +27,9 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
     this.target = C.TargetDoorState.CLOSED;
     this.lockCurrent = C.LockCurrentState.UNKNOWN;
     this.lockTarget = C.LockTargetState.SECURED;
+    this.restoreState({ target: stateEnum(C.TargetDoorState.CLOSED, C.TargetDoorState.OPEN),
+      ...(this.config.data?.lock && this.config.data?.unlock
+        ? { lockTarget: stateEnum(C.LockTargetState.SECURED, C.LockTargetState.UNSECURED) } : {}) });
     this.openDuration = this.seconds(this.config.openDuration ?? this.config.openCloseDuration, 8);
     this.closeDuration = this.seconds(this.config.closeDuration ?? this.config.openCloseDuration, 8);
     this.autoCloseDelay = this.seconds(this.config.autoCloseDelay, 0);
@@ -134,6 +138,7 @@ export class GarageDoorOpenerAccessory extends TimedAccessory {
         this.service.updateCharacteristic(C.TargetDoorState, this.target);
       }
       this.service.updateCharacteristic(C.CurrentDoorState, this.current);
+      this.persistState();
     } catch (error) {
       if (!this.disposed) this.service.updateCharacteristic(C.CurrentDoorState, error as Error);
       throw error;

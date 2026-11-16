@@ -136,7 +136,7 @@ test('AC target survives serialized cache restoration while power remains Off an
   const updates = t.mock.method(f.api, 'updatePlatformAccessories', () => {});
   await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleSetRequest(18);
   assert.deepEqual(updates.mock.calls[0].arguments[0], [accessory]);
-  assert.deepEqual(accessory.context.broadlinkRMState, { targetTemperature: 18 });
+  assert.deepEqual(accessory.context.broadlinkRMState, { targetTemperature: 18, targetHeatingCoolingState: 0, lastMode: 2 });
   await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(2);
   await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(0);
   const records = JSON.parse(JSON.stringify([{ name: accessory.displayName, UUID: accessory.UUID, context: accessory.context }]));
@@ -233,4 +233,55 @@ test('active AC reduced to 18 then turned Off restores 18 after restart, indepen
   assert.equal(restarted.sent.length, 2);
   assert.deepEqual(f.warnings, []);
   assert.deepEqual(restarted.warnings, []);
+});
+
+test('active AC mode and setpoint are persisted before shutdown and restored without replaying IR', async t => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const directory = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'broadlink-ac-state-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, 'cache.json');
+  const f = await setup(t);
+  t.mock.method(f.api, 'updatePlatformAccessories', () => {
+    fs.writeFileSync(file, JSON.stringify(f.registered.map(a => ({ name: a.displayName, UUID: a.UUID, context: a.context }))));
+  });
+  const accessory = f.registered.find(a => a.getService(hap.Service.Thermostat));
+  const service = accessory.getService(hap.Service.Thermostat);
+  await service.getCharacteristic(hap.Characteristic.TargetTemperature).handleSetRequest(23);
+  await service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleSetRequest(2);
+  // Load only the already-written cache: no shutdown hook or final flush occurs.
+  const records = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.deepEqual(records.find(a => a.UUID === accessory.UUID).context.broadlinkRMState,
+    { targetTemperature: 23, targetHeatingCoolingState: 2, lastMode: 2 });
+  const restored = await setup(t, records);
+  const current = restored.platform.accessories.get(accessory.UUID).getService(hap.Service.Thermostat);
+  assert.equal(await current.getCharacteristic(hap.Characteristic.TargetTemperature).handleGetRequest(), 23);
+  assert.equal(await current.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState).handleGetRequest(), 2);
+  assert.equal(await current.getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState).handleGetRequest(), 2);
+  assert.deepEqual(restored.sent, []);
+  assert.deepEqual(restored.warnings, []);
+});
+
+test('mode-only changes persist and failed Off/Cool sends leave the saved state unchanged', async t => {
+  const f = await setup(t);
+  const accessory = f.registered.find(a => a.getService(hap.Service.Thermostat));
+  const mode = accessory.getService(hap.Service.Thermostat).getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
+  const save = t.mock.method(f.api, 'updatePlatformAccessories', () => {});
+  await mode.handleSetRequest(2); // Keep the default temperature: mode still needs saving.
+  assert.equal(save.mock.callCount(), 1);
+  assert.equal(accessory.context.broadlinkRMState.targetHeatingCoolingState, 2);
+  const device = f.platform.deviceManager.getDevice(accessory.context.config.host);
+  const send = device.sendData;
+  device.sendData = async () => { throw new Error('offline'); };
+  await assert.rejects(mode.handleSetRequest(0));
+  assert.equal(accessory.context.broadlinkRMState.targetHeatingCoolingState, 2);
+  assert.equal(save.mock.callCount(), 1);
+  device.sendData = send;
+  await mode.handleSetRequest(0);
+  assert.equal(accessory.context.broadlinkRMState.targetHeatingCoolingState, 0);
+  assert.equal(accessory.context.broadlinkRMState.lastMode, 2);
+  device.sendData = async () => { throw new Error('offline'); };
+  await assert.rejects(mode.handleSetRequest(2));
+  assert.equal(accessory.context.broadlinkRMState.targetHeatingCoolingState, 0);
+  assert.equal(save.mock.callCount(), 2);
 });

@@ -45,7 +45,8 @@ export class AirConditionerAccessory extends TimedAccessory {
       || step <= 0 || step > this.maxTemperature - this.minTemperature
       || this.targetTemperature < this.minTemperature || this.targetTemperature > this.maxTemperature || !aligned(this.targetTemperature)) throw new Error('Invalid Thermostat temperature configuration');
     if (this.config.persistState !== undefined && typeof this.config.persistState !== 'boolean') throw new Error('persistState must be a boolean');
-    const saved = this.config.persistState === false ? undefined : accessory.context.broadlinkRMState?.targetTemperature;
+    const savedState = this.config.persistState === false ? undefined : accessory.context.broadlinkRMState;
+    const saved = savedState?.targetTemperature;
     if (typeof saved === 'number' && Number.isFinite(saved) && saved >= this.minTemperature && saved <= this.maxTemperature
       && Math.abs((saved - this.minTemperature) / step - Math.round((saved - this.minTemperature) / step)) < 0.000001) {
       this.targetTemperature = saved;
@@ -66,6 +67,20 @@ export class AirConditionerAccessory extends TimedAccessory {
     if (this.config.replaceAutoMode !== undefined && (!['heat', 'cool'].includes(this.config.replaceAutoMode)
       || !this.allowedModes.includes(this.config.replaceAutoMode === 'heat' ? 1 : 2))) throw new Error('Invalid replaceAutoMode');
     if (this.lastMode === 3 && this.config.replaceAutoMode) this.lastMode = this.config.replaceAutoMode === 'heat' ? 1 : 2;
+    const validSavedMode = (value: unknown): number | undefined => {
+      // A newly configured Auto replacement does not prove that a previously
+      // running device Auto mode changed physically. Fall back to Off instead.
+      if (value === 3 && this.config.replaceAutoMode) return undefined;
+      return typeof value === 'number' && Number.isInteger(value) && this.allowedModes.includes(value) ? value : undefined;
+    };
+    const restoredMode = validSavedMode(savedState?.targetHeatingCoolingState);
+    const restoredLastMode = validSavedMode(savedState?.lastMode);
+    if (restoredLastMode !== undefined && restoredLastMode !== 0) this.lastMode = restoredLastMode;
+    if (restoredMode !== undefined) {
+      this.targetHeatingCoolingState = restoredMode;
+      this.currentHeatingCoolingState = restoredMode === 3 ? undefined : restoredMode;
+      if (restoredMode !== 0) this.lastMode = restoredMode;
+    }
     for (const key of ['defaultHeatTemperature', 'defaultCoolTemperature', 'defaultAutoTemperature']) {
       const value = this.config[key];
       if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < this.minTemperature || value > this.maxTemperature || !aligned(value))) throw new Error(`Invalid ${key}`);
@@ -201,6 +216,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       await this.sendCode(off);
       this.log.info?.(`[${this.name}] Broadlink acknowledged Off command.`);
       this.commitMode(0);
+      this.saveState();
     } else {
       const entering = state !== this.targetHeatingCoolingState;
       const temp = entering && this.config.resetTemperatureOnModeChange ? this.modeDefault(state) : this.targetTemperature;
@@ -262,19 +278,22 @@ export class AirConditionerAccessory extends TimedAccessory {
     await this.sendCommands(compileCommandPlan(commands));
     this.log.info?.(`[${this.name}] Broadlink acknowledged ${this.modeLabel(state)} command at ${temp} C.`);
     this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : mode === 'auto' ? 3 : state);
-    const changed = this.targetTemperature !== temp;
     this.targetTemperature = temp;
     this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
-    if (changed) this.saveTargetTemperature();
+    this.saveState();
   }
 
   private getTargetTemperature(): CharacteristicValue {
     return this.targetTemperature;
   }
 
-  private saveTargetTemperature(): void {
+  private saveState(): void {
     if (this.config.persistState === false) return;
-    this.accessory.context.broadlinkRMState = { targetTemperature: this.targetTemperature };
+    this.accessory.context.broadlinkRMState = {
+      targetTemperature: this.targetTemperature,
+      targetHeatingCoolingState: this.targetHeatingCoolingState,
+      lastMode: this.lastMode,
+    };
     this.platform.updateAccessoryContext(this.accessory);
   }
 
@@ -294,7 +313,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     } else {
       this.targetTemperature = temp;
       this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
-      this.saveTargetTemperature();
+      this.saveState();
       this.log.info?.(`[${this.name}] Saved target ${temp} C while Off; no command sent.`);
     }
   }

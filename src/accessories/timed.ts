@@ -12,7 +12,7 @@ export abstract class TimedAccessory extends BaseAccessory {
   protected watchPower(update: (on: boolean) => void): void {
     if (!this.config.pingIPAddress) return;
     this.power = new PowerMonitor(this.config);
-    this.power.start(on => { if (!this.disposed) update(on); });
+    this.power.start(on => { if (!this.disposed) { update(on); this.persistState(); } });
   }
 
   protected powerTimerEnabled(on: boolean): boolean {
@@ -38,6 +38,7 @@ export abstract class TimedAccessory extends BaseAccessory {
     const result = this.queue.then(async () => {
       if (this.disposed) throw new Error(`[${this.name}] Accessory has shut down`);
       await action();
+      this.persistState();
     });
     this.queue = result.catch(() => {});
     return result;

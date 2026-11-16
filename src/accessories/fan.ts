@@ -1,6 +1,7 @@
 import { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
+import { stateEnum, stateNumber } from '../helpers/state';
 
 /** Shared fan controls for Fan/Fanv2, purifier, and humidity appliances. */
 export class FanAccessory extends TimedAccessory {
@@ -11,6 +12,7 @@ export class FanAccessory extends TimedAccessory {
   private direction = 0;
   private swing = 0;
   private cycleStep?: number;
+  private controlsLocked = 0;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
     super(platform, accessory);
@@ -37,6 +39,10 @@ export class FanAccessory extends TimedAccessory {
         ? platform.Service.HumidifierDehumidifier : platform.Service.Fanv2;
     this.service = accessory.getService(serviceType) || accessory.addService(serviceType, this.name);
     const C = platform.Characteristic;
+    const speedValues = Object.keys(this.config.data || {}).filter(key => /^fanSpeed\d+$/.test(key)).map(key => Number(key.slice(8)));
+    this.restoreState({ active: stateEnum(0, 1), speed: value => stateNumber(0, 100)(value, {})
+      && (value === 0 || this.config.speedCycle && Number.isInteger(Number(value) / this.stepSize) || speedValues.includes(Number(value))) });
+    if (!this.active) this.speed = 0;
     if (legacy) {
       this.service.getCharacteristic(C.On).onGet(() => Boolean(this.active))
         .onSet(value => this.serialize(() => this.setActive(value)));
@@ -81,6 +87,16 @@ export class FanAccessory extends TimedAccessory {
         && this.service.getCharacteristic(C.SwingMode);
       if (characteristic) this.service.removeCharacteristic(characteristic);
     }
+    if (this.service.testCharacteristic(C.RotationDirection)) {
+      this.restoreState({ direction: stateEnum(0, 1) });
+      this.service.updateCharacteristic(C.RotationDirection, this.direction);
+    }
+    if (this.service.testCharacteristic(C.SwingMode)) {
+      this.restoreState({ swing: stateEnum(0, 1) });
+      this.service.updateCharacteristic(C.SwingMode, this.swing);
+    }
+    this.publishPower();
+    if (hasSpeed) this.service.updateCharacteristic(C.RotationSpeed, this.speed);
     if (kind === 'fan' || legacy) this.watchFanPower();
   }
 
@@ -100,14 +116,14 @@ export class FanAccessory extends TimedAccessory {
   protected setupPhysicalLock(): void {
     const C = this.platform.Characteristic;
     if (this.config.showLockPhysicalControls !== false && this.config.data?.lockControls && this.config.data?.unlockControls) {
-      let locked = 0;
-      this.service.getCharacteristic(C.LockPhysicalControls).onGet(() => locked)
+      this.restoreState({ controlsLocked: stateEnum(0, 1) });
+      this.service.getCharacteristic(C.LockPhysicalControls).updateValue(this.controlsLocked).onGet(() => this.controlsLocked)
         .onSet(value => this.serialize(async () => {
           const target = Number(value);
           if (![0, 1].includes(target)) throw new Error('Invalid physical control lock state');
-          if (target === locked) return;
+          if (target === this.controlsLocked) return;
           await this.sendConfigured(target ? 'lockControls' : 'unlockControls');
-          locked = target;
+          this.controlsLocked = target;
         }));
     } else if (this.service.testCharacteristic(C.LockPhysicalControls)) {
       this.service.removeCharacteristic(this.service.getCharacteristic(C.LockPhysicalControls));

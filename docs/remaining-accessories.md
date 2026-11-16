@@ -258,7 +258,7 @@ local-reset behavior. `enableAutoOff: true` sends off after onDuration (default
 No automatic on command is scheduled at startup.
 
 Explicit `virtual: true` supports local switch/outlet toggles without code or
-power-probe configuration. They start Off and can gate
+power-probe configuration. They restore a saved latch (otherwise start Off) and can gate
 [AC ambient automation](air-conditioner.md#ambient-threshold-automation-and-linked-switches).
 No IR/RF is sent by changing a virtual toggle; non-virtual switches still require
 configured commands.

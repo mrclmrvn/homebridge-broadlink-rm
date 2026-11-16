@@ -22,7 +22,7 @@ function setup(options = {}) {
   const C = Object.fromEntries(['Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'On', 'Brightness', 'Hue', 'Saturation', 'ColorTemperature'].map(key => [key, key]));
   const sent = [];
   const device = { async sendData(code) { sent.push(code); } };
-  const platform = { Service: { AccessoryInformation: 'info', Lightbulb: 'light' }, Characteristic: C, log: { debug() {}, error() {}, warn() {} }, deviceManager: { getDevice: () => device } };
+  const platform = { updateAccessoryContext() {}, Service: { AccessoryInformation: 'info', Lightbulb: 'light' }, Characteristic: C, log: { debug() {}, error() {}, warn() {} }, deviceManager: { getDevice: () => device } };
   const config = { type: 'light', onDelay: 0, data: { on: 'on', off: 'off', brightness25: 'dim', brightness75: 'bright', hue0: 'red', hue120: 'green', white: 'white', colorTemperature200: 'cool', colorTemperature400: 'warm' }, ...options };
   const accessory = { UUID: 'light', context: { config }, getService: () => service };
   const instance = createAccessoryInstance(platform, accessory);

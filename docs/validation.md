@@ -137,7 +137,7 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 | Switch/outlet | Sequence order, repeat/pause timing, stateless reset, automatic commands; OutletInUse remains an estimate |
 | Fan/purifier | Nearest speed, cycle wrap/reset assumptions, defaults/timers, supported mode and direction/swing/control lock; repeated toggles do not reverse accidentally |
 | Light | Brightness/white/color presets, power-on delay, exclusives, automatic timers and supported saturation requests |
-| Thermostat/HeaterCooler | Correct code and units, measured versus target, failed-send state; AC target persists across normal restart while startup stays Off and sends nothing |
+| Thermostat/HeaterCooler | Correct code and units, measured versus target, failed-send state; AC mode/target persist across restart/process crash without startup IR; Off stays Off; older target-only caches start Off |
 | Humidity controller | Humidify/idle/dehumidify selection and no new automatic command on unavailable measurements |
 | Window/covering | Calibrated full travel, intermediate stop, reversal, hold, endpoint resend and initial-position assumption |
 | Garage/lock | Actual actions, timer estimates without sources, endpoint/bolt confirmation with sources, obstruction blocking, stale/missing feedback, automatic commands and cancellation |
@@ -146,7 +146,7 @@ or unreachable-device failure, and restart behavior. Add the relevant cases:
 For sparse AC maps, test the explicitly selected fallback policy at/below/above
 its boundary; confirm the physical command and reported accepted target agree.
 Verify units changes affect presentation only, and persistState false ignores
-saved targets without restoring power. Validate user sequence gaps separately
+saved AC mode/target snapshots and starts Off. Validate user sequence gaps separately
 from controller On/mode delays.
 
 ## AC automation checks

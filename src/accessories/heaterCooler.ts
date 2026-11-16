@@ -4,6 +4,7 @@ import { TimedAccessory } from './timed';
 import { SensorSource } from './sensorSource';
 import { BatteryStatus } from './battery';
 import { compileCommands } from '../helpers/commands';
+import { stateEnum, stateNumber } from '../helpers/state';
 
 type Settings = { heat: number; cool: number; speed: number; swing: number };
 
@@ -42,6 +43,13 @@ export class HeaterCoolerAccessory extends TimedAccessory {
         ? Math.max(this.min, Math.min(this.max, 24)) : this.toCelsius(this.config.coolingThresholdTemperature)),
       speed: this.percent(this.config.defaultRotationSpeed ?? 100), swing: 0,
     };
+    this.restoreState({ active: (value, saved) => stateEnum(0, 1)(value, saved)
+      && (value === 0 || stateEnum(...this.modes)(saved.mode, saved)), mode: stateEnum(...this.modes), settings: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+      const saved = value as Record<string, unknown>;
+      return Object.keys(saved).length === 4 && ['heat', 'cool'].every(key => stateNumber(this.min, this.max)(saved[key], saved))
+        && stateNumber(0, 100)(saved.speed, saved) && stateEnum(0, 1)(saved.swing, saved);
+    } });
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.interval = this.seconds(this.config.temperatureUpdateFrequency ?? this.config.sensorPollInterval, 10);
     this.service = accessory.getService(platform.Service.HeaterCooler)

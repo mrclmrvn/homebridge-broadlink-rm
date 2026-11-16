@@ -1,6 +1,7 @@
 import type { PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { FanAccessory } from './fan';
+import { stateEnum } from '../helpers/state';
 
 export class AirPurifierAccessory extends FanAccessory {
   private target: number;
@@ -9,6 +10,11 @@ export class AirPurifierAccessory extends FanAccessory {
     super(platform, accessory);
     const C = platform.Characteristic;
     this.target = C.TargetAirPurifierState.MANUAL;
+    const validTarget = (value: unknown) => value === C.TargetAirPurifierState.MANUAL
+      || value === C.TargetAirPurifierState.AUTO && Boolean(this.config.data?.targetStateAuto);
+    this.active = 0;
+    this.restoreState({ target: validTarget, active: (value, saved) => stateEnum(0, 1)(value, saved) && (value === 0 || validTarget(saved.target)) });
+    this.service.updateCharacteristic(C.Active, this.active);
     this.service.getCharacteristic(C.CurrentAirPurifierState).onGet(() => this.currentState());
     this.service.getCharacteristic(C.TargetAirPurifierState).onGet(() => this.target)
       .onSet(value => this.serialize(async () => {

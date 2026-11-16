@@ -1,6 +1,8 @@
 import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
+import { createHash } from 'node:crypto';
+import { stateBoolean, stateEnum } from '../helpers/state';
 
 const remoteKeys = [
   'rewind', 'fastForward', 'nextTrack', 'previousTrack', 'arrowUp', 'arrowDown',
@@ -16,6 +18,7 @@ export class TelevisionAccessory extends TimedAccessory {
   private muted = false;
   private pictureMode = 0;
   private pictureModeConfirmed = false;
+  private inputSignature = '';
   private readonly television: Service;
 
   constructor(platform: BroadlinkRMPlatform, accessory: PlatformAccessory) {
@@ -23,6 +26,18 @@ export class TelevisionAccessory extends TimedAccessory {
     this.validatePowerTimers();
     const C = platform.Characteristic;
     const S = platform.Service;
+    const inputs = Array.isArray(this.config.data?.inputs) ? this.config.data.inputs : [];
+    const picture = this.config.data?.pictureMode;
+    const validPictures = pictureModes.flatMap((name, index) => picture?.[index] || picture?.[name] ? [index] : []);
+    this.inputSignature = this.signature(inputs[this.input]);
+    this.restoreState({ active: stateEnum(0, 1), muted: stateBoolean,
+      inputSignature: value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value),
+      input: (value, saved) => typeof value === 'number' && Number.isInteger(value) && Boolean(inputs[value])
+        && saved.inputSignature === this.signature(inputs[value]),
+      pictureMode: stateEnum(...validPictures),
+      pictureModeConfirmed: (value, saved) => value === false || value === true && stateEnum(...validPictures)(saved.pictureMode, saved),
+    });
+    this.inputSignature = this.signature(inputs[this.input]);
     this.television = accessory.getService(S.Television)
       || accessory.addService(S.Television, this.name);
     this.television.setPrimaryService();
@@ -32,13 +47,13 @@ export class TelevisionAccessory extends TimedAccessory {
       .onSet(value => this.serialize(async () => {
         await this.setActive(Number(value));
       }));
-    const inputs = Array.isArray(this.config.data?.inputs) ? this.config.data.inputs : [];
     this.television.getCharacteristic(C.ActiveIdentifier).onGet(() => this.input)
       .onSet(value => this.serialize(async () => {
         const index = Number(value);
         if (!Number.isInteger(index) || !inputs[index]) throw new Error(`Unknown TV input: ${index}`);
         await this.sendTVCode(inputs[index].data, `inputs[${index}].data`);
         this.input = index;
+        this.inputSignature = this.signature(inputs[index]);
       }));
     this.television.getCharacteristic(C.RemoteKey).onSet(value => this.serialize(async () => {
       const key = Number(value) === C.RemoteKey.INFORMATION ? 'info' : remoteKeys[Number(value)];
@@ -49,12 +64,11 @@ export class TelevisionAccessory extends TimedAccessory {
       await this.sendTVCode(this.config.data?.powerMode?.[key], `powerMode.${key}`);
     }));
 
-    const picture = this.config.data?.pictureMode;
     if (picture !== undefined) {
       if (!picture || typeof picture !== 'object' || Array.isArray(picture)) throw new Error('pictureMode requires a code map');
       const values = pictureModes.flatMap((name, index) => picture[index] || picture[name] ? [index] : []);
       if (!values.length || Object.keys(picture).some(key => !pictureModes.includes(key) && !/^[0-7]$/.test(key))) throw new Error('Invalid pictureMode code map');
-      this.pictureMode = values[0];
+      if (!this.pictureModeConfirmed) this.pictureMode = values[0];
       this.television.getCharacteristic(C.PictureMode)
         .setProps({ validValues: pictureModes.map((_, index) => index) }).updateValue(this.pictureMode)
         .setProps({ validValues: values })
@@ -67,7 +81,8 @@ export class TelevisionAccessory extends TimedAccessory {
           this.pictureModeConfirmed = true;
           this.television.updateCharacteristic(C.PictureMode, mode);
         }));
-      this.television.updateCharacteristic(C.PictureMode, new Error('Picture mode has not been selected'));
+      if (this.pictureModeConfirmed) this.television.updateCharacteristic(C.PictureMode, this.pictureMode);
+      else this.television.updateCharacteristic(C.PictureMode, new Error('Picture mode has not been selected'));
     } else if (this.television.testCharacteristic(C.PictureMode)) {
       this.television.removeCharacteristic(this.television.getCharacteristic(C.PictureMode));
     }
@@ -87,6 +102,9 @@ export class TelevisionAccessory extends TimedAccessory {
       this.muted = target;
     }));
     this.television.addLinkedService(speaker);
+    this.television.updateCharacteristic(C.Active, this.active);
+    this.television.updateCharacteristic(C.ActiveIdentifier, this.input);
+    speaker.updateCharacteristic(C.Mute, this.muted);
 
     const currentInputs = new Set<Service>();
     inputs.forEach((input: Record<string, any>, index: number) => {
@@ -111,6 +129,10 @@ export class TelevisionAccessory extends TimedAccessory {
       this.active = on ? 1 : 0;
       this.television.updateCharacteristic(C.Active, this.active);
     });
+  }
+
+  private signature(input: unknown): string {
+    return createHash('sha256').update(JSON.stringify(input ?? null)).digest('hex');
   }
 
   private async setActive(target: number): Promise<void> {

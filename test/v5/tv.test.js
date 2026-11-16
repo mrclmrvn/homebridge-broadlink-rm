@@ -32,7 +32,7 @@ function fixture() {
   Object.assign(C, { Active: { ACTIVE: 1 }, RemoteKey: { INFORMATION: 15 }, PowerModeSelection: { SHOW: 0 }, VolumeSelector: { INCREMENT: 0 }, VolumeControlType: { RELATIVE: 1 }, SleepDiscoveryMode: { ALWAYS_DISCOVERABLE: 1 }, IsConfigured: { CONFIGURED: 1 } });
   const sent = [];
   const device = { async sendData(code) { sent.push(code); } };
-  const platform = { Service: S, Characteristic: C, log: { debug() {}, error() {}, warn() {}, info() {} }, deviceManager: { getDevice: () => device } };
+  const platform = { updateAccessoryContext() {}, Service: S, Characteristic: C, log: { debug() {}, error() {}, warn() {}, info() {} }, deviceManager: { getDevice: () => device } };
   const config = { name: 'TV', type: 'tv', data: { on: 'on', off: 'off', inputs: [{ name: 'HDMI', type: 'hdmi', data: 'hdmi' }], remote: { arrowUp: 'up', info: 'info' }, volume: { up: 'louder', down: 'quieter', mute: 'mute' } } };
   const accessory = new Accessory('TV', 'id'); accessory.context.config = config;
   return { platform, accessory, config, sent, device, S, C, Accessory };

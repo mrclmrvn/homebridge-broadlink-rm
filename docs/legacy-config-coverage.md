@@ -24,7 +24,7 @@ bytes and must not be used to operate appliances.
 | All `temperature16` through `temperature30` entries | Each nested data string is selected and routed to its configured host in tests |
 | `{ "pseudo-mode": "cool", "data": "..." }` | The data wrapper works. Heat/cool mode metadata is interpreted after successful sends; cool is consistent with these units |
 | `ignoreTemperatureWhenOff: true` | The requested effect matches v5's existing rule: temperature writes while Off are stored without sending IR. False/omitted legacy behavior is not reproduced |
-| `defaultMode: "cool"` | Used as the fixed mode hint for explicit off-state activation. Both units start Off; Cool is their only active mode |
+| `defaultMode: "cool"` | Used as the fixed mode hint for explicit off-state activation. Both units start Off without saved modes; Cool is their only active mode |
 | Distinct `data.on` and `temperature25` codes | Turning on prefers the selected temperature code. A separate On command is not automatically sent first |
 | Disabled fan, three speeds at 33/66/99 | Skipped during registration; an existing cached disabled accessory is removed. The same fan mapping works when explicitly enabled in a test |
 | `defaultFanSpeed: 33` | Does not itself send a reset-speed command; default reset requires `alwaysResetToDefaults` |
@@ -38,9 +38,10 @@ That checks representation and coverage, not the meaning of the IR pulses.
 
 ## Known behavior differences to verify
 
-V5 starts each AC Off with target 25°C when no valid saved target exists. The last
-accepted target is persisted in Homebridge context and restored for the same
-identity/cache after restart. If a user chooses 27°C while Off, v5 stores 27°C
+V5 starts each AC Off with target 25°C when no valid saved state exists. The last
+accepted mode/target and last active mode are persisted in Homebridge context and
+restored for the same identity/cache after restart without IR. Older target-only
+snapshots still start Off until a mode is saved. If a user chooses 27°C while Off, v5 stores 27°C
 without transmitting, then sends `temperature27` when Cool is enabled.
 The legacy mode-change path resets to `defaultCoolTemperature` when entering
 Cool. V5 now offers `resetTemperatureOnModeChange: true` to request that behavior;

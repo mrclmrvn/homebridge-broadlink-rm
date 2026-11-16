@@ -41,8 +41,9 @@ gaps inside each command leaf, independently of On/mode stage delays.
 They cannot both be true. Otherwise Off/Heat/Cool are offered, with device Auto
 when appropriate mappings exist. Explicit `defaultMode` may be heat, cool or auto
 and must agree with the available modes or fixed Auto replacement; it selects
-the mode used for explicit off-state activation. Startup begins Off, although
-configured ambient thresholds can act on the first valid poll/message.
+the mode used for explicit off-state activation. Startup restores a valid saved
+mode when persistence is enabled; otherwise it begins Off. Configured ambient
+thresholds can act on the first valid poll/message.
 
 For active mode Heat/Cool/Auto, lookup prefers `heatXX` / `coolXX` / `autoXX`,
 then generic `temperatureXX`. A mode change sends `data.heat` / `data.cool` /
@@ -77,12 +78,14 @@ Choosing device Auto also suspends plugin ambient-threshold actions until a
 fixed mode or Off is selected. A fixed replaceAutoMode alias is distinct from
 appliance Auto.
 
-## Saved targets and legacy defaults
+## Saved state and legacy defaults
 
-Accepted targets persist in Homebridge accessory context. A normal restart with
-the same identity/cache restores the target without restoring power. No command
-is sent merely to restore the target. Explicit ambient automation may act later
-on a fresh reading. Initial/fallback target uses `defaultCoolTemperature` (default
+Accepted targets, operating modes and the last active mode persist in Homebridge
+accessory context. After a restart or process crash, the same identity/cache
+restores the last saved state: Cool at 23°C returns as Cool at 23°C, while Off
+stays Off. Restoration sends no IR and does not start automatic power timers.
+Explicit ambient automation may act later on a fresh reading.
+Initial/fallback target uses `defaultCoolTemperature` (default
 24), `defaultHeatTemperature` (default 24) for heatOnly/defaultMode heat, or
 `defaultAutoTemperature` falling back to the cool default for defaultMode auto.
 
@@ -108,10 +111,28 @@ choose that fallback. Range/step checks and pseudo-mode restrictions still apply
 and mode defaults must also align with the configured minimum/step.
 See the [compatibility audit](legacy-compatibility-audit.md) for concrete examples.
 
-By default the accepted target persists. Explicit `persistState: false` ignores
-saved targets and skips their cache updates, so the configured startup default
-is used after restart. Existing saved data is not deleted and can be restored if
-persistence is later re-enabled. Power mode is never restored by this option.
+`persistState` defaults to true. Explicit false ignores all saved AC state and
+skips state cache updates; startup uses the configured target and mode Off.
+Existing saved data is not deleted and can be restored if persistence is later
+re-enabled. Older target-only snapshots restore their temperature but start Off;
+select a mode once with this build to save it for subsequent restarts.
+
+State is saved after the whole command sequence succeeds, including mode-only
+changes and Off. Accepted off-state temperature edits are saved immediately.
+Failed commands do not overwrite the saved state. These saves use Homebridge's
+cache-update API when the change is accepted, not a shutdown-only flush. Storage
+errors, termination before the update finishes, cache removal and power loss can
+still lose a change. A failed partial IR sequence can also leave the physical AC
+different from the last successfully saved state.
+
+Saved temperatures must match the current range/step, and saved modes must match
+the current configuration. Invalid fields fall back to startup defaults/Off.
+An Auto mode invalidated by a new `replaceAutoMode` setting is not silently
+translated into a physical Heat/Cool transition. Activity in restored Auto stays
+unknown; no compressor feedback is invented. Other modes remain inferred from
+the last successful command, so an external remote or appliance power loss can
+desynchronize the displayed state. Restoring a mode does not physically turn an
+AC back on after its own power loss.
 
 ## Startup, Off and automatic commands
 

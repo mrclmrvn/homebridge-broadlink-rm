@@ -25,7 +25,7 @@ function setup(config = {}) {
   const Characteristic = Object.fromEntries(['Manufacturer', 'Model', 'SerialNumber', 'FirmwareRevision', 'Active', 'RotationSpeed', 'RotationDirection', 'SwingMode'].map(key => [key, key]));
   Characteristic.RotationDirection = { CLOCKWISE: 0 };
   Characteristic.SwingMode = { SWING_ENABLED: 1 };
-  const platform = {
+  const platform = { updateAccessoryContext() {},
     Service: { AccessoryInformation: 'info', Fanv2: 'fan' }, Characteristic,
     log: { debug() {}, warn() {}, error() {} },
     deviceManager: { getDevice: () => device },

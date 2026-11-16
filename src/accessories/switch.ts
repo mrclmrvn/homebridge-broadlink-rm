@@ -2,6 +2,7 @@ import type { PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
 import { compileCommands, type CommandStep } from '../helpers/commands';
+import { stateBoolean } from '../helpers/state';
 
 export class SwitchAccessory extends TimedAccessory {
   private readonly service: Service;
@@ -21,11 +22,17 @@ export class SwitchAccessory extends TimedAccessory {
     this.onDuration = this.seconds(this.config.onDuration, this.config.enableAutoOff ? 60 : 0);
     this.offDuration = this.seconds(this.config.offDuration, 60);
     this.interval = this.seconds(this.config.interval, 1);
+    const actionOnly = typeof this.config.data === 'string' || Buffer.isBuffer(this.config.data) || Array.isArray(this.config.data);
+    if (!this.config.stateless && !actionOnly) this.restoreState({ state: stateBoolean });
+    // Outlet use is a live observation when a power probe is configured.
+    this.inUse = !this.config.pingIPAddress && this.state;
     const type = this.outlet ? platform.Service.Outlet : platform.Service.Switch;
     this.service = accessory.getService(type) || accessory.addService(type, this.name);
     this.service.getCharacteristic(platform.Characteristic.On).onGet(() => this.state)
       .onSet(value => this.serialize(() => this.setOn(Boolean(value))));
     if (this.outlet) this.service.getCharacteristic(platform.Characteristic.OutletInUse).onGet(() => this.inUse);
+    this.service.updateCharacteristic(platform.Characteristic.On, this.state);
+    if (this.outlet) this.service.updateCharacteristic(platform.Characteristic.OutletInUse, this.inUse);
     this.watchPower(on => {
       this.inUse = on;
       if (this.outlet) this.service.updateCharacteristic(platform.Characteristic.OutletInUse, on);

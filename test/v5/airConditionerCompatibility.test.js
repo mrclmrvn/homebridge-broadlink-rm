@@ -39,7 +39,7 @@ test('legacy fallback commits the temperature and pseudo-mode actually encoded a
   await f.set('TargetTemperature', 22);
   assert.equal(f.get('TargetTemperature'), 30); assert.equal(f.get('TargetHeatingCoolingState'), 1);
   assert.deepEqual(f.sent, ['16', '30']);
-  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 30 });
+  assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 30, targetHeatingCoolingState: 1, lastMode: 1 });
 });
 
 test('an enabled but missing fallback cannot silently send On or a mode command', async t => {
@@ -113,8 +113,56 @@ test('legacy persistState false ignores saved targets and skips cache writes whi
   assert.deepEqual(f.sent, ['18']); assert.equal(save.mock.callCount(), 0);
   assert.equal(f.accessory.context.broadlinkRMState, undefined);
   f.instance.dispose();
-  f.accessory.context.broadlinkRMState = { targetTemperature: 18 };
+  f.accessory.context.broadlinkRMState = { targetTemperature: 18, targetHeatingCoolingState: 2, lastMode: 2 };
   const replacement = createAccessoryInstance(f.platform, f.accessory); t.after(() => replacement.dispose());
   assert.equal(f.get('TargetTemperature'), 25); assert.equal(f.get('TargetHeatingCoolingState'), 0);
   assert.equal(save.mock.callCount(), 0);
+});
+
+test('AC cache validates modes against current configuration and accepts older target-only snapshots', async t => {
+  const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, coolOnly: true, defaultCoolTemperature: 25 });
+  const cases = [
+    [{ targetTemperature: 23, targetHeatingCoolingState: 2, lastMode: 2 }, 23, 2],
+    [{ targetTemperature: 23 }, 23, 0],
+    [{ targetTemperature: 23, targetHeatingCoolingState: 1, lastMode: 1 }, 23, 0],
+    [{ targetTemperature: 23, targetHeatingCoolingState: '2', lastMode: '2' }, 23, 0],
+    [{ targetTemperature: 99, targetHeatingCoolingState: 7 }, 25, 0],
+    [null, 25, 0],
+  ];
+  f.instance.dispose();
+  for (const [saved, target, mode] of cases) {
+    f.accessory.context.broadlinkRMState = saved;
+    const restored = createAccessoryInstance(f.platform, f.accessory);
+    assert.equal(f.get('TargetTemperature'), target);
+    assert.equal(f.get('TargetHeatingCoolingState'), mode);
+    assert.equal(f.get('CurrentHeatingCoolingState'), mode);
+    assert.deepEqual(f.sent, []);
+    restored.dispose();
+  }
+});
+
+test('restored Off remembers the last Heat mode for an explicit off-state activation policy', async t => {
+  const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, ignoreTemperatureWhenOff: false,
+    defaultMode: 'cool', data: { heat24: 'heat24', cool24: 'cool24', off: 'off' } });
+  f.instance.dispose();
+  f.accessory.context.broadlinkRMState = { targetTemperature: 23, targetHeatingCoolingState: 0, lastMode: 1 };
+  const restored = createAccessoryInstance(f.platform, f.accessory); t.after(() => restored.dispose());
+  assert.deepEqual(f.sent, []);
+  await f.set('TargetTemperature', 24);
+  assert.deepEqual(f.sent, ['heat24']);
+  assert.equal(f.get('TargetHeatingCoolingState'), 1);
+});
+
+test('restored Auto retains unknown current activity, and restoration never arms power timers', async t => {
+  const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0,
+    enableAutoOff: true, enableAutoOn: true, onDuration: 1, offDuration: 1,
+    data: { auto24: 'auto24', cool24: 'cool24', off: 'off' } });
+  f.instance.dispose();
+  f.accessory.context.broadlinkRMState = { targetTemperature: 24, targetHeatingCoolingState: 3, lastMode: 3 };
+  const restored = createAccessoryInstance(f.platform, f.accessory); t.after(() => restored.dispose());
+  assert.equal(f.get('TargetHeatingCoolingState'), 3);
+  assert.throws(() => f.get('CurrentHeatingCoolingState'), /Auto activity is unavailable/);
+  await f.clock.tick(2000);
+  assert.deepEqual(f.sent, []);
+  assert.equal(f.clock.timers.size, 0);
 });
