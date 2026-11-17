@@ -1,7 +1,7 @@
 {
   "name": "@mrclmrvn/homebridge-broadlink-rm",
   "displayName": "Homebridge Broadlink RM",
-  "version": "5.0.1-beta.3",
+  "version": "5.0.1",
   "description": "Modern Broadlink RM plugin for Homebridge with native RM4 support, zero native compilation dependencies, and TypeScript architecture",
   "license": "ISC",
   "main": "dist/index.js",
