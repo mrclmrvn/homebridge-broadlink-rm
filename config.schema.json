@@ -223,7 +223,7 @@
               "title": "Cool Only",
               "type": "boolean",
               "default": true,
-              "description": "For Air Conditioners: restricts available modes to Off and Cool only."
+              "description": "For Air Conditioners: operates in Off/Cool. Apple Home tile Heat (1) activation requests automatically route to Cool at the saved/default target. Heat is advertised as an accepted alias but no Heat codes are sent."
             },
             "minTemperature": {
               "title": "Min Temperature (\u00b0C)",

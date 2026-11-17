@@ -75,6 +75,32 @@ and configure `data.on`. Otherwise v5 uses its selected mode/temperature code
 when leaving Off. State persistence restores accepted settings without replaying
 startup IR; live measurements always come from current sensor sources.
 
+### AC tile behavior (5.0.1 test builds)
+
+The operating-state pairs are:
+
+| Configuration | Operating states |
+| --- | --- |
+| `"coolOnly": true` | Cool ↔ Off |
+| `"heatOnly": true` | Heat ↔ Off |
+
+Set only one of these flags. Returning from Off uses the remembered temperature,
+or the configured startup default when no saved target exists. Keep
+`turnOnWhenOff: true` and `data.on` if the appliance needs an explicit power-on
+code before its temperature command.
+
+Some Apple Home clients send Heat (1) when tapping an Off cool-only tile. From
+5.0.1-beta.3, this request automatically routes to Cool, sends only cooling codes,
+and normalizes the displayed/saved mode to Cool. No `homeAppTileOn` option is
+needed. Heat-only ACs keep normal Heat behavior.
+
+The HomeKit Thermostat service must advertise Heat as an accepted alias for this
+cool-only compatibility behavior. Apple Home may therefore also show a Heat
+selection, which routes to Cool; its visible picker is not guaranteed to contain
+only Cool and Off. Removing that accepted alias would restore the rejected-write
+failure. This fixes the confirmed tile activation issue without changing the
+accessory's service type or identity.
+
 The development repository is private. Additional guides and sample configuration
 ship inside the installed package; the public documentation links below read
 those files from the published npm package.

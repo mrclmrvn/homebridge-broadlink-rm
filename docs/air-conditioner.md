@@ -37,13 +37,40 @@ gaps inside each command leaf, independently of On/mode stage delays.
 
 ## Mode and temperature selection
 
-`coolOnly` restricts modes to Off/Cool; `heatOnly` restricts them to Off/Heat.
+`coolOnly` restricts operating modes to Off/Cool, with the tile activation alias
+described below; `heatOnly` restricts modes to Off/Heat.
 They cannot both be true. Otherwise Off/Heat/Cool are offered, with device Auto
 when appropriate mappings exist. Explicit `defaultMode` may be heat, cool or auto
 and must agree with the available modes or fixed Auto replacement; it selects
 the mode used for explicit off-state activation. Startup restores a valid saved
 mode when persistence is enabled; otherwise it begins Off. Configured ambient
 thresholds can act on the first valid poll/message.
+
+### Apple Home tile power-on compatibility
+
+Some Apple Home clients send mode `1` (Heat) when tapping an Off thermostat tile,
+even when the advertised valid modes are only `0` (Off) and `2` (Cool).
+Homebridge rejects that write before the plugin handler, and Apple Home may show
+No Response despite working sensors and explicit Cool selection.
+
+For a cool-only AC, the compatibility behavior is automatic:
+
+```json
+"coolOnly": true
+```
+
+V5 accepts mode 1 as an activation alias for Cool, using the retained
+target temperature or the configured startup default. It does not send Heat
+codes or save Heat as the operating mode. Reads and deferred display updates
+normalize the reported target to Cool (2). Off still sends the normal Off code.
+
+Homebridge's public characteristic API uses the same valid-values list for
+advertising and validating writes, so Heat must also appear as an accepted value.
+Apple Home may therefore show a Heat selection; for a cool-only AC it means Cool.
+Heat-only and combined Heat/Cool ACs retain normal Heat behavior. The temporary
+`homeAppTileOn` flag used in an earlier test build has been removed and can be
+deleted from configuration after upgrading. This is separate from `turnOnWhenOff: true`, which
+sends `data.on` before the chosen temperature code when the appliance needs it.
 
 For active mode Heat/Cool/Auto, lookup prefers `heatXX` / `coolXX` / `autoXX`,
 then generic `temperatureXX`. A mode change sends `data.heat` / `data.cool` /

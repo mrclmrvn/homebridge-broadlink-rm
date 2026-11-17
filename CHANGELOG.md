@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 5.0.1
+
+### Fixed
+
+- Accept Apple Home's Heat (1) tile activation request automatically for
+  `coolOnly: true`, routing it to Cool at the remembered/default temperature.
+  The target/display and persisted state normalize to Cool; Heat-only and
+  combined-mode ACs retain normal Heat commands. No extra configuration flag
+  is needed.
+- Align Thermostat mode bounds with accepted modes. Explain the required
+  advertised Heat alias for cool-only clients and the resulting picker behavior.
+- Add real-HAP client-write coverage, deferred display normalization, and
+  remembered-temperature Off/On cycles for both Cool and Heat behavior.
+- Live beta.3 validation confirmed tile activation at a retained 23 C target
+  without the temporary test flag. See the November 17 validation record.
+
 ## [5.0.0] — 2026-11-16
 
 ### Fixed

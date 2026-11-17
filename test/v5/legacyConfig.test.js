@@ -69,7 +69,7 @@ test('both legacy cooling maps retain default 25, nested metadata, all 16–30 c
     const service = accessory.getService(hap.Service.Thermostat);
     const mode = service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
     const temp = service.getCharacteristic(hap.Characteristic.TargetTemperature);
-    assert.deepEqual(mode.props.validValues, [0, 2]);
+    assert.deepEqual(mode.props.validValues, [0, 1, 2]);
     assert.equal(await temp.handleGetRequest(), 25);
     const start = f.sent.length;
     await mode.handleSetRequest(2);
