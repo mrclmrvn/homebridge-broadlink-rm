@@ -223,27 +223,42 @@
               "title": "Cool Only",
               "type": "boolean",
               "default": true,
-              "description": "For Air Conditioners: operates in Off/Cool. Apple Home tile Heat (1) activation requests automatically route to Cool at the saved/default target. Heat is advertised as an accepted alias but no Heat codes are sent."
+              "description": "For Air Conditioners: operates in Off/Cool. Apple Home tile Heat (1) activation requests automatically route to Cool at the saved/default target. Heat is advertised as an accepted alias but no Heat codes are sent.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "minTemperature": {
               "title": "Min Temperature (\u00b0C)",
               "type": "integer",
-              "default": 16
+              "default": 16,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "maxTemperature": {
               "title": "Max Temperature (\u00b0C)",
               "type": "integer",
-              "default": 30
+              "default": 30,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultCoolTemperature": {
               "title": "Default Cool Temperature (\u00b0C)",
               "type": "integer",
-              "default": 24
+              "default": 24,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "tempStepSize": {
               "title": "Temperature Step Size (\u00b0C)",
               "type": "number",
-              "default": 1
+              "default": 1,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "data": {
               "title": "IR/RF Hex Data",
@@ -315,257 +330,404 @@
                       ]
                     }
                   },
-                  "description": "TV only. Named presets or numeric HomeKit keys 0\u20137; each code accepts a shared sequence."
+                  "description": "TV only. Named presets or numeric HomeKit keys 0\u20137; each code accepts a shared sequence.",
+                  "condition": {
+                    "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+                  }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"humidifier-dehumidifier\", \"tv\", \"television\", \"window\", \"window-covering\", \"garage-door-opener\", \"lock\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "speedSteps": {
               "title": "Number of Fan Speeds",
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "stepSize": {
               "title": "Fan Speed Step (%)",
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "hideSwingMode": {
               "title": "Hide Fan Swing Control",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "hideRotationDirection": {
               "title": "Hide Fan Direction Control",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultBrightness": {
               "title": "Default Light Brightness (%)",
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "useLastKnownBrightness": {
               "title": "Restore Last Light Brightness",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "onDelay": {
               "title": "Light / Thermostat Power-on Delay (seconds)",
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "totalDurationOpen": {
               "title": "Covering Full Open Travel (seconds)",
               "type": "number",
               "minimum": 0.001,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "totalDurationClose": {
               "title": "Covering Full Close Travel (seconds)",
               "type": "number",
               "minimum": 0.001,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "openDuration": {
               "title": "Garage Open Travel (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "closeDuration": {
               "title": "Garage Close Travel (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "openCloseDuration": {
               "title": "Garage Shared Travel Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "lockDuration": {
               "title": "Lock Travel Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "unlockDuration": {
               "title": "Unlock Travel Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "lockUnlockDuration": {
               "title": "Shared Lock/Unlock Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoCloseDelay": {
               "title": "Garage Automatic Close Delay (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoLockDelay": {
               "title": "Automatic Lock Delay (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "initialPosition": {
               "title": "Covering Initial Position (%)",
               "type": "integer",
               "minimum": 0,
               "maximum": 100,
-              "description": "Assumed startup position; no position sensor is read. Defaults to 0."
+              "description": "Assumed startup position; no position sensor is read. Defaults to 0.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "sendStopAt0": {
               "title": "Covering: Send Stop at Fully Closed",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "sendStopAt100": {
               "title": "Covering: Send Stop at Fully Open",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "allowResend": {
               "title": "Covering / Thermostat / Light: Allow Resend",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\", \"air-conditioner\", \"airconditioner\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "initialDelay": {
               "title": "Covering Command Delay (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"window\", \"window-covering\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "sensorPollInterval": {
               "title": "Sensor Poll Interval (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "temperatureUpdateFrequency": {
               "title": "Temperature Update Interval (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "humidityUpdateFrequency": {
               "title": "Humidity Update Interval (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "interval": {
               "title": "Switch Sequence / Repeat Interval (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "onDuration": {
               "title": "On Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "offDuration": {
               "title": "Off Duration (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "sendCount": {
               "title": "Switch Repeat Count",
               "type": "integer",
               "minimum": 1,
-              "maximum": 10000
+              "maximum": 10000,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "onSendCount": {
               "title": "Switch On Repeat Count",
               "type": "integer",
               "minimum": 1,
-              "maximum": 10000
+              "maximum": 10000,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "offSendCount": {
               "title": "Switch Off Repeat Count",
               "type": "integer",
               "minimum": 1,
-              "maximum": 10000
+              "maximum": 10000,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "humidifierOnly": {
               "title": "Humidifier Only",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "deHumidifierOnly": {
               "title": "Dehumidifier Only",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "noHumidity": {
               "title": "Disable Humidity Automation / Secondary Sensor",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"temperature-sensor\", \"temperaturesensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "showLockPhysicalControls": {
               "title": "Show Appliance Control Lock",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "turnOnWhenOff": {
               "title": "Thermostat / HeaterCooler: Send On When Activating",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "stateless": {
               "title": "Switch / Light: Stateless Local Reset",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "enableAutoOff": {
               "title": "Automatic Power: Send Off Automatically",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "enableAutoOn": {
               "title": "Automatic Power: Send On Automatically",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "temperatureFilePath": {
               "title": "Temperature Sensor File",
-              "type": "string"
+              "type": "string",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "humidityFilePath": {
               "title": "Humidity Sensor File",
-              "type": "string"
+              "type": "string",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "temperatureAdjustment": {
               "title": "Temperature Adjustment (\u00b0C)",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "humidityAdjustment": {
               "title": "Humidity Adjustment (%)",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "humidifierThreshold": {
               "title": "Humidify Below (%)",
               "type": "number",
               "minimum": 0,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "dehumidifierThreshold": {
               "title": "Dehumidify Above (%)",
               "type": "number",
               "minimum": 0,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "heatingThresholdTemperature": {
               "title": "HeaterCooler Heating Threshold",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "coolingThresholdTemperature": {
               "title": "HeaterCooler Cooling Threshold",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "temperatureUnits": {
               "title": "HeaterCooler Configuration Units",
@@ -575,7 +737,10 @@
                 "f",
                 "C",
                 "F"
-              ]
+              ],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "tempSourceUnits": {
               "title": "Temperature File / MQTT Units",
@@ -585,7 +750,10 @@
                 "f",
                 "C",
                 "F"
-              ]
+              ],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultMode": {
               "title": "Thermostat / HeaterCooler Default Mode",
@@ -595,33 +763,51 @@
                 "cool",
                 "auto"
               ],
-              "description": "auto is Thermostat-only and requires device Auto mappings or replaceAutoMode."
+              "description": "auto is Thermostat-only and requires device Auto mappings or replaceAutoMode.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultRotationSpeed": {
               "title": "HeaterCooler Default Fan Speed (%)",
               "type": "number",
               "minimum": 0,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "fanStepSize": {
               "title": "HeaterCooler Fan Speed Step (%)",
               "type": "number",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"heater-cooler\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "mqttURL": {
               "title": "MQTT Broker URL",
               "type": "string",
-              "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings."
+              "description": "Optional mqtt://, mqtts://, ws:// or wss:// broker. MQTT measurements take precedence over native/file readings.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "mqttUsername": {
               "title": "MQTT Username",
-              "type": "string"
+              "type": "string",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "mqttPassword": {
               "title": "MQTT Password",
               "type": "string",
-              "format": "password"
+              "format": "password",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "mqttMaxAge": {
               "title": "MQTT Maximum Reading Age (seconds)",
@@ -629,7 +815,10 @@
               "minimum": 0,
               "maximum": 2147483,
               "default": 300,
-              "description": "Local receipt age; 0 disables expiry while connected. Retained payload timestamps are not interpreted."
+              "description": "Local receipt age; 0 disables expiry while connected. Retained payload timestamps are not interpreted.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "mqttTopic": {
               "title": "MQTT Topic(s)",
@@ -663,66 +852,102 @@
                   "identifier",
                   "topic"
                 ]
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "pingIPAddress": {
               "title": "Appliance Power Detection IPv4 Address",
               "type": "string",
-              "description": "Switch/outlet, TV, fan/Fan v1 and purifier only. Appliance address, not the Broadlink host."
+              "description": "Switch/outlet, TV, fan/Fan v1 and purifier only. Appliance address, not the Broadlink host.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pingUseArp": {
               "title": "Use ARP Cache for Power Estimate",
               "type": "boolean",
-              "description": "Cache presence may be stale; this does not send an ARP probe."
+              "description": "Cache presence may be stale; this does not send an ARP probe.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pingIPAddressStateOnly": {
               "title": "Observe Power Without Guarding Commands",
               "type": "boolean",
-              "description": "For outlets, updates OutletInUse independently of On."
+              "description": "For outlets, updates OutletInUse independently of On.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pingFrequency": {
               "title": "Power Poll Interval (seconds)",
               "type": "number",
               "minimum": 0.001,
-              "maximum": 2147483
+              "maximum": 2147483,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pingTimeout": {
               "title": "Power Probe Timeout (seconds)",
               "type": "number",
               "minimum": 0.001,
-              "maximum": 60
+              "maximum": 60,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pingGrace": {
               "title": "Power State Grace After Send (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483
+              "maximum": 2147483,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "speedCycle": {
               "title": "Fan Uses a Speed-Cycle Button",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "speedCycleInterval": {
               "title": "Fan Cycle Pulse Gap (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483
+              "maximum": 2147483,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultSpeedStep": {
               "title": "Fan Assumed Power-on Speed Step",
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultFanSpeed": {
               "title": "Fan Reset Speed (%)",
               "type": "number",
               "exclusiveMinimum": 0,
-              "maximum": 100
+              "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "alwaysResetToDefaults": {
               "title": "Reset Fan Speed on Direct Power-on",
-              "type": "boolean"
+              "type": "boolean",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "exclusives": {
               "title": "Mutually Exclusive Light Names",
@@ -730,17 +955,26 @@
               "items": {
                 "type": "string"
               },
-              "description": "Updates other lights to Off locally; does not transmit their off codes."
+              "description": "Updates other lights to Off locally; does not transmit their off codes.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "disableAutomaticOff": {
               "title": "Disable Legacy Automatic Off",
               "type": "boolean",
-              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag."
+              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "disableAutomaticOn": {
               "title": "Disable Legacy Automatic On",
               "type": "boolean",
-              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag."
+              "description": "For fan/light/TV/Thermostat controllers, explicit false enables the timer and true disables it. Overrides the corresponding enable flag.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"fan\", \"fanv1\", \"air-purifier\", \"light\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "closedSensor": {
               "title": "Garage Closed Endpoint Feedback",
@@ -813,6 +1047,9 @@
                     ]
                   }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "openSensor": {
@@ -886,6 +1123,9 @@
                     ]
                   }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "obstructionSensor": {
@@ -959,6 +1199,9 @@
                     ]
                   }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "lockSensor": {
@@ -1032,13 +1275,19 @@
                     ]
                   }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "w1DeviceID": {
               "title": "Linux 1-wire Device ID",
               "type": "string",
               "pattern": "^[0-9a-fA-F]{2}-[0-9a-fA-F]{12}$",
-              "description": "Reads /sys/bus/w1/devices/<ID>/w1_slave with CRC validation. Requires host/container access."
+              "description": "Reads /sys/bus/w1/devices/<ID>/w1_slave with CRC validation. Requires host/container access.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "w1Device": {
               "title": "Legacy 1-wire Flag or Device ID",
@@ -1046,33 +1295,51 @@
                 "boolean",
                 "string"
               ],
-              "description": "A true flag requires w1DeviceID; a device-ID string is also accepted."
+              "description": "A true flag requires w1DeviceID; a device-ID string is also accepted.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "pseudoDeviceTemperature": {
               "title": "Explicit Pseudo Temperature (Celsius)",
               "type": "number",
               "minimum": -270,
               "maximum": 100,
-              "description": "User-configured constant, not a measured value. Overrides other temperature sources, including MQTT."
+              "description": "User-configured constant, not a measured value. Overrides other temperature sources, including MQTT.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "batteryAlerts": {
               "title": "Expose Battery Telemetry",
               "type": "boolean",
-              "description": "Adds a Battery service. Percentages must come from MQTT or a file; missing values fault instead of defaulting to 100%."
+              "description": "Adds a Battery service. Percentages must come from MQTT or a file; missing values fault instead of defaulting to 100%.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "batteryFilePath": {
               "title": "Battery Percentage File",
               "type": "string",
-              "description": "Plain number, JSON battery field or battery: line; MQTT takes precedence when configured."
+              "description": "Plain number, JSON battery field or battery: line; MQTT takes precedence when configured.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "heatOnly": {
               "title": "Thermostat: Heat Only",
               "type": "boolean",
-              "description": "Restricts modes to Off/Heat; set coolOnly false."
+              "description": "Restricts modes to Off/Heat; set coolOnly false.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "defaultHeatTemperature": {
               "title": "Thermostat Default Heat Temperature (Celsius)",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "replaceAutoMode": {
               "title": "Thermostat: Replace Auto Selection",
@@ -1081,12 +1348,18 @@
                 "heat",
                 "cool"
               ],
-              "description": "Maps Auto to a fixed supported mode; does not regulate automatically."
+              "description": "Maps Auto to a fixed supported mode; does not regulate automatically.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "resetTemperatureOnModeChange": {
               "title": "Thermostat: Reset to Mode Default",
               "type": "boolean",
-              "description": "Opt-in legacy behavior. Otherwise the saved setpoint is preserved."
+              "description": "Opt-in legacy behavior. Otherwise the saved setpoint is preserved.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "fallbackToDefaultTemperature": {
               "title": "Thermostat: Allow Missing-Code Fallback",
@@ -1099,28 +1372,43 @@
                 false,
                 true,
                 "legacy"
-              ]
+              ],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "ignoreTemperatureWhenOff": {
               "title": "Thermostat: Defer Temperature While Off",
               "type": "boolean",
-              "description": "Defaults to true. Explicit false activates the last/default mode when temperature changes."
+              "description": "Defaults to true. Explicit false activates the last/default mode when temperature changes.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "sendOnWhenOff": {
               "title": "Thermostat: Legacy Turn-on Alias",
               "type": "boolean",
-              "description": "Used when turnOnWhenOff is absent."
+              "description": "Used when turnOnWhenOff is absent.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "modeChangeDelay": {
               "title": "Thermostat: Mode-to-Temperature Delay (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "preventResendHex": {
               "title": "Thermostat / Light: Suppress Identical Requests",
               "type": "boolean",
-              "description": "Explicit false enables resend; allowResend takes precedence."
+              "description": "Explicit false enables resend; allowResend takes precedence.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "jamSensor": {
               "title": "Garage / Lock Jam Feedback",
@@ -1193,59 +1481,89 @@
                     ]
                   }
                 }
+              },
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"garage-door-opener\", \"lock\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "defaultAutoTemperature": {
               "title": "Thermostat Device Auto Default Temperature (Celsius)",
-              "type": "number"
+              "type": "number",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoHeatTemperature": {
               "title": "Thermostat Ambient Heat Threshold (Celsius)",
               "type": "number",
               "minimum": -270,
               "maximum": 100,
-              "description": "Opt-in: fresh measured temperature below this threshold selects Heat. No pseudo source."
+              "description": "Opt-in: fresh measured temperature below this threshold selects Heat. No pseudo source.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoCoolTemperature": {
               "title": "Thermostat Ambient Cool Threshold (Celsius)",
               "type": "number",
               "minimum": -270,
               "maximum": 100,
-              "description": "Opt-in: fresh measured temperature above this threshold selects Cool. First valid poll/message may activate after startup."
+              "description": "Opt-in: fresh measured temperature above this threshold selects Cool. First valid poll/message may activate after startup.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "minimumAutoOnOffDuration": {
               "title": "Thermostat Ambient Minimum Action Interval (seconds)",
               "type": "number",
               "minimum": 0,
               "maximum": 2147483.647,
-              "description": "Defaults to 120; also delays reevaluation after manual changes or failed automatic sends. 0 disables the interval."
+              "description": "Defaults to 120; also delays reevaluation after manual changes or failed automatic sends. 0 disables the interval.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoMinimumDuration": {
               "title": "Thermostat Legacy Ambient Interval Alias (seconds)",
               "type": "number",
               "minimum": 0,
-              "maximum": 2147483.647
+              "maximum": 2147483.647,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoSwitchName": {
               "title": "Thermostat Ambient Enable Switch Name",
               "type": "string",
-              "description": "Requires exactly one enabled switch/outlet accessory with this name and On=true; missing/ambiguous names block ambient actions."
+              "description": "Requires exactly one enabled switch/outlet accessory with this name and On=true; missing/ambiguous names block ambient actions.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "autoSwitch": {
               "title": "Thermostat Legacy Enable Switch Alias",
-              "type": "string"
+              "type": "string",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "virtual": {
               "title": "Virtual Switch / Outlet",
               "type": "boolean",
-              "description": "Local state only, useful as an ambient automation gate. Omit data and pingIPAddress. Starts Off after restart."
+              "description": "Local state only, useful as an ambient automation gate. Omit data and pingIPAddress. Starts Off after restart.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"switch\", \"outlet\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "heatTemperature": {
               "title": "Thermostat Legacy Fallback Boundary (Celsius)",
               "type": "number",
               "minimum": -270,
               "maximum": 100,
-              "description": "Used only by fallbackToDefaultTemperature: legacy. Defaults to 22; requests at/above it choose the heat default, lower requests choose the cool default."
+              "description": "Used only by fallbackToDefaultTemperature: legacy. Defaults to 22; requests at/above it choose the heat default, lower requests choose the cool default.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "units": {
               "title": "Thermostat Display Units",
@@ -1256,12 +1574,18 @@
                 "C",
                 "F"
               ],
-              "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius."
+              "description": "Display preference only. Command keys, stored targets and ambient thresholds remain Celsius.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             },
             "persistState": {
               "title": "Persist Accessory State",
               "type": "boolean",
-              "description": "Defaults to true for stateful accessories. Restores validated settings without replaying startup commands or timers. Explicit false ignores saved settings and skips state writes. Sensors read fresh values; learning and momentary actions stay idle. Locks/doors require fresh confirmation of physical state."
+              "description": "Defaults to true for stateful accessories. Restores validated settings without replaying startup commands or timers. Explicit false ignores saved settings and skips state writes. Sensors read fresh values; learning and momentary actions stay idle. Locks/doors require fresh confirmation of physical state.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"humidifier-dehumidifier\", \"tv\", \"television\", \"window\", \"window-covering\", \"garage-door-opener\", \"lock\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
             }
           }
         }
