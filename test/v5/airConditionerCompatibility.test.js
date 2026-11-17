@@ -5,6 +5,99 @@ const { createAccessoryInstance } = require('../../dist/accessories');
 const { fixture } = require('./helpers/timedFixture');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
+test('automatic cool-only tile compatibility accepts a real client Heat write and sends only retained Cool codes', async t => {
+  const hap = require('./helpers/homebridgeRuntime').hap;
+  const timers = new Map();
+  t.mock.method(global, 'setTimeout', (callback, delay) => { const handle = { unref() { return this; } }; timers.set(handle, callback); return handle; });
+  t.mock.method(global, 'clearTimeout', handle => timers.delete(handle));
+  const accessory = new hap.Accessory('AC', hap.uuid.generate('cool-only-tile-write'));
+  accessory.context = { config: { name: 'AC', type: 'air-conditioner', coolOnly: true,
+    sensorPollInterval: 0, noHumidity: true, defaultCoolTemperature: 25,
+    turnOnWhenOff: true, onDelay: 0,
+    data: { on: 'on', off: 'off', cool23: 'cool23', cool25: 'cool25', heat23: 'must-not-send' } } };
+  const sent = [], logs = [], warnings = [];
+  accessory.on('characteristic-warning', warning => warnings.push(warning.message));
+  const platform = { Service: hap.Service, Characteristic: hap.Characteristic,
+    log: { info: m => logs.push(m), debug() {}, warn() {}, error() {} }, updateAccessoryContext() {},
+    deviceManager: { getDevice: () => ({ async sendData(code) { sent.push(code); } }) } };
+  const controller = createAccessoryInstance(platform, accessory); t.after(() => controller.dispose());
+  const service = accessory.getService(hap.Service.Thermostat);
+  const mode = service.getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
+  const temperature = service.getCharacteristic(hap.Characteristic.TargetTemperature);
+  assert.deepEqual(mode.props.validValues, [0, 1, 2]);
+  assert.equal(mode.props.maxValue, 2);
+  // The actual iOS request from the field: value 1 with real client validation.
+  await mode.handleSetRequest(1, {});
+  assert.deepEqual(sent, ['on', 'cool25']);
+  for (const [timer, callback] of [...timers]) { timers.delete(timer); callback(); }
+  await flush();
+  assert.equal(mode.value, 2, 'normalization must overwrite the incoming Heat value after HAP caches it');
+  assert.equal(await mode.handleGetRequest(), 2);
+  await temperature.handleSetRequest(23, {});
+  await mode.handleSetRequest(0, {});
+  const before = sent.length;
+  await mode.handleSetRequest(1, {});
+  assert.deepEqual(sent.slice(before), ['on', 'cool23']);
+  assert.equal(accessory.context.broadlinkRMState.targetHeatingCoolingState, 2);
+  assert.equal(accessory.context.broadlinkRMState.targetTemperature, 23);
+  assert.equal(await service.getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState).handleGetRequest(), 2);
+  assert.ok(logs.some(message => message.includes('routing Heat request to Cool')));
+  assert.ok(!sent.includes('must-not-send'));
+  assert.deepEqual(warnings, []);
+});
+
+test('Heat remains a real Heat request for heat-only and combined-mode ACs', async t => {
+  for (const options of [{ heatOnly: true }, {}]) await t.test(JSON.stringify(options), async t => {
+    const f = fixture(t, 'air-conditioner', { ...options, sensorPollInterval: 0,
+      data: { heat24: 'heat24', heat23: 'heat23', cool24: 'must-not-send', off: 'off' } });
+    await f.set('TargetHeatingCoolingState', 1);
+    assert.deepEqual(f.sent, ['heat24']);
+    assert.equal(f.get('TargetHeatingCoolingState'), 1);
+    await f.set('TargetTemperature', 23);
+    await f.set('TargetHeatingCoolingState', 0);
+    assert.equal(f.get('TargetHeatingCoolingState'), 0);
+    await f.set('TargetHeatingCoolingState', 1);
+    assert.deepEqual(f.sent, ['heat24', 'heat23', 'off', 'heat23']);
+    assert.equal(f.get('TargetHeatingCoolingState'), 1);
+    assert.equal(f.get('TargetTemperature'), 23);
+  });
+});
+
+test('Thermostat advertises bounds matching supported modes and accepts a real client Cool write', async t => {
+  const hap = require('./helpers/homebridgeRuntime').hap;
+  const cases = [
+    [{ coolOnly: true }, [0, 1, 2], 2],
+    [{ heatOnly: true }, [0, 1], 1],
+    [{}, [0, 1, 2], 2],
+    [{ data: { auto24: 'auto24' } }, [0, 1, 2, 3], 3],
+    [{ coolOnly: true, replaceAutoMode: 'cool' }, [0, 1, 2, 3], 3],
+  ];
+  for (const [options, modes, maximum] of cases) {
+    const accessory = new hap.Accessory('AC', hap.uuid.generate(JSON.stringify(options)));
+    accessory.context = { config: { name: 'AC', type: 'air-conditioner', sensorPollInterval: 0,
+      noHumidity: true, turnOnWhenOff: true, onDelay: 0,
+      data: { on: 'on', cool24: 'cool24', off: 'off' }, ...options } };
+    const sent = [], logs = [];
+    const platform = { Service: hap.Service, Characteristic: hap.Characteristic,
+      log: { info: message => logs.push(message), debug() {}, warn() {}, error() {} }, updateAccessoryContext() {},
+      deviceManager: { getDevice: () => ({ async sendData(code) { sent.push(code); } }) } };
+    const controller = createAccessoryInstance(platform, accessory); t.after(() => controller.dispose());
+    const mode = accessory.getService(hap.Service.Thermostat).getCharacteristic(hap.Characteristic.TargetHeatingCoolingState);
+    assert.deepEqual(mode.props.validValues, modes);
+    assert.equal(mode.props.minValue, 0);
+    assert.equal(mode.props.maxValue, maximum);
+    if (options.coolOnly && !options.replaceAutoMode) {
+      // A client write is validated before onSet, unlike Homebridge's setValue.
+      await assert.rejects(mode.handleSetRequest(3, {}), error => error === hap.HAPStatus.INVALID_VALUE_IN_REQUEST);
+      assert.deepEqual(logs, []);
+      assert.deepEqual(sent, []);
+      await mode.handleSetRequest(2, {});
+      assert.deepEqual(sent, ['on', 'cool24']);
+      assert.equal(await mode.handleGetRequest(), 2);
+    }
+  }
+});
+
 test('legacy sparse-map fallback follows the requested-temperature threshold rather than active mode', () => {
   const config = { fallbackToDefaultTemperature: 'legacy', data: {
     temperature16: 'low', temperature30: 'high', cool30: 'mode-default-is-not-legacy-fallback',

@@ -260,7 +260,8 @@ test('feedback loss at a transition deadline does not suppress retries after rec
 test('Thermostat validates modes and temperatures and commits state only after successful sends', async t => {
   const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, coolOnly: true,
     tempStepSize: 0.5, data: { on: 'on', off: 'off', temperature24: { data: 'cool24', sendCount: 2, interval: 0 }, 'temperature24.5': 'cool245' } });
-  await assert.rejects(f.set('TargetHeatingCoolingState', 1), /Unsupported/);
+  await f.set('TargetHeatingCoolingState', 1);
+  assert.equal(f.get('TargetHeatingCoolingState'), 2);
   await assert.rejects(f.set('TargetHeatingCoolingState', 3), /Unsupported/);
   await f.set('TargetHeatingCoolingState', 2);
   assert.deepEqual(f.sent, ['cool24', 'cool24']);
