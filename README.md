@@ -11,7 +11,6 @@ packaged as `@mrclmrvn/homebridge-broadlink-rm`.
 type name has a v5 implementation. Full legacy option compatibility and broad
 hardware coverage remain incomplete. Existing hex codes can be reused; advanced
 options may need changes.
-Read the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.1/docs/migration.md) before replacing an installation.
 
 ## Requirements and hardware
 
@@ -32,10 +31,8 @@ Read the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-bro
 
 ## Start here
 
-1. Back up your Homebridge configuration and storage. When replacing v4, stop
-   Homebridge and uninstall `homebridge-broadlink-rm-pro` before installing this
-   package. Keep configuration and pairing data; scene/automation links may need
-   reassignment. Do not run both Broadlink plugins with the same platform config.
+1. Back up your Homebridge configuration and storage. If you already use
+   `homebridge-broadlink-rm-pro`, follow the migration steps below.
 
 2. Install `@mrclmrvn/homebridge-broadlink-rm` through your Homebridge plugin
    manager, or in the npm environment used by your Homebridge service:
@@ -65,6 +62,25 @@ Read the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-bro
 4. Restart Homebridge. Turn on Learn IR to capture a remote button and copy the
    logged hex code into an accessory's data configuration. TVs require separate
    HomeKit pairing; other types are bridged.
+
+### Migrating from kiwi-cam's `homebridge-broadlink-rm-pro`
+
+v5 uses the same `BroadlinkRM` platform name, so you can reuse the existing
+platform entry in your Homebridge `config.json`, including accessory definitions
+and learned IR/RF hex codes. Review the
+[configuration differences](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.1/docs/migration.md#configuration-differences-to-review)
+for legacy options that need changes.
+
+1. Back up Homebridge, including `config.json` and cached accessory data.
+2. Stop Homebridge. Uninstall `homebridge-broadlink-rm-pro` and install
+   `@mrclmrvn/homebridge-broadlink-rm` in the same Homebridge environment.
+3. Keep your existing `BroadlinkRM` entry. If the plugin manager removes it
+   during uninstall, restore that entry from your backup before restarting.
+4. Restart Homebridge and verify your accessories. Apple Home room assignments,
+   scenes, and automations may need to be reassigned if accessory identities change.
+
+See the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.1/docs/migration.md)
+for pairing and rollback details.
 
 Automatic discovery repeats hourly by default; [rediscovery settings](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.1/docs/rediscovery.md)
 explain interval, disable and MAC-selection behavior. Configure accessories using
