@@ -1,5 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { runInNewContext } = require('node:vm');
 const schema = require('../../config.schema.json');
 const fields = schema.schema.properties.accessories.items.properties;
 
@@ -61,8 +63,124 @@ test('visibility conditions tolerate an incomplete form and do not mutate saved 
   assert.deepEqual(model, before);
 });
 
-test('the npm package uses the built-in Homebridge Plugin Config editor', () => {
-  const publishedFiles = require('../../package.json').files;
-  assert.ok(!publishedFiles.includes('config.schema.json'));
-  assert.ok(!publishedFiles.includes('homebridge-ui'));
+test('Plugin Config stages accessory edits without dropping command maps or other settings', async () => {
+  assert.equal(schema.customUi, true);
+  assert.ok(require('../../package.json').files.includes('homebridge-ui/public'));
+  const script = readFileSync(require.resolve('../../homebridge-ui/public/plugin-config.js'), 'utf8');
+  const elements = new Map();
+
+  function element() {
+    return {
+      dataset: {}, validity: {}, options: [], classList: { toggle() {} },
+      add(option) { this.options.push(option); },
+      replaceChildren() { this.options.length = 0; },
+      addEventListener(event, listener) { this[event] = listener; },
+      setAttribute(name, value) { this[name] = value; },
+      removeAttribute() {},
+      append(...children) {
+        for (const child of children) {
+          if (child.id) elements.set(child.id, child);
+        }
+      }
+    };
+  }
+
+  for (const id of ['accessory-tabs', 'settings-tab', 'data-tab', 'settings-panel', 'data-panel', 'accessory-settings', 'accessory-fields', 'ac-fields', 'ac-settings', 'config-status', 'command-data', 'field-disabled']) {
+    elements.set(id, element());
+  }
+  const data = elements.get('command-data');
+  data.name = 'data';
+  data.dataset.kind = 'json';
+  const original = [{
+    platform: 'BroadlinkRM',
+    hideWelcomeMessage: true,
+    accessories: [
+      { name: 'AC', type: 'air-conditioner', defaultCoolTemperature: 24, data: {
+        temperature16: { 'pseudo-mode': 'cool', data: '2600' },
+        temperature17: ['2601', { data: '2602', sendCount: 2 }]
+      } },
+      { name: 'Fan', type: 'fan', data: { fanSpeed33: '2603' } },
+      { name: 'Switch', type: 'SWITCH', data: '2604' }
+    ]
+  }];
+  const disabled = elements.get('field-disabled');
+  disabled.name = 'disabled';
+  disabled.type = 'checkbox';
+  let staged;
+  let canSave = false;
+  await runInNewContext(script, {
+    document: { getElementById: id => elements.get(id), createElement: element },
+    Option: function Option(text, value) { this.text = text; this.value = String(value); },
+    homebridge: {
+      getPluginConfig: async () => structuredClone(original),
+      getPluginConfigSchema: async () => schema,
+      disableSaveButton: () => { canSave = false; },
+      enableSaveButton: () => { canSave = true; },
+      updatePluginConfig: async blocks => { staged = structuredClone(blocks); }
+    }
+  });
+
+  const form = elements.get('accessory-settings');
+  const temperature = elements.get('field-defaultCoolTemperature');
+  const type = elements.get('field-type');
+  assert.equal(type.value, 'air-conditioner');
+  assert.deepEqual(type.options.slice(1).map(({ text, value }) => [text, value]),
+    fields.type.oneOf.map(({ title, enum: [value] }) => [title, value]));
+  assert.deepEqual(JSON.parse(data.value), original[0].accessories[0].data);
+  temperature.value = '25';
+  temperature.valueAsNumber = 25;
+  form.input({ target: temperature });
+  await new Promise(setImmediate);
+  assert.equal(canSave, true);
+  const edited = structuredClone(original);
+  edited[0].accessories[0].defaultCoolTemperature = 25;
+  assert.deepEqual(staged, edited);
+
+  elements.get('data-tab').click();
+  assert.equal(elements.get('settings-panel').hidden, true);
+  assert.equal(elements.get('data-panel').hidden, false);
+  data.value = '{';
+  form.input({ target: data });
+  assert.equal(canSave, false);
+  assert.deepEqual(staged, edited);
+  elements.get('accessory-tab-1').click();
+  assert.equal(elements.get('accessory-tab-0')['aria-selected'], 'true');
+  assert.equal(data.value, '{');
+
+  edited[0].accessories[0].data.temperature16.data = '2605';
+  data.value = JSON.stringify(edited[0].accessories[0].data);
+  form.input({ target: data });
+  await new Promise(setImmediate);
+  assert.equal(canSave, true);
+  assert.deepEqual(staged, edited);
+  elements.get('accessory-tab-1').click();
+  assert.equal(elements.get('accessory-tab-1')['aria-selected'], 'true');
+  assert.equal(elements.get('settings-panel').hidden, false);
+  assert.equal(elements.get('ac-settings').hidden, true);
+  assert.deepEqual(JSON.parse(data.value), original[0].accessories[1].data);
+  assert.equal(disabled.checked, false);
+  disabled.checked = true;
+  form.input({ target: disabled });
+  await new Promise(setImmediate);
+  edited[0].accessories[1].disabled = true;
+  assert.deepEqual(staged, edited);
+
+  elements.get('accessory-tab-0').click();
+  assert.equal(disabled.checked, false);
+  elements.get('accessory-tab-1').click();
+  assert.equal(disabled.checked, true);
+  disabled.checked = false;
+  form.input({ target: disabled });
+  await new Promise(setImmediate);
+  edited[0].accessories[1].disabled = false;
+  assert.deepEqual(staged, edited);
+
+  elements.get('accessory-tab-2').click();
+  assert.equal(type.value, 'SWITCH');
+  assert.equal(type.options.at(-1).value, 'SWITCH');
+  type.value = 'outlet';
+  form.input({ target: type });
+  await new Promise(setImmediate);
+  edited[0].accessories[2].type = 'outlet';
+  assert.deepEqual(staged, edited);
 });

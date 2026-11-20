@@ -84,8 +84,10 @@ for pairing and rollback details.
 
 Automatic discovery repeats hourly by default; [rediscovery settings](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.4/docs/rediscovery.md)
 explain interval, disable and MAC-selection behavior. Use **Plugin Config** to
-edit the Broadlink RM platform in Homebridge's built-in JSON editor. Capture codes
-with learning accessories or the CLI.
+open an accessory tab, then choose **Settings** or **Command Data** to edit
+its settings or IR/RF command JSON. Use **JSON Config**
+for the full Broadlink RM platform configuration. Capture codes with learning
+accessories or the CLI.
 
 An AC requiring a separate power-on code should set `"turnOnWhenOff": true`
 and configure `data.on`. Otherwise v5 uses its selected mode/temperature code

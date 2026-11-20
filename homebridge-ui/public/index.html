@@ -1,0 +1,47 @@
+<link rel="stylesheet" href="editor/command-editor.css">
+<script src="editor/command-editor.js" defer></script>
+
+<style>
+  .broadlink-fields {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #accessory-tabs .nav-link {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 576px) {
+    .broadlink-fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+
+<div id="accessory-tabs" class="nav nav-tabs mb-3" role="tablist" aria-label="Accessories"></div>
+
+<form id="accessory-settings" role="tabpanel" hidden>
+  <div class="btn-group mb-3" role="tablist" aria-label="Accessory configuration">
+    <button id="settings-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="settings-panel">Settings</button>
+    <button id="data-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="data-panel">Command Data</button>
+  </div>
+  <div id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
+    <div id="accessory-fields" class="broadlink-fields"></div>
+    <div id="ac-settings" hidden>
+      <div id="ac-fields" class="broadlink-fields mt-3"></div>
+    </div>
+    <div class="form-check d-flex align-items-center gap-2 mt-3 ps-0">
+      <input id="field-disabled" name="disabled" type="checkbox" class="form-check-input m-0 float-none flex-shrink-0">
+      <label for="field-disabled" class="form-check-label">Disable</label>
+    </div>
+  </div>
+  <div id="data-panel" role="tabpanel" aria-labelledby="data-tab" hidden>
+    <label for="command-data" class="form-label">IR/RF command data (JSON)</label>
+    <div id="command-editor" class="border rounded" style="height: 20rem" hidden></div>
+    <textarea id="command-data" name="data" data-kind="json" class="form-control font-monospace"
+      rows="10" spellcheck="false" autocomplete="off" aria-describedby="config-status"></textarea>
+  </div>
+</form>
+<p id="config-status" class="form-text" role="status">Loading configuration…</p>
+
+<script src="plugin-config.js" defer></script>

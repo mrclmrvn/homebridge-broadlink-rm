@@ -2,6 +2,7 @@
   "pluginAlias": "BroadlinkRM",
   "pluginType": "platform",
   "singular": true,
+  "customUi": true,
   "headerDisplay": "Broadlink RM plugin with native device support and no native compilation dependencies.",
   "footerDisplay": "For issues or discussions, visit [GitHub](https://github.com/mrclmrvn/homebridge-broadlink-rm).",
   "schema": {
