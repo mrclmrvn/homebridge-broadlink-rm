@@ -66,8 +66,7 @@ test('visibility conditions tolerate an incomplete form and do not mutate saved 
 test('Plugin Config stages accessory edits without dropping command maps or other settings', async () => {
   assert.equal(schema.customUi, true);
   assert.ok(require('../../package.json').files.includes('homebridge-ui/public'));
-  const html = readFileSync(require.resolve('../../homebridge-ui/public/index.html'), 'utf8');
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const script = readFileSync(require.resolve('../../homebridge-ui/public/plugin-config.js'), 'utf8');
   const elements = new Map();
 
   function element() {
