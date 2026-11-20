@@ -1,8 +1,12 @@
 # Migrating from v4 to v5
 
-v5 is a rebuild, not a drop-in compatibility release yet. All legacy accessory
-type names resolve, but a recognized type does not mean all of its old options
-have been ported. Existing learned hex codes can be reused.
+When migrating from `homebridge-broadlink-rm-pro` to
+`@mrclmrvn/homebridge-broadlink-rm`, reuse your existing `BroadlinkRM` entry in
+Homebridge's `config.json`, including accessory definitions and learned hex
+codes. All legacy accessory type names resolve. Review the
+[configuration differences](#configuration-differences-to-review) for options
+that need changes and [identity and pairing](#identity-and-pairing) for possible
+changes in Apple Home.
 
 The [contributed cooling configuration review](legacy-config-coverage.md) records
 which paths are covered by anonymized regression tests and which mode/default
