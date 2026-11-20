@@ -60,3 +60,9 @@ test('visibility conditions tolerate an incomplete form and do not mutate saved 
   }
   assert.deepEqual(model, before);
 });
+
+test('the npm package uses the built-in Homebridge Plugin Config editor', () => {
+  const publishedFiles = require('../../package.json').files;
+  assert.ok(!publishedFiles.includes('config.schema.json'));
+  assert.ok(!publishedFiles.includes('homebridge-ui'));
+});
