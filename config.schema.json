@@ -341,6 +341,14 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"humidifier-dehumidifier\", \"tv\", \"television\", \"window\", \"window-covering\", \"garage-door-opener\", \"lock\", \"light\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "fanSpeedByDirection": {
+              "title": "Speed Codes by Direction",
+              "type": "object",
+              "description": "Combined speed and direction codes for stateful fan remotes. Provide clockwise and counterClockwise maps with fanSpeed1 through fanSpeed100 keys.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "speedSteps": {
               "title": "Number of Fan Speeds",
               "type": "integer",
@@ -1630,6 +1638,7 @@
                 "accessories[].tempStepSize",
                 "accessories[].data",
                 "accessories[].speedSteps",
+                "accessories[].fanSpeedByDirection",
                 "accessories[].stepSize",
                 "accessories[].hideSwingMode",
                 "accessories[].hideRotationDirection",

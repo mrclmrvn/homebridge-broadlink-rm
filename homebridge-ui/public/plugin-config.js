@@ -31,7 +31,7 @@
     ]],
     ['MQTT', ['mqttURL', 'mqttUsername', 'mqttPassword', 'mqttTopic', 'mqttMaxAge']],
     ['Fan controls', [
-      'speedSteps', 'stepSize', 'hideSwingMode', 'hideRotationDirection', 'defaultRotationSpeed',
+      'fanSpeedByDirection', 'speedSteps', 'stepSize', 'hideSwingMode', 'hideRotationDirection', 'defaultRotationSpeed',
       'fanStepSize', 'speedCycle', 'speedCycleInterval', 'defaultSpeedStep', 'defaultFanSpeed',
       'alwaysResetToDefaults'
     ]],

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { FanAccessory } = require('../../dist/accessories/fan');
 
-function setup(config = {}) {
+function setup(config = {}, savedState) {
   const controls = new Map();
   const service = {
     setCharacteristic() { return this; },
@@ -30,12 +30,12 @@ function setup(config = {}) {
     log: { debug() {}, warn() {}, error() {} },
     deviceManager: { getDevice: () => device },
   };
-  const accessory = { UUID: 'test', context: { config: { type: 'fan', data: {
+  const accessory = { UUID: 'test', context: { broadlinkRMState: savedState, config: { type: 'fan', data: {
     on: 'on', off: 'off', fanSpeed33: 'low', fanSpeed66: 'medium', fanSpeed99: 'high',
     clockwise: 'cw', counterClockwise: 'ccw', swingToggle: 'swing',
   }, ...config } }, getService: () => service };
   new FanAccessory(platform, accessory);
-  return { controls, sent, device, C: Characteristic };
+  return { controls, sent, device, C: Characteristic, context: accessory.context };
 }
 
 test('three-speed fan selects nearest configured speed and switches off at zero', async () => {
@@ -81,4 +81,63 @@ test('optional controls can be hidden and invalid speed configurations fail clea
   assert.equal(controls.has(C.RotationDirection), false);
   await assert.rejects(controls.get('RotationSpeed').set(50), /No fanSpeedXX/);
   await assert.rejects(controls.get('RotationSpeed').set(NaN), /between 0 and 100/);
+});
+
+const directionalConfig = {
+  defaultFanSpeed: 50,
+  data: { off: 'off' },
+  fanSpeedByDirection: {
+    clockwise: { fanSpeed50: 'cw50', fanSpeed100: 'cw100' },
+    counterClockwise: { fanSpeed40: 'ccw40', fanSpeed100: { data: 'ccw100' } },
+  },
+};
+
+test('direction-aware fan starts and changes speed and direction with combined codes', async () => {
+  const { controls, sent, C } = setup(directionalConfig);
+  const speed = controls.get('RotationSpeed');
+  const direction = controls.get(C.RotationDirection);
+  const active = controls.get('Active');
+  await direction.set(1);
+  assert.deepEqual(sent, []);
+  await active.set(1);
+  assert.equal(speed.get(), 40);
+  await direction.set(0);
+  assert.equal(speed.get(), 50);
+  await speed.set(51);
+  await speed.set(0);
+  await speed.set(100);
+  assert.deepEqual(sent, ['ccw40', 'cw50', 'off', 'cw100']);
+  assert.equal(active.get(), 1);
+});
+
+test('direction-aware fan retains both settings after a failed combined send', async () => {
+  const { controls, device, C } = setup(directionalConfig);
+  const speed = controls.get('RotationSpeed');
+  const direction = controls.get(C.RotationDirection);
+  await speed.set(50);
+  device.sendData = async () => { throw new Error('offline'); };
+  await assert.rejects(direction.set(1), /offline/);
+  assert.equal(direction.get(), 0);
+  assert.equal(speed.get(), 50);
+});
+
+test('direction-aware fan requires valid code maps for both directions', () => {
+  assert.throws(() => setup({ fanSpeedByDirection: { clockwise: {} } }), /requires at least one speed code/);
+  assert.throws(() => setup({ ...directionalConfig, fanSpeedByDirection: {
+    ...directionalConfig.fanSpeedByDirection, counterClockwise: { fanSpeed0: 'ccw' },
+  } }), /fanSpeed1 through fanSpeed100/);
+});
+
+test('direction-aware fan restores its last speed and direction without sending on startup', async () => {
+  const first = setup(directionalConfig);
+  await first.controls.get(first.C.RotationDirection).set(1);
+  await first.controls.get('RotationSpeed').set(100);
+  assert.deepEqual(first.sent, ['ccw100']);
+
+  const restarted = setup(directionalConfig, first.context.broadlinkRMState);
+  assert.deepEqual(restarted.sent, []);
+  assert.equal(restarted.controls.get(restarted.C.RotationDirection).get(), 1);
+  assert.equal(restarted.controls.get('RotationSpeed').get(), 100);
+  await restarted.controls.get('RotationSpeed').set(40);
+  assert.deepEqual(restarted.sent, ['ccw40']);
 });

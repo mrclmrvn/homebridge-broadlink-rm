@@ -62,3 +62,29 @@ and physical device validation remain roadmap work.
 Run `npm test` to build and run the v5 tests. These tests use an accessory mock
 and a fake Broadlink sender; hardware and live Homebridge validation remain
 necessary before release. The legacy tests in `test/` are separate from this suite.
+
+## Direction-aware speed codes
+
+For remotes that send speed and direction together, set `fanSpeedByDirection`
+on the accessory. Both direction maps need at least one `fanSpeedXX` entry
+with a percentage from 1 to 100. This works with `fan` and `fanv1`.
+
+```json
+{
+  "name": "Ceiling Fan",
+  "type": "fan",
+  "data": { "off": "YOUR_OFF_HEX" },
+  "fanSpeedByDirection": {
+    "clockwise": { "fanSpeed50": "YOUR_CW_MEDIUM_HEX", "fanSpeed100": "YOUR_CW_HIGH_HEX" },
+    "counterClockwise": { "fanSpeed50": "YOUR_CCW_MEDIUM_HEX", "fanSpeed100": "YOUR_CCW_HIGH_HEX" }
+  }
+}
+```
+
+A speed change uses the current direction's nearest code. Changing direction
+while running selects the nearest speed in the new direction and updates the
+reported speed if it differs. Changing direction while off saves the selection
+until the next start. A direct power-on uses `defaultSpeedStep * stepSize` when
+configured, otherwise `defaultFanSpeed` (default 100). The combined code starts
+the fan, and `data.off` stops it. Combined mode replaces the separate on,
+direction and speed codes and cannot be combined with `speedCycle`.
