@@ -83,7 +83,12 @@ See the [migration guide](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broa
 for pairing and rollback details.
 
 Automatic discovery repeats hourly by default; [rediscovery settings](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.4/docs/rediscovery.md)
-explain interval, disable and MAC-selection behavior. Use **Plugin Config** to
+explain interval, disable and MAC-selection behavior. In your router's DHCP
+settings, reserve an IP address for each Broadlink RM using its MAC address.
+This keeps the address stable across reconnects and lease renewals, especially
+if your Homebridge configuration refers to the RM by IP.
+
+Use **Plugin Config** to
 open an accessory tab, then choose **Settings** or **Command Data** to edit
 its settings or IR/RF command JSON. Use **JSON Config**
 for the full Broadlink RM platform configuration. Capture codes with learning
