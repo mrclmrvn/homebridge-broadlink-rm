@@ -141,3 +141,23 @@ test('direction-aware fan restores its last speed and direction without sending 
   await restarted.controls.get('RotationSpeed').set(40);
   assert.deepEqual(restarted.sent, ['ccw40']);
 });
+
+test('a hidden fan speed control stays hidden during power, direction, and swing changes', async () => {
+  const { controls, sent, C } = setup({ ...directionalConfig, hideRotationSpeed: true,
+    data: { off: 'off', swingToggle: 'swing' } });
+  assert.equal(controls.has('RotationSpeed'), false);
+  await controls.get('Active').set(1);
+  await controls.get(C.RotationDirection).set(1);
+  await controls.get(C.SwingMode).set(1);
+  await controls.get('Active').set(0);
+  assert.deepEqual(sent, ['cw50', 'ccw40', 'swing', 'off']);
+  assert.equal(controls.has('RotationSpeed'), false);
+});
+
+test('hidden fan speed does not reappear when applying cycle defaults', async () => {
+  const { controls, sent } = setup({ hideRotationSpeed: true, speedCycle: true, speedSteps: 3,
+    alwaysResetToDefaults: true, defaultFanSpeed: 66, data: { on: 'on', off: 'off', fanSpeed: 'cycle' } });
+  await controls.get('Active').set(1);
+  assert.deepEqual(sent, ['on', 'cycle']);
+  assert.equal(controls.has('RotationSpeed'), false);
+});

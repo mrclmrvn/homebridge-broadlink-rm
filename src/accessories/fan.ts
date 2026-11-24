@@ -89,7 +89,8 @@ export class FanAccessory extends TimedAccessory {
       this.service.getCharacteristic(C.Active).onGet(() => this.active)
         .onSet(value => this.serialize(() => this.setActive(value)));
     }
-    const hasSpeed = kind === 'fan' || legacy || this.config.speedCycle || Object.keys(this.config.data || {}).some(key => /^fanSpeed\d+$/.test(key));
+    const hasSpeed = this.config.hideRotationSpeed !== true
+      && (kind === 'fan' || legacy || this.config.speedCycle || speedValues.length > 0);
     if (hasSpeed) this.service.getCharacteristic(C.RotationSpeed)
       .setProps({ minValue: 0, maxValue: 100, minStep: this.stepSize })
       .onGet(() => this.speed).onSet(value => this.serialize(() => this.setSpeed(value)));
@@ -143,7 +144,7 @@ export class FanAccessory extends TimedAccessory {
       this.service.updateCharacteristic(C.SwingMode, this.swing);
     }
     this.publishPower();
-    if (hasSpeed) this.service.updateCharacteristic(C.RotationSpeed, this.speed);
+    this.publishSpeed();
     if (kind === 'fan' || legacy) this.watchFanPower();
   }
 
@@ -153,7 +154,7 @@ export class FanAccessory extends TimedAccessory {
       this.active = Number(on);
       if (!on) { this.speed = 0; this.cycleStep = undefined; }
       this.publishPower();
-      if (this.service.testCharacteristic(this.platform.Characteristic.RotationSpeed)) this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+      this.publishSpeed();
       this.observedActiveChanged();
     });
   }
@@ -190,7 +191,7 @@ export class FanAccessory extends TimedAccessory {
       this.active = target;
       if (!target) {
         this.speed = 0; this.cycleStep = undefined;
-        if (this.service.testCharacteristic(this.platform.Characteristic.RotationSpeed)) this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, 0);
+        this.publishSpeed();
       }
       this.publishPower();
       this.observedActiveChanged();
@@ -206,14 +207,12 @@ export class FanAccessory extends TimedAccessory {
     this.active = target;
     if (this.cycleStep !== undefined) {
       this.speed = this.cycleStep * this.stepSize;
-      this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+      this.publishSpeed();
     }
     this.publishPower();
     if (!target) {
       this.speed = 0;
-      if (this.service.testCharacteristic(this.platform.Characteristic.RotationSpeed)) {
-        this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, 0);
-      }
+      this.publishSpeed();
     }
     await this.activeChanged();
     this.automaticPower(Boolean(target), on => this.setActive(on));
@@ -223,6 +222,11 @@ export class FanAccessory extends TimedAccessory {
   }
 
   protected async activeChanged(): Promise<void> {}
+
+  private publishSpeed(): void {
+    const characteristic = this.platform.Characteristic.RotationSpeed;
+    if (this.service.testCharacteristic(characteristic)) this.service.updateCharacteristic(characteristic, this.speed);
+  }
 
   private publishPower(): void {
     if (String(this.config.type).toLowerCase() === 'fanv1') {
@@ -249,7 +253,7 @@ export class FanAccessory extends TimedAccessory {
     this.speed = closest.speed;
     this.direction = direction;
     this.publishPower();
-    this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+    this.publishSpeed();
     this.automaticPower(true, on => this.setActive(on));
   }
 
@@ -277,11 +281,11 @@ export class FanAccessory extends TimedAccessory {
         catch (error) { this.cycleStep = undefined; throw error; }
         this.cycleStep = this.cycleStep % steps.length + 1;
         this.speed = this.cycleStep * this.stepSize;
-        this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+        this.publishSpeed();
         if (i < count - 1) await this.delay(this.seconds(this.config.speedCycleInterval, 0.1));
       }
       this.speed = target * this.stepSize;
-      this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+      this.publishSpeed();
       this.automaticPower(true, on => this.setActive(on));
       return;
     }
@@ -298,7 +302,7 @@ export class FanAccessory extends TimedAccessory {
     await this.sendConfigured(`fanSpeed${closest}`);
     this.speed = closest;
     this.publishPower();
-    this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, closest);
+    this.publishSpeed();
     this.automaticPower(true, on => this.setActive(on));
   }
 }

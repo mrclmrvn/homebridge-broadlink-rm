@@ -372,6 +372,15 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "hideRotationSpeed": {
+              "title": "Hide Fan Speed Control",
+              "type": "boolean",
+              "default": false,
+              "description": "Hide the HomeKit fan speed control. Configured power, swing, direction, and default speed behavior still apply.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "hideSwingMode": {
               "title": "Hide Fan Swing Control",
               "type": "boolean",
@@ -1756,6 +1765,7 @@
                 "accessories[].speedSteps",
                 "accessories[].fanSpeedByDirection",
                 "accessories[].stepSize",
+                "accessories[].hideRotationSpeed",
                 "accessories[].hideSwingMode",
                 "accessories[].hideRotationDirection",
                 "accessories[].availableBrightnessSteps",
