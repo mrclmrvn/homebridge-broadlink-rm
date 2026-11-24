@@ -39,7 +39,7 @@
       'enableAutoOn', 'enableAutoOff', 'disableAutomaticOn', 'disableAutomaticOff', 'onDelay',
       'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'pingIPAddress',
       'pingUseArp', 'pingIPAddressStateOnly', 'pingFrequency', 'pingTimeout', 'pingGrace',
-      'interval', 'sendCount', 'onSendCount', 'offSendCount'
+      'irDeviceGroup', 'interval', 'sendCount', 'onSendCount', 'offSendCount'
     ]],
     ['Travel and position', [
       'totalDurationOpen', 'totalDurationClose', 'openDuration', 'closeDuration',

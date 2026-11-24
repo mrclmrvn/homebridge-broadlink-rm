@@ -194,3 +194,21 @@ Jam updates send no IR/RF stop, reversal, unlock or retry. Clearing a fault does
 not resume cancelled actions. The software reports sensor state and guards new
 commands; the appliance's physical controller remains responsible for motor
 protection and recovery. Optional garage lock controls remain separately inferred.
+
+## IR scheduling for HomeKit scenes
+
+When a scene triggers several accessories at once, some IR receivers need time
+between commands. Set `irCommandDelay` on the BroadlinkRM platform to enforce a
+minimum gap between IR commands sent by the same Broadlink.
+
+When nearby Broadlinks can interfere with each other, set the same
+`irDeviceGroup` on each accessory that sends IR through those Broadlinks.
+Grouped transmissions run one at a time and wait for the Broadlink response
+or timeout before the next transmission. Set `irDeviceGroupDelay` on the platform
+to add a gap when switching transmitters in the same group.
+
+For example, set both platform delays to `0.15` seconds and set
+`"irDeviceGroup": "living-room"` on each affected accessory. In Plugin Config,
+the group field is under **Settings → Power and timing**. Set the platform
+delays in **JSON Config**. Both delays default to zero. Independent groups can
+transmit in parallel. RF transmissions keep their existing behavior.

@@ -14,7 +14,7 @@ continuing maintenance and a rebuild; it did not provide an acceptance checklist
 | [#776: HeaterCooler Auto](https://github.com/kiwi-cam/homebridge-broadlink-rm/issues/776) | HeaterCooler advertises configured Heat/Cool modes only | Actual HeaterCooler Auto support is absent; Thermostat-style AC Auto is separate |
 | [#774: RM Max 0xaf8b](https://github.com/kiwi-cam/homebridge-broadlink-rm/issues/774) | No explicit device mapping or validated protocol fixture | Establish model capabilities/framing and test discovery, learning and transmission |
 | [#783: fan direction/speed codes](https://github.com/kiwi-cam/homebridge-broadlink-rm/issues/783) | Not implemented | Combined direction-aware speed maps and selection semantics |
-| [#785: IR groups and delays](https://github.com/kiwi-cam/homebridge-broadlink-rm/issues/785) | Not implemented | Cross-device group scheduling and inter-command/group gaps; existing sequence delays are insufficient |
+| [#785: IR groups and delays](https://github.com/kiwi-cam/homebridge-broadlink-rm/issues/785) | Opt-in per-transmitter cooldown and grouped IR transmission scheduling are implemented | Validate scene reliability and latency on overlapping physical transmitters |
 
 ## Related open pull requests
 

@@ -215,6 +215,11 @@
               "type": "string",
               "description": "The IP or MAC address of the Broadlink device that controls this accessory."
             },
+            "irDeviceGroup": {
+              "title": "IR Transmitter Group",
+              "type": "string",
+              "description": "Use the same group name for accessories whose Broadlink transmitters can interfere with each other."
+            },
             "disabled": {
               "title": "Disabled",
               "type": "boolean",
@@ -1599,6 +1604,20 @@
           }
         }
       },
+      "irCommandDelay": {
+        "title": "IR Command Delay (seconds)",
+        "type": "number",
+        "minimum": 0,
+        "maximum": 2147483,
+        "description": "Minimum gap between IR commands sent by the same Broadlink. Defaults to 0."
+      },
+      "irDeviceGroupDelay": {
+        "title": "IR Transmitter Group Delay (seconds)",
+        "type": "number",
+        "minimum": 0,
+        "maximum": 2147483,
+        "description": "Minimum gap when switching Broadlink transmitters within an IR group. Defaults to 0."
+      },
       "rediscoveryInterval": {
         "title": "Rediscovery interval (minutes)",
         "type": "number",
@@ -1613,6 +1632,8 @@
     "name",
     "disableDiscovery",
     "hosts",
+    "irCommandDelay",
+    "irDeviceGroupDelay",
     {
       "type": "section",
       "title": "Accessories",
@@ -1630,6 +1651,7 @@
                 "accessories[].name",
                 "accessories[].type",
                 "accessories[].host",
+                "accessories[].irDeviceGroup",
                 "accessories[].disabled",
                 "accessories[].coolOnly",
                 "accessories[].minTemperature",
