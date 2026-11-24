@@ -15,6 +15,7 @@ Switch/outlet variants, TV, fan/Fan v1 and air purifier support these options:
   "pingIPAddress": "192.0.2.20",
   "pingFrequency": 5,
   "pingTimeout": 2,
+  "minimumPingFailures": 3,
   "pingGrace": 10,
   "data": { "on": "YOUR_POWER_TOGGLE_HEX", "off": "YOUR_POWER_TOGGLE_HEX" }
 }
@@ -24,13 +25,17 @@ Replace the documentation address with the appliance's IPv4 address. Polling is
 read-only: it updates HomeKit but never sends a power command. A requested power
 change checks reachability and suppresses a command when the observed state
 already matches. An indeterminate probe rejects the request without sending.
-An ordinary no-reply result is treated as Off; network reachability must actually
-correspond to the appliance's power state for this to be useful.
+Set `minimumPingFailures` to tolerate transient missed pings during background
+polling. A successful ping reports On immediately. An indeterminate result
+leaves the last estimate in place and resets the consecutive-miss count.
+This setting applies to ICMP polling. ARP observations and checks made for an
+explicit power command use their existing behavior.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `pingFrequency` | 1 | Seconds between completed poll and next poll |
 | `pingTimeout` | 2 | Utility timeout in seconds, maximum 60 |
+| `minimumPingFailures` | 1 | Consecutive ordinary ICMP misses before a background poll reports Off |
 | `pingGrace` | 10 | Seconds to use the last successfully sent state before probing again; 0 disables |
 | `pingUseArp` | false | Estimate from a cached neighbor/ARP entry instead of ICMP |
 | `pingIPAddressStateOnly` | false | Observe state but always allow explicitly requested commands |

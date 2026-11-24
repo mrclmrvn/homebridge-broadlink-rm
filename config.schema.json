@@ -913,6 +913,17 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "minimumPingFailures": {
+              "title": "Consecutive Ping Misses Before Off",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 1,
+              "description": "Number of consecutive missed pings before a background power poll reports Off. A successful ping reports On immediately. Applies to ICMP polling.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "pingGrace": {
               "title": "Power State Grace After Send (seconds)",
               "type": "number",
@@ -1723,6 +1734,7 @@
                 "accessories[].pingFrequency",
                 "accessories[].pingTimeout",
                 "accessories[].pingGrace",
+                "accessories[].minimumPingFailures",
                 "accessories[].speedCycle",
                 "accessories[].speedCycleInterval",
                 "accessories[].defaultSpeedStep",

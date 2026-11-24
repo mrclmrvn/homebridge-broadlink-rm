@@ -77,6 +77,19 @@ test('power observations never transmit; guarded toggles use fresh state and gra
   assert.equal(f.clock.timers.size, 0);
 });
 
+test('power polling requires consecutive missed pings and reports recovery immediately', async t => {
+  const probe = interceptProbe(t);
+  const f = fixture(t, 'switch', { pingIPAddress: '192.0.2.1', minimumPingFailures: 2 });
+  await f.clock.tick(0);
+  assert.equal(f.get('On'), true);
+  for (const [code, on] of [[1, true], [0, true], [1, true], ['ENOENT', true], [1, true], [1, false], [0, true]]) {
+    probe.code = code;
+    await f.clock.tick(1000);
+    assert.equal(f.get('On'), on);
+  }
+  assert.deepEqual(f.sent, []);
+});
+
 test('outlet state-only detection reports use independently of commanded power', async t => {
   const probe = interceptProbe(t);
   const f = fixture(t, 'outlet', { pingIPAddress: '192.0.2.1', pingIPAddressStateOnly: true, data: { on: 'on', off: 'off' } });

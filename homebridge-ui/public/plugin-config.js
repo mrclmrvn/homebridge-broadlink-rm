@@ -38,7 +38,7 @@
     ['Power and timing', [
       'enableAutoOn', 'enableAutoOff', 'disableAutomaticOn', 'disableAutomaticOff', 'onDelay',
       'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'pingIPAddress',
-      'pingUseArp', 'pingIPAddressStateOnly', 'pingFrequency', 'pingTimeout', 'pingGrace',
+      'pingUseArp', 'pingIPAddressStateOnly', 'pingFrequency', 'pingTimeout', 'pingGrace', 'minimumPingFailures',
       'irDeviceGroup', 'interval', 'sendCount', 'onSendCount', 'offSendCount'
     ]],
     ['Travel and position', [

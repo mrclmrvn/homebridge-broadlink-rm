@@ -50,6 +50,8 @@ export class PowerMonitor {
   private readonly interval: number;
   private readonly grace: number;
   private readonly timeout: number;
+  private readonly minimumPingFailures: number;
+  private consecutivePingFailures = 0;
   private timer?: NodeJS.Timeout;
   private pending?: Promise<PowerState>;
   private epoch = 0;
@@ -67,23 +69,39 @@ export class PowerMonitor {
     this.grace = seconds(config.pingGrace, 10, true);
     this.timeout = seconds(config.pingTimeout, 2);
     if (this.timeout > 60000) throw new Error('pingTimeout must not exceed 60 seconds');
+    const minimum = config.minimumPingFailures === undefined ? 1 : config.minimumPingFailures;
+    if (!Number.isSafeInteger(minimum) || minimum < 1) throw new Error('minimumPingFailures must be a positive integer');
+    this.minimumPingFailures = minimum;
   }
 
   public start(update: (on: boolean) => void): void {
     const poll = async () => {
       const epoch = this.epoch;
+      const usingSentState = performance.now() < this.graceUntil;
       try {
-        const state = await this.query();
-        if (!this.abort.signal.aborted && epoch === this.epoch && state !== undefined) update(state);
-      } catch { /* Keep the previous estimate on utility or shutdown failures. */ }
+        const state = await this.query(usingSentState);
+        if (!this.abort.signal.aborted && epoch === this.epoch) {
+          if (usingSentState || this.config.pingUseArp === true) {
+            if (state !== undefined) update(state);
+          } else if (state === false) {
+            this.consecutivePingFailures = Math.min(this.minimumPingFailures, this.consecutivePingFailures + 1);
+            if (this.consecutivePingFailures === this.minimumPingFailures) update(false);
+          } else {
+            this.consecutivePingFailures = 0;
+            if (state === true) update(true);
+          }
+        }
+      } catch {
+        if (epoch === this.epoch) this.consecutivePingFailures = 0;
+      }
       if (!this.abort.signal.aborted) this.timer = setTimeout(() => { void poll(); }, this.interval);
     };
     this.timer = setTimeout(() => { void poll(); }, 0);
   }
 
-  private async query(): Promise<PowerState> {
+  private async query(useSentState = performance.now() < this.graceUntil): Promise<PowerState> {
     if (this.abort.signal.aborted) throw new Error('Power monitor is closed');
-    if (performance.now() < this.graceUntil) return this.sentState;
+    if (useSentState) return this.sentState;
     if (!this.pending) this.pending = probePower(this.config.pingIPAddress, this.config.pingUseArp === true, this.timeout, this.abort.signal);
     const pending = this.pending;
     try { return await pending; } finally { if (this.pending === pending) this.pending = undefined; }
@@ -99,6 +117,7 @@ export class PowerMonitor {
 
   public recordSent(target: boolean): void {
     if (this.config.pingIPAddressStateOnly) return;
+    this.consecutivePingFailures = 0;
     this.sentState = target;
     this.graceUntil = performance.now() + this.grace;
     this.epoch++;
