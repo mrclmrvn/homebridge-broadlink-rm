@@ -881,6 +881,40 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "stateFeedback": {
+              "title": "MQTT AC Mode Feedback",
+              "type": "object",
+              "description": "Read live off, heat, cool, or auto reports from an external MQTT source. This updates HomeKit without sending a command.",
+              "properties": {
+                "mqttURL": { "title": "MQTT Broker URL", "type": "string" },
+                "mqttUsername": { "title": "MQTT Username", "type": "string" },
+                "mqttPassword": { "title": "MQTT Password", "type": "string", "format": "password" },
+                "mqttTopic": {
+                  "title": "MQTT Mode Topic",
+                  "type": ["string", "array"],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": { "type": "string", "enum": ["mode", "combined", "unknown"] },
+                      "topic": { "type": "string" },
+                      "path": { "type": "string" }
+                    },
+                    "required": ["identifier", "topic"]
+                  }
+                },
+                "mqttMaxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "default": 300
+                }
+              },
+              "required": ["mqttURL", "mqttTopic"],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "powerSensor": {
               "title": "MQTT Wattage Source",
               "type": "object",
@@ -1778,6 +1812,7 @@
                 "accessories[].mqttPassword",
                 "accessories[].mqttMaxAge",
                 "accessories[].mqttTopic",
+                "accessories[].stateFeedback",
                 "accessories[].powerSensor",
                 "accessories[].pingIPAddress",
                 "accessories[].pingUseArp",

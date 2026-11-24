@@ -1,5 +1,6 @@
 import { Service, CharacteristicValue } from 'homebridge';
 import { TimedAccessory } from './timed';
+import { MQTTSensor } from '../sensors/mqtt';
 import { SensorSource } from './sensorSource';
 import { BatteryStatus } from './battery';
 import type { BroadlinkRMPlatform } from '../platform';
@@ -14,6 +15,7 @@ export class AirConditionerAccessory extends TimedAccessory {
   private currentHeatingCoolingState: number | undefined = 0;
   private targetHeatingCoolingState: number = 0;
   private targetTemperature: number;
+  private readonly stateFeedback?: MQTTSensor;
   private readonly source: SensorSource;
   private readonly battery: BatteryStatus;
   private readonly pollInterval: number;
@@ -101,6 +103,11 @@ export class AirConditionerAccessory extends TimedAccessory {
       || this.config.heatTemperature < -270 || this.config.heatTemperature > 100)) throw new Error('Invalid heatTemperature');
     const displayUnits = String(this.config.units ?? 'c').toLowerCase();
     if (!['c', 'f'].includes(displayUnits)) throw new Error('units must be c or f');
+    const feedback = this.config.stateFeedback;
+    if (feedback !== undefined) {
+      if (!feedback || typeof feedback !== 'object' || Array.isArray(feedback)) throw new Error('stateFeedback must be an object');
+      this.stateFeedback = new MQTTSensor({ ...feedback, type: 'mode' });
+    }
     this.source = new SensorSource(this.config, () => this.getDevice());
     this.pollInterval = this.seconds(this.config.sensorPollInterval ?? this.config.temperatureUpdateFrequency, 60);
 
@@ -183,6 +190,22 @@ export class AirConditionerAccessory extends TimedAccessory {
       if (quantity !== 'battery') this.schedule('mqtt-update', 0, () => this.pollSensors());
     });
     if (this.pollInterval > 0) this.schedule('sensors', 0, () => this.pollSensors());
+    this.stateFeedback?.onUpdate(quantity => {
+      if (quantity === 'mode') this.schedule('state-feedback', 0, () => this.syncObservedMode());
+    });
+  }
+
+  private async syncObservedMode(): Promise<void> {
+    let mode: number | undefined;
+    try { mode = this.stateFeedback?.read('mode'); }
+    catch { return; }
+    if (mode === undefined || !this.allowedModes.includes(mode) || mode === 3 && this.config.replaceAutoMode
+      || mode === this.targetHeatingCoolingState) return;
+    this.log.info?.(`[${this.name}] External state reported ${this.modeLabel(mode)}.`);
+    this.manualOverride();
+    this.cancelTimer('power-auto');
+    this.commitMode(mode);
+    this.saveState();
   }
 
   private deferDisplay(): void {
@@ -224,6 +247,7 @@ export class AirConditionerAccessory extends TimedAccessory {
       if (!off) throw new Error('No IR/RF off code configured');
       await this.sendCode(off);
       this.log.info?.(`[${this.name}] Broadlink acknowledged Off command.`);
+      this.cancelTimer('state-feedback');
       this.commitMode(0);
       this.saveState();
     } else {
@@ -286,6 +310,7 @@ export class AirConditionerAccessory extends TimedAccessory {
     }
     await this.sendCommands(compileCommandPlan(commands));
     this.log.info?.(`[${this.name}] Broadlink acknowledged ${this.modeLabel(state)} command at ${temp} C.`);
+    this.cancelTimer('state-feedback');
     this.commitMode(mode === 'heat' ? 1 : mode === 'cool' ? 2 : mode === 'auto' ? 3 : state);
     this.targetTemperature = temp;
     this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, temp);
@@ -401,5 +426,6 @@ export class AirConditionerAccessory extends TimedAccessory {
     super.dispose();
     this.battery.dispose();
     this.source.dispose();
+    this.stateFeedback?.dispose();
   }
 }

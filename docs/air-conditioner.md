@@ -266,3 +266,34 @@ remain required.
 `units: "c"` / `"f"` (case insensitive) selects the Thermostat display preference.
 It does not convert temperature command keys, saved targets or ambient thresholds;
 those remain Celsius. Input measurement conversion still uses `tempSourceUnits`.
+
+## Sync mode from an external source
+
+If a separate receiver or integration can report the AC's mode after someone
+uses the physical remote, publish that mode to MQTT. Configure **MQTT AC Mode
+Feedback** under **Settings → Sensor feedback**, or add this to the
+`air-conditioner` accessory:
+
+```json
+{
+  "stateFeedback": {
+    "mqttURL": "mqtt://broker.example",
+    "mqttTopic": "living-room/ac/mode"
+  }
+}
+```
+
+Publish `off`, `heat`, `cool`, or `auto` as text, or use JSON such as
+`{"mode":"cool"}`. A custom payload path can use
+`{"identifier":"mode","topic":"living-room/ac","path":"hvac.mode"}` in a
+`mqttTopic` array. Publish the actual mode after a command has taken effect.
+This integration consumes reported modes. It does not put the Broadlink RM in
+continuous learning mode or interpret the remote's raw codes.
+
+A valid mode change updates HomeKit and saved state without transmitting IR/RF.
+The target temperature stays as set in HomeKit. Unsupported modes, retained
+messages from before subscription, and stale or malformed reports are ignored.
+`mqttMaxAge` defaults to 300 seconds. A successful HomeKit transmission
+takes precedence over reports queued during that transmission. An external
+mode change cancels outstanding automatic power timers and uses the same
+ambient automation hold as a manual HomeKit write.

@@ -49,7 +49,7 @@
       'initialDelay'
     ]],
     ['Sensor feedback', [
-      'closedSensor', 'openSensor', 'obstructionSensor', 'lockSensor', 'jamSensor',
+      'stateFeedback', 'closedSensor', 'openSensor', 'obstructionSensor', 'lockSensor', 'jamSensor',
       'sensorPollInterval', 'batteryAlerts', 'batteryFilePath'
     ]]
   ];
