@@ -135,3 +135,54 @@ test('a failed saturation command retains the successfully sent hue', async () =
   assert.equal(c.get('Saturation').get(), 100);
   assert.equal(c.get('On').get(), true);
 });
+
+const relativeBrightness = {
+  availableBrightnessSteps: 4,
+  defaultBrightness: 50,
+  data: { on: 'on', off: 'off', 'brightness+': 'up', 'brightness-': 'down' },
+};
+
+test('relative brightness starts from the configured level and sends only needed steps', async () => {
+  const { controls, sent } = setup(relativeBrightness);
+  const brightness = controls.get('Brightness');
+  await brightness.set(90);
+  assert.equal(brightness.get(), 100);
+  await brightness.set(98);
+  await brightness.set(60);
+  assert.equal(brightness.get(), 50);
+  await brightness.set(0);
+  await controls.get('On').set(true);
+  assert.equal(brightness.get(), 50);
+  assert.deepEqual(sent, ['on', 'up', 'up', 'down', 'down', 'off', 'on']);
+});
+
+test('a relative light that resumes its level can restore it after power off', async () => {
+  const { controls, sent } = setup({ ...relativeBrightness, useLastKnownBrightness: true });
+  await controls.get('Brightness').set(25);
+  await controls.get('On').set(false);
+  await controls.get('On').set(true);
+  assert.equal(controls.get('Brightness').get(), 25);
+  assert.deepEqual(sent, ['on', 'down', 'off', 'on']);
+});
+
+test('relative brightness retains confirmed steps and recalibrates after a failed pulse', async () => {
+  const { controls, sent, device } = setup(relativeBrightness);
+  let physicalLevel = 2;
+  let failed = false;
+  device.sendData = async code => {
+    sent.push(code);
+    if (code === 'up') physicalLevel = Math.min(4, physicalLevel + 1);
+    if (code === 'down') physicalLevel--;
+    if (!failed && physicalLevel === 4) {
+      failed = true;
+      throw new Error('lost acknowledgement');
+    }
+  };
+  const brightness = controls.get('Brightness');
+  await assert.rejects(brightness.set(100), /lost acknowledgement/);
+  assert.equal(brightness.get(), 75);
+  await brightness.set(75);
+  assert.equal(physicalLevel, 3);
+  assert.equal(brightness.get(), 75);
+  assert.deepEqual(sent, ['on', 'up', 'up', 'up', 'up', 'up', 'down']);
+});

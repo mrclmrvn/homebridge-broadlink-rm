@@ -35,6 +35,7 @@
       'fanStepSize', 'speedCycle', 'speedCycleInterval', 'defaultSpeedStep', 'defaultFanSpeed',
       'alwaysResetToDefaults'
     ]],
+    ['Brightness', ['availableBrightnessSteps', 'defaultBrightness', 'useLastKnownBrightness']],
     ['Power and timing', [
       'enableAutoOn', 'enableAutoOff', 'disableAutomaticOn', 'disableAutomaticOff', 'onDelay',
       'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'pingIPAddress',

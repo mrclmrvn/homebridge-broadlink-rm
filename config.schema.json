@@ -388,6 +388,16 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "availableBrightnessSteps": {
+              "title": "Number of Relative Brightness Levels",
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 100,
+              "description": "Enables relative dimming. Configure brightness+ and brightness- in Command Data.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"light\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "defaultBrightness": {
               "title": "Default Light Brightness (%)",
               "type": "integer",
@@ -1675,6 +1685,7 @@
                 "accessories[].stepSize",
                 "accessories[].hideSwingMode",
                 "accessories[].hideRotationDirection",
+                "accessories[].availableBrightnessSteps",
                 "accessories[].defaultBrightness",
                 "accessories[].useLastKnownBrightness",
                 "accessories[].onDelay",
