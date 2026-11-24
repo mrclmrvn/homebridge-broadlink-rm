@@ -10,7 +10,7 @@ export abstract class TimedAccessory extends BaseAccessory {
   protected power?: PowerMonitor;
 
   protected watchPower(update: (on: boolean) => void): void {
-    if (!this.config.pingIPAddress) return;
+    if (!this.config.pingIPAddress && this.config.powerSensor === undefined) return;
     this.power = new PowerMonitor(this.config);
     this.power.start(on => { if (!this.disposed) { update(on); this.persistState(); } });
   }

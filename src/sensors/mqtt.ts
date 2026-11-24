@@ -1,14 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import type { MqttClient, IClientOptions } from 'mqtt';
+import type { MqttClient, IClientOptions, IPublishPacket } from 'mqtt';
 
-export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction' | 'battery' | 'jam';
+export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction' | 'battery' | 'jam' | 'power';
 type Identifier = Quantity | 'combined' | 'unknown';
 interface Topic { identifier: Identifier; topic: string; path?: string }
 interface Reading { value?: number; received: number; error?: string }
 export type ConnectMQTT = (url: string, options: IClientOptions) => MqttClient;
 
-const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'battery', 'jam'];
+const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'battery', 'jam', 'power'];
 const aliases: Record<Quantity, string[]> = {
   temperature: ['temperature', 'temp', 'local_temperature'],
   humidity: ['humidity', 'hum', 'relativehumidity', 'relative_humidity'],
@@ -16,6 +16,7 @@ const aliases: Record<Quantity, string[]> = {
   lock: ['locked', 'lock'],
   obstruction: ['obstruction', 'obstructed'],
   jam: ['jam', 'jammed'],
+  power: ['power', 'watts', 'wattage'],
   battery: ['battery', 'batterylevel', 'battery_level', 'batterypercentage', 'battery_percentage'],
 };
 
@@ -108,7 +109,7 @@ export class MQTTSensor {
     const raw = typeof config.mqttTopic === 'string' ? [{ identifier: 'unknown', topic: config.mqttTopic }] : config.mqttTopic;
     if (!Array.isArray(raw) || !raw.length) throw new Error('mqttTopic must be a topic string or a nonempty array');
     this.topics = raw.map(entry => {
-      if (!entry || !['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'jam', 'combined', 'unknown', 'battery'].includes(entry.identifier)
+      if (!entry || !([...quantities, 'combined', 'unknown']).includes(entry.identifier)
         || typeof entry.topic !== 'string' || !validFilter(entry.topic)) throw new Error('Invalid MQTT topic configuration');
       if (entry.path !== undefined && (typeof entry.path !== 'string' || !entry.path.length
         || !quantities.includes(entry.identifier)
@@ -120,7 +121,7 @@ export class MQTTSensor {
     const seconds = config.mqttMaxAge ?? 300;
     if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0 || seconds > 2147483) throw new Error('Invalid mqttMaxAge seconds');
     this.maxAge = seconds * 1000;
-    this.primary = config.type === 'garage-door-opener' ? 'contact' : config.type === 'lock' ? 'lock' : config.type === 'obstruction' ? 'obstruction' : config.type === 'jam' ? 'jam' : ['humiditysensor', 'humidity-sensor', 'humidifier-dehumidifier'].includes(String(config.type).toLowerCase()) ? 'humidity' : 'temperature';
+    this.primary = config.type === 'power' ? 'power' : config.type === 'garage-door-opener' ? 'contact' : config.type === 'lock' ? 'lock' : config.type === 'obstruction' ? 'obstruction' : config.type === 'jam' ? 'jam' : ['humiditysensor', 'humidity-sensor', 'humidifier-dehumidifier'].includes(String(config.type).toLowerCase()) ? 'humidity' : 'temperature';
   }
 
   public onUpdate(listener: (quantity?: Quantity) => void): () => void {
@@ -163,8 +164,8 @@ export class MQTTSensor {
     });
   };
 
-  private onMessage = (topic: string, payload: Buffer): void => {
-    if (this.disposed) return;
+  private onMessage = (topic: string, payload: Buffer, packet?: IPublishPacket): void => {
+    if (this.disposed || this.primary === 'power' && packet?.retain) return;
     const matched = this.topics.filter(entry => matchesTopic(entry.topic, topic));
     if (!matched.length) return;
     let parsed: unknown;
@@ -186,6 +187,7 @@ export class MQTTSensor {
         found = true;
         let value = ['contact', 'lock', 'obstruction', 'jam'].includes(quantity) ? binaryValue(raw, quantity) : numeric(raw);
         if (quantity === 'battery' && value !== undefined && (value < 0 || value > 100)) value = undefined;
+        if (quantity === 'power' && value !== undefined && value < 0) value = undefined;
         changed.set(quantity, { value, received: performance.now(), error: value === undefined ? 'Invalid MQTT measurement' : undefined });
       }
       // Status-only combined updates do not refresh or erase earlier measurements.

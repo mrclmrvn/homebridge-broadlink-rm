@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { isIPv4 } from 'node:net';
 import { performance } from 'node:perf_hooks';
+import { MQTTSensor } from './mqtt';
 
 export type PowerState = boolean | undefined;
 export interface ProbeResult { code?: number; stdout: string }
@@ -51,6 +52,7 @@ export class PowerMonitor {
   private readonly grace: number;
   private readonly timeout: number;
   private readonly minimumPingFailures: number;
+  private readonly wattage?: { source: MQTTSensor; threshold: number };
   private consecutivePingFailures = 0;
   private timer?: NodeJS.Timeout;
   private pending?: Promise<PowerState>;
@@ -59,7 +61,16 @@ export class PowerMonitor {
   private sentState?: boolean;
 
   constructor(private readonly config: Record<string, any>) {
-    if (!isIPv4(config.pingIPAddress)) throw new Error('pingIPAddress must be an IPv4 address');
+    const powerSensor = config.powerSensor;
+    if (powerSensor !== undefined) {
+      if (!powerSensor || typeof powerSensor !== 'object' || Array.isArray(powerSensor)) {
+        throw new Error('powerSensor must be an object');
+      }
+      if (config.pingIPAddress !== undefined) throw new Error('Configure either powerSensor or pingIPAddress');
+      if (!Number.isFinite(powerSensor.onThresholdWatts) || powerSensor.onThresholdWatts <= 0) {
+        throw new Error('powerSensor.onThresholdWatts must be a positive finite number');
+      }
+    } else if (!isIPv4(config.pingIPAddress)) throw new Error('pingIPAddress must be an IPv4 address');
     const seconds = (value: unknown, fallback: number, zero = false) => {
       const number = value ?? fallback;
       if (typeof number !== 'number' || !Number.isFinite(number) || number < (zero ? 0 : 0.001) || number > 2147483) throw new Error('Invalid power-detection duration');
@@ -72,6 +83,12 @@ export class PowerMonitor {
     const minimum = config.minimumPingFailures === undefined ? 1 : config.minimumPingFailures;
     if (!Number.isSafeInteger(minimum) || minimum < 1) throw new Error('minimumPingFailures must be a positive integer');
     this.minimumPingFailures = minimum;
+    if (powerSensor !== undefined) {
+      this.wattage = {
+        source: new MQTTSensor({ ...powerSensor, type: 'power' }),
+        threshold: powerSensor.onThresholdWatts,
+      };
+    }
   }
 
   public start(update: (on: boolean) => void): void {
@@ -81,7 +98,7 @@ export class PowerMonitor {
       try {
         const state = await this.query(usingSentState);
         if (!this.abort.signal.aborted && epoch === this.epoch) {
-          if (usingSentState || this.config.pingUseArp === true) {
+          if (usingSentState || this.wattage || this.config.pingUseArp === true) {
             if (state !== undefined) update(state);
           } else if (state === false) {
             this.consecutivePingFailures = Math.min(this.minimumPingFailures, this.consecutivePingFailures + 1);
@@ -102,6 +119,10 @@ export class PowerMonitor {
   private async query(useSentState = performance.now() < this.graceUntil): Promise<PowerState> {
     if (this.abort.signal.aborted) throw new Error('Power monitor is closed');
     if (useSentState) return this.sentState;
+    if (this.wattage) {
+      try { return this.wattage.source.read('power') >= this.wattage.threshold; }
+      catch { return undefined; }
+    }
     if (!this.pending) this.pending = probePower(this.config.pingIPAddress, this.config.pingUseArp === true, this.timeout, this.abort.signal);
     const pending = this.pending;
     try { return await pending; } finally { if (this.pending === pending) this.pending = undefined; }
@@ -123,5 +144,9 @@ export class PowerMonitor {
     this.epoch++;
   }
 
-  public dispose(): void { this.abort.abort(); clearTimeout(this.timer); }
+  public dispose(): void {
+    this.abort.abort();
+    clearTimeout(this.timer);
+    this.wattage?.source.dispose();
+  }
 }

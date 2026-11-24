@@ -38,7 +38,7 @@
     ['Brightness', ['availableBrightnessSteps', 'defaultBrightness', 'useLastKnownBrightness']],
     ['Power and timing', [
       'enableAutoOn', 'enableAutoOff', 'disableAutomaticOn', 'disableAutomaticOff', 'onDelay',
-      'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'pingIPAddress',
+      'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'powerSensor', 'pingIPAddress',
       'pingUseArp', 'pingIPAddressStateOnly', 'pingFrequency', 'pingTimeout', 'pingGrace', 'minimumPingFailures',
       'irDeviceGroup', 'interval', 'sendCount', 'onSendCount', 'offSendCount'
     ]],
@@ -103,7 +103,7 @@
     container.append(field);
     controls.set(name, control);
     settings.set(name, {
-      field, choices, types, structured, numeric, required: schema.required,
+      field, choices, types, structured, numeric, required: schema.required === true,
       visible: schema.condition && new Function('model', 'arrayIndices', schema.condition.functionBody)
     });
     return field;

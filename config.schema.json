@@ -881,6 +881,45 @@
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
+            "powerSensor": {
+              "title": "MQTT Wattage Source",
+              "type": "object",
+              "description": "Use MQTT wattage instead of ping to detect appliance power. Configure mqttURL, mqttTopic and onThresholdWatts.",
+              "properties": {
+                "mqttURL": { "title": "MQTT Broker URL", "type": "string" },
+                "mqttUsername": { "title": "MQTT Username", "type": "string" },
+                "mqttPassword": { "title": "MQTT Password", "type": "string", "format": "password" },
+                "mqttTopic": {
+                  "title": "MQTT Wattage Topic",
+                  "type": ["string", "array"],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": { "type": "string", "enum": ["power", "combined", "unknown"] },
+                      "topic": { "type": "string" },
+                      "path": { "type": "string" }
+                    },
+                    "required": ["identifier", "topic"]
+                  }
+                },
+                "mqttMaxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "default": 300
+                },
+                "onThresholdWatts": {
+                  "title": "On Threshold (watts)",
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": ["mqttURL", "mqttTopic", "onThresholdWatts"],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\", \"switch\", \"outlet\", \"switch-multi\", \"switch-repeat\", \"switch-multi-repeat\", \"tv\", \"television\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "pingIPAddress": {
               "title": "Appliance Power Detection IPv4 Address",
               "type": "string",
@@ -1739,6 +1778,7 @@
                 "accessories[].mqttPassword",
                 "accessories[].mqttMaxAge",
                 "accessories[].mqttTopic",
+                "accessories[].powerSensor",
                 "accessories[].pingIPAddress",
                 "accessories[].pingUseArp",
                 "accessories[].pingIPAddressStateOnly",

@@ -56,6 +56,41 @@ measurement. Other supported types update their power characteristic from the
 observation. State-only mode does not assume the sent state during a grace period.
 AC, HeaterCooler, humidity controllers and lights do not use this power monitor.
 
+## MQTT wattage power estimates
+
+A metering plug or automation can publish an appliance's measured watts to MQTT.
+Configure **MQTT Wattage Source** under **Settings → Power and timing** on the
+accessory. Supply `powerSensor` in JSON Config if editing the raw configuration.
+
+```json
+{
+  "name": "TV Power",
+  "type": "switch",
+  "powerSensor": {
+    "mqttURL": "mqtt://broker.example",
+    "mqttTopic": "living-room/tv/watts",
+    "mqttMaxAge": 30,
+    "onThresholdWatts": 5
+  },
+  "data": { "on": "YOUR_POWER_TOGGLE_HEX", "off": "YOUR_POWER_TOGGLE_HEX" }
+}
+```
+
+Publish live, nonnegative watts as a number or as JSON with a `power`, `watts`,
+or `wattage` field. For another JSON layout, use a topic entry such as
+`{"identifier":"power","topic":"living-room/tv","path":"meter.watts"}`.
+The appliance is considered On at or above the threshold. Choose a threshold
+above standby draw and below normal operating draw. Use either `powerSensor`
+or `pingIPAddress` on an accessory.
+
+Background checks use `pingFrequency`. Explicit power requests use the latest
+valid reading and honor `pingGrace` after a successful send. Retained MQTT
+messages are ignored on subscription. A missing, invalid, stale, or disconnected
+reading leaves the last displayed state in place and blocks guarded toggles
+once the grace period ends. `pingIPAddressStateOnly` allows explicit commands
+regardless of the reading. MQTT expiry defaults to 300 seconds. Set
+`mqttUsername` and `mqttPassword` inside `powerSensor` if required.
+
 ## Shared structured commands
 
 Each command leaf, such as a fan's `data.on`, a TV input's `data`, a light preset,
