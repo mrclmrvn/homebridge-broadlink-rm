@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.6] — 2026-11-24
+
+### Added
+
+- Direction-aware fan speed codes and relative brightness for lights with
+  brighter/dimmer remotes.
+- Opt-in IR transmitter groups and cooldowns for HomeKit scenes.
+- MQTT wattage power detection and an optional consecutive-ping-miss threshold.
+- HeaterCooler Auto for appliances that provide a learned Auto command.
+
+### Changed
+
+- Show all schema-defined settings for the selected accessory in grouped
+  sections, including options missing from the saved config.
+- Identify the failing stage during IR/RF learning and document DHCP
+  reservations and child-bridge debug logging.
+
 ## [5.0.5] — 2026-11-20
 
 ### Changed
