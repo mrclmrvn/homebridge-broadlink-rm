@@ -10,6 +10,11 @@ export interface RFLearningOptions {
   onProgress?: (stage: 'frequency' | 'packet') => void;
 }
 
+function learningFailure(stage: string, error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(`Learning failed during ${stage}: ${message}`, { cause: error });
+}
+
 export class RMDevice extends BroadlinkDevice {
   private learning = false;
 
@@ -88,8 +93,12 @@ export class RMDevice extends BroadlinkDevice {
   public async learnData(timeoutMs = 30000, intervalMs = 1000, signal?: AbortSignal): Promise<string> {
     this.validateLearning(timeoutMs, intervalMs);
     this.learning = true;
+    let stage = 'authentication';
     try {
+      await this.synchronized(() => this.ensureAuthenticated(signal));
+      stage = 'IR learning setup';
       await this.enterLearning(signal);
+      stage = 'IR code capture';
       const deadline = performance.now() + timeoutMs;
       while (performance.now() < deadline) {
         await this.pause(Math.min(intervalMs, deadline - performance.now()), signal);
@@ -97,19 +106,28 @@ export class RMDevice extends BroadlinkDevice {
         if (code) return code.toString('hex');
       }
       throw new Error('IR learning timed out');
+    } catch (error) {
+      if (signal?.aborted || this.shutdown.signal.aborted) throw error;
+      throw learningFailure(stage, error);
     } finally { this.learning = false; }
   }
 
   public async learnRFData(options: RFLearningOptions = {}): Promise<string> {
-    if (!this.typeInfo.hasRF) throw new Error('RF learning is not supported by this device model');
+    if (!this.typeInfo.hasRF) {
+      throw new Error(`RF learning is not supported for detected type 0x${this.devType.toString(16)} (${this.typeInfo.name}). Check the RM model and configured devType.`);
+    }
     const { timeoutMs = 60000, intervalMs = 500, signal, onProgress } = options;
     this.validateLearning(timeoutMs, intervalMs);
     this.learning = true;
     let swept = false;
+    let stage = 'authentication';
     try {
       const deadline = performance.now() + timeoutMs;
+      await this.synchronized(() => this.ensureAuthenticated(signal));
+      stage = 'RF sweep setup';
       await this.command(RMSubCommand.ENTER_RF_LEARN, undefined, signal);
       swept = true;
+      stage = 'RF frequency detection';
       onProgress?.('frequency');
       let frequency: Buffer | undefined;
       while (performance.now() < deadline) {
@@ -127,7 +145,9 @@ export class RMDevice extends BroadlinkDevice {
         }
       }
       if (!frequency) throw new Error('RF frequency sweep timed out');
+      stage = 'RF code capture setup';
       await this.command(RMSubCommand.FIND_RF_PACKET, frequency, signal);
+      stage = 'RF code capture';
       onProgress?.('packet');
       while (performance.now() < deadline) {
         await this.pause(Math.min(intervalMs, deadline - performance.now()), signal);
@@ -135,6 +155,9 @@ export class RMDevice extends BroadlinkDevice {
         if (code) return code.toString('hex');
       }
       throw new Error('RF packet learning timed out');
+    } catch (error) {
+      if (signal?.aborted || this.shutdown.signal.aborted) throw error;
+      throw learningFailure(stage, error);
     } finally {
       if (swept && !this.shutdown.signal.aborted) {
         try { await this.command(RMSubCommand.CANCEL_RF_LEARN); } catch { /* Do not hide the original result. */ }

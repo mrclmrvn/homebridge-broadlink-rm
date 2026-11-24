@@ -54,6 +54,24 @@ update its static entry or enable [scheduled rediscovery](rediscovery.md). A lat
 response for the same MAC refreshes its address/type and closes the replaced
 socket. MAC-selected accessories follow the move; old IP selections do not.
 
+## Learning stops or times out
+
+Run `discover` from the Homebridge host or container and compare its IP, MAC,
+and hexadecimal type ID with your configuration. If a learning switch reports
+that no device matched its host, check that accessory's `host` first. For static
+hosts, running `auth` separately checks whether the registered address actually
+responds. The Homebridge debug log also shows the selected address and type ID.
+
+| Stage in the error | What to check |
+| --- | --- |
+| Authentication | Verify the IP, MAC, and actual type ID. Check local control and UDP reachability. |
+| IR learning setup or RF sweep setup | Confirm the model supports that mode and no other app or learning switch is using it. |
+| RF frequency detection | Hold the remote button near the RM until the capture prompt. Verify the remote frequency is supported by that RM. |
+| IR or RF code capture | Press the remote button again after the RF capture prompt. For IR, aim the remote directly at the RM. |
+
+For a bug report, include the stage, the full error message, the detected type ID,
+and whether the same step fails in the CLI. Redact addresses and credentials.
+
 ## Authentication or sends fail
 
 Confirm the current IP, MAC and device ID. RM4 and legacy devices have different

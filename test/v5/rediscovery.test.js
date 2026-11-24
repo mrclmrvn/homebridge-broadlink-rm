@@ -14,7 +14,7 @@ function setup(t) {
     const handle = { unref() {} }; timers.set(handle, { callback, delay }); return handle;
   });
   t.mock.method(global, 'clearTimeout', handle => timers.delete(handle));
-  const manager = new DeviceManager({ info() {}, warn(message) { messages.push(message); }, error(message) { messages.push(message); } });
+  const manager = new DeviceManager({ info() {}, debug(message) { messages.push(message); }, warn(message) { messages.push(message); }, error(message) { messages.push(message); } });
   t.after(() => manager.closeAll());
   const fire = async () => {
     const [handle, timer] = [...timers][0]; timers.delete(handle); timer.callback(); await flush();
@@ -33,6 +33,7 @@ test('scheduled discovery finds late devices and refreshes MAC routing without r
   assert.equal(f.manager.getDevice('010203040506'), undefined);
   await f.fire();
   assert.equal(f.manager.getDevice('01-02-03-04-05-06'), first);
+  assert.ok(f.messages.some(message => /Discovery received 1 device response/.test(message)));
   next = moved; await f.fire();
   assert.equal(first.closed, true);
   assert.equal(f.manager.getDevice('192.0.2.10'), undefined);

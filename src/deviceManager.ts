@@ -55,7 +55,7 @@ export class DeviceManager {
     this.devicesByMac.set(macKey, device);
 
     const info = getDeviceInfo(device.devType);
-    this.log.info(`[DeviceManager] Registered ${info.name} at ${ip} (${device.macAddress})`);
+    this.log.info(`[DeviceManager] Registered ${info.name} (type 0x${device.devType.toString(16)}) at ${ip} (${device.macAddress})`);
   }
 
   public async initHosts(hosts?: HostConfig[]): Promise<void> {
@@ -90,6 +90,7 @@ export class DeviceManager {
       try {
         const discovered = await discoverDevices(timeoutMs, this.shutdown.signal);
         for (const item of discovered) this.registerDevice(item.device);
+        if (!this.closed) this.log.debug(`[DeviceManager] Discovery received ${discovered.length} device response(s).`);
       } catch (error) {
         if (!this.closed) this.log.error(`[DeviceManager] Discovery error: ${error instanceof Error ? error.message : error}`);
       }
