@@ -28,8 +28,18 @@ export class HeaterCoolerAccessory extends TimedAccessory {
     this.modes = ['heat', 'cool'].flatMap(key => data[key] && typeof data[key] === 'object' && !Array.isArray(data[key])
       ? [key === 'heat' ? C.TargetHeaterCoolerState.HEAT : C.TargetHeaterCoolerState.COOL] : []);
     if (!this.modes.length) throw new Error('HeaterCooler requires data.heat or data.cool');
+    const auto = C.TargetHeaterCoolerState.AUTO;
     this.mode = this.config.defaultMode === 'heat' ? C.TargetHeaterCoolerState.HEAT
       : this.config.defaultMode === 'cool' ? C.TargetHeaterCoolerState.COOL : this.modes[this.modes.length - 1];
+    if (data.auto !== undefined) {
+      if (!data.auto || typeof data.auto !== 'object' || Array.isArray(data.auto)) {
+        throw new Error('HeaterCooler data.auto must be an object with an on code');
+      }
+      compileCommands(data.auto.on);
+      compileCommands(data.auto.off ?? data.off);
+      this.modes.unshift(auto);
+      if (this.config.defaultMode === 'auto') this.mode = auto;
+    }
     if (!this.modes.includes(this.mode)) throw new Error('defaultMode is not configured');
     this.min = this.config.minTemperature === undefined ? 16 : this.toCelsius(this.config.minTemperature);
     this.max = this.config.maxTemperature === undefined ? 30 : this.toCelsius(this.config.maxTemperature);
@@ -114,7 +124,9 @@ export class HeaterCoolerAccessory extends TimedAccessory {
   }
 
   private modeData(mode = this.mode): Record<string, any> {
-    return this.config.data[mode === this.platform.Characteristic.TargetHeaterCoolerState.HEAT ? 'heat' : 'cool'];
+    const target = this.platform.Characteristic.TargetHeaterCoolerState;
+    const key = mode === target.AUTO ? 'auto' : mode === target.HEAT ? 'heat' : 'cool';
+    return this.config.data[key];
   }
 
   private async send(value: unknown): Promise<void> {
@@ -149,13 +161,15 @@ export class HeaterCoolerAccessory extends TimedAccessory {
   private async activate(mode: number): Promise<void> {
     // Decode first so an invalid configuration cannot partially power on a unit.
     const settings = { ...this.settings };
-    const code = this.decode(this.modeData(mode), settings, mode, false);
+    const data = this.modeData(mode);
+    const code = mode === this.platform.Characteristic.TargetHeaterCoolerState.AUTO
+      ? data.on : this.decode(data, settings, mode, false);
     compileCommands(code);
-    await this.send(this.modeData(mode).on);
+    await this.send(data.on);
     this.active = 1;
     this.mode = mode;
     this.publish();
-    if (code !== this.modeData(mode).on) await this.send(code);
+    if (code !== data.on) await this.send(code);
     this.settings = settings;
     this.publish();
   }
@@ -174,6 +188,10 @@ export class HeaterCoolerAccessory extends TimedAccessory {
   }
 
   private async change(patch: Partial<Settings>): Promise<void> {
+    if (this.mode === this.platform.Characteristic.TargetHeaterCoolerState.AUTO
+      && (patch.speed !== undefined || patch.swing !== undefined)) {
+      throw new Error('HeaterCooler Auto uses the fan speed and swing encoded in its Auto command');
+    }
     const settings = { ...this.settings, ...patch };
     const irrelevantThreshold = patch.heat !== undefined && this.mode !== this.platform.Characteristic.TargetHeaterCoolerState.HEAT
       || patch.cool !== undefined && this.mode !== this.platform.Characteristic.TargetHeaterCoolerState.COOL;
@@ -195,8 +213,9 @@ export class HeaterCoolerAccessory extends TimedAccessory {
 
   private currentState(): number {
     const C = this.platform.Characteristic;
-    return !this.active ? C.CurrentHeaterCoolerState.INACTIVE
-      : this.mode === C.TargetHeaterCoolerState.HEAT ? C.CurrentHeaterCoolerState.HEATING : C.CurrentHeaterCoolerState.COOLING;
+    if (!this.active) return C.CurrentHeaterCoolerState.INACTIVE;
+    if (this.mode === C.TargetHeaterCoolerState.AUTO) return C.CurrentHeaterCoolerState.IDLE;
+    return this.mode === C.TargetHeaterCoolerState.HEAT ? C.CurrentHeaterCoolerState.HEATING : C.CurrentHeaterCoolerState.COOLING;
   }
 
   private publish(): void {

@@ -180,8 +180,23 @@ is excluded from the current scope.
 This now creates HeaterCooler, replacing the earlier incorrect Thermostat alias.
 Cached Thermostat services on this accessory are removed. At least one of
 `data.heat` / `data.cool` must be an object; only configured heat/cool modes are
-advertised. Plugin-controlled Auto mode is not offered. `defaultMode` defaults
-to cool when available, otherwise heat.
+advertised by default. `defaultMode` defaults to cool when available, otherwise
+heat.
+
+If your appliance has its own Auto mode, add a learned Auto command in
+**Command Data** alongside `heat` and/or `cool`:
+
+```json
+"auto": { "on": "YOUR_AUTO_HEX", "off": "YOUR_OFF_HEX" }
+```
+
+Auto uses `data.auto.off` or the shared `data.off`. Set `defaultMode` to
+`"auto"` to preselect it. Selecting Auto while off saves the selection for the
+next activation. Selecting it while active sends the Auto command immediately.
+The appliance regulates itself using the settings encoded in the learned
+command. In Auto, HomeKit threshold edits are stored for manual Heat/Cool and
+fan and swing writes are unavailable. HomeKit reports Active with an Idle
+current state while Auto is selected because actual heating or cooling is unknown.
 
 Each mode uses its own on/off codes. Activation sends the mode's on code,
 followed by the current temperature code when configured. Missing temperature
