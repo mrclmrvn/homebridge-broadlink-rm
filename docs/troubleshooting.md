@@ -54,6 +54,24 @@ update its static entry or enable [scheduled rediscovery](rediscovery.md). A lat
 response for the same MAC refreshes its address/type and closes the replaced
 socket. MAC-selected accessories follow the move; old IP selections do not.
 
+## Learning stops or times out
+
+Run `discover` from the Homebridge host or container and compare its IP, MAC,
+and hexadecimal type ID with your configuration. If a learning switch reports
+that no device matched its host, check that accessory's `host` first. For static
+hosts, running `auth` separately checks whether the registered address actually
+responds. The Homebridge debug log also shows the selected address and type ID.
+
+| Stage in the error | What to check |
+| --- | --- |
+| Authentication | Verify the IP, MAC, and actual type ID. Check local control and UDP reachability. |
+| IR learning setup or RF sweep setup | Confirm the model supports that mode and no other app or learning switch is using it. |
+| RF frequency detection | Hold the remote button near the RM until the capture prompt. Verify the remote frequency is supported by that RM. |
+| IR or RF code capture | Press the remote button again after the RF capture prompt. For IR, aim the remote directly at the RM. |
+
+For a bug report, include the stage, the full error message, the detected type ID,
+and whether the same step fails in the CLI. Redact addresses and credentials.
+
 ## Authentication or sends fail
 
 Confirm the current IP, MAC and device ID. RM4 and legacy devices have different
@@ -157,3 +175,31 @@ State whether the CLI reproduces the problem and whether the appliance physicall
 responded. Never include pairing codes, authentication tokens, or unrelated
 service credentials. Report issues in the
 [project repository](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues).
+
+### Capture logs from the Broadlink child bridge
+
+In Homebridge **JSON Config**, find the `BroadlinkRM` entry under `platforms`.
+If it already runs as a child bridge, merge this fragment into its existing
+`_bridge` object. Keep the existing username, port, and any other settings.
+
+```json
+{
+  "debugModeEnabled": true,
+  "env": {
+    "DEBUG": "HAP-NodeJS:Accessory,HAP-NodeJS:HAPServer"
+  }
+}
+```
+
+`debugModeEnabled` enables Homebridge and plugin debug messages for that child
+bridge. Use `env.DEBUG` when diagnosing an Apple Home or HomeKit control issue.
+`HAP-NodeJS:HAPServer` traces incoming HomeKit requests.
+`HAP-NodeJS:Accessory` traces characteristic writes and can show why HAP
+rejected a write before it reached the plugin. If `env.DEBUG` already has a
+value, append both namespaces to its comma-separated list.
+
+Save the configuration, restart the Broadlink child bridge, and reproduce the
+issue once. Include the relevant log lines and the Apple Home action that
+triggered them. Redact pairing information, credentials, local addresses, and
+unrelated accessory details before sharing. Restore your previous debug
+settings and restart the child bridge after capturing the logs.

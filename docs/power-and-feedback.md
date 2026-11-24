@@ -15,6 +15,7 @@ Switch/outlet variants, TV, fan/Fan v1 and air purifier support these options:
   "pingIPAddress": "192.0.2.20",
   "pingFrequency": 5,
   "pingTimeout": 2,
+  "minimumPingFailures": 3,
   "pingGrace": 10,
   "data": { "on": "YOUR_POWER_TOGGLE_HEX", "off": "YOUR_POWER_TOGGLE_HEX" }
 }
@@ -24,13 +25,17 @@ Replace the documentation address with the appliance's IPv4 address. Polling is
 read-only: it updates HomeKit but never sends a power command. A requested power
 change checks reachability and suppresses a command when the observed state
 already matches. An indeterminate probe rejects the request without sending.
-An ordinary no-reply result is treated as Off; network reachability must actually
-correspond to the appliance's power state for this to be useful.
+Set `minimumPingFailures` to tolerate transient missed pings during background
+polling. A successful ping reports On immediately. An indeterminate result
+leaves the last estimate in place and resets the consecutive-miss count.
+This setting applies to ICMP polling. ARP observations and checks made for an
+explicit power command use their existing behavior.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `pingFrequency` | 1 | Seconds between completed poll and next poll |
 | `pingTimeout` | 2 | Utility timeout in seconds, maximum 60 |
+| `minimumPingFailures` | 1 | Consecutive ordinary ICMP misses before a background poll reports Off |
 | `pingGrace` | 10 | Seconds to use the last successfully sent state before probing again; 0 disables |
 | `pingUseArp` | false | Estimate from a cached neighbor/ARP entry instead of ICMP |
 | `pingIPAddressStateOnly` | false | Observe state but always allow explicitly requested commands |
@@ -50,6 +55,41 @@ For outlets, state-only mode leaves `On` controlled by writes and updates
 measurement. Other supported types update their power characteristic from the
 observation. State-only mode does not assume the sent state during a grace period.
 AC, HeaterCooler, humidity controllers and lights do not use this power monitor.
+
+## MQTT wattage power estimates
+
+A metering plug or automation can publish an appliance's measured watts to MQTT.
+Configure **MQTT Wattage Source** under **Settings → Power and timing** on the
+accessory. Supply `powerSensor` in JSON Config if editing the raw configuration.
+
+```json
+{
+  "name": "TV Power",
+  "type": "switch",
+  "powerSensor": {
+    "mqttURL": "mqtt://broker.example",
+    "mqttTopic": "living-room/tv/watts",
+    "mqttMaxAge": 30,
+    "onThresholdWatts": 5
+  },
+  "data": { "on": "YOUR_POWER_TOGGLE_HEX", "off": "YOUR_POWER_TOGGLE_HEX" }
+}
+```
+
+Publish live, nonnegative watts as a number or as JSON with a `power`, `watts`,
+or `wattage` field. For another JSON layout, use a topic entry such as
+`{"identifier":"power","topic":"living-room/tv","path":"meter.watts"}`.
+The appliance is considered On at or above the threshold. Choose a threshold
+above standby draw and below normal operating draw. Use either `powerSensor`
+or `pingIPAddress` on an accessory.
+
+Background checks use `pingFrequency`. Explicit power requests use the latest
+valid reading and honor `pingGrace` after a successful send. Retained MQTT
+messages are ignored on subscription. A missing, invalid, stale, or disconnected
+reading leaves the last displayed state in place and blocks guarded toggles
+once the grace period ends. `pingIPAddressStateOnly` allows explicit commands
+regardless of the reading. MQTT expiry defaults to 300 seconds. Set
+`mqttUsername` and `mqttPassword` inside `powerSensor` if required.
 
 ## Shared structured commands
 
@@ -194,3 +234,21 @@ Jam updates send no IR/RF stop, reversal, unlock or retry. Clearing a fault does
 not resume cancelled actions. The software reports sensor state and guards new
 commands; the appliance's physical controller remains responsible for motor
 protection and recovery. Optional garage lock controls remain separately inferred.
+
+## IR scheduling for HomeKit scenes
+
+When a scene triggers several accessories at once, some IR receivers need time
+between commands. Set `irCommandDelay` on the BroadlinkRM platform to enforce a
+minimum gap between IR commands sent by the same Broadlink.
+
+When nearby Broadlinks can interfere with each other, set the same
+`irDeviceGroup` on each accessory that sends IR through those Broadlinks.
+Grouped transmissions run one at a time and wait for the Broadlink response
+or timeout before the next transmission. Set `irDeviceGroupDelay` on the platform
+to add a gap when switching transmitters in the same group.
+
+For example, set both platform delays to `0.15` seconds and set
+`"irDeviceGroup": "living-room"` on each affected accessory. In Plugin Config,
+the group field is under **Settings → Power and timing**. Set the platform
+delays in **JSON Config**. Both delays default to zero. Independent groups can
+transmit in parallel. RF transmissions keep their existing behavior.

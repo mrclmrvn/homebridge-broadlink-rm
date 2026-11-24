@@ -1,12 +1,43 @@
 import { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { TimedAccessory } from './timed';
+import { compileCommands, type CommandStep } from '../helpers/commands';
 import { stateEnum, stateNumber } from '../helpers/state';
+
+type DirectionalSpeed = { speed: number; steps: CommandStep[] };
+const directionKeys = ['clockwise', 'counterClockwise'] as const;
+
+function readDirectionalSpeeds(value: unknown): DirectionalSpeed[][] {
+  function asMap(input: unknown, name: string): Record<string, unknown> {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new Error(name + ' must be an object');
+    }
+    return input as Record<string, unknown>;
+  }
+
+  const map = asMap(value, 'fanSpeedByDirection');
+  return directionKeys.map(direction => {
+    const name = 'fanSpeedByDirection.' + direction;
+    const entries = Object.entries(asMap(map[direction], name));
+    if (!entries.length) throw new Error(name + ' requires at least one speed code');
+    return entries.map(([key, code]) => {
+      if (!/^fanSpeed(?:[1-9][0-9]?|100)$/.test(key)) {
+        throw new Error(name + ' requires fanSpeed1 through fanSpeed100 keys');
+      }
+      try {
+        return { speed: Number(key.slice(8)), steps: compileCommands(code) };
+      } catch (error) {
+        throw new Error(name + '.' + key + ': ' + (error as Error).message);
+      }
+    }).sort((a, b) => a.speed - b.speed);
+  });
+}
 
 /** Shared fan controls for Fan/Fanv2, purifier, and humidity appliances. */
 export class FanAccessory extends TimedAccessory {
   protected readonly service: Service;
   private readonly stepSize: number;
+  private readonly directionalSpeeds?: DirectionalSpeed[][];
   protected active = 0;
   private speed = 0;
   private direction = 0;
@@ -34,14 +65,22 @@ export class FanAccessory extends TimedAccessory {
     if (this.config.defaultSpeedStep !== undefined && this.config.defaultSpeedStep * this.stepSize > 100) throw new Error('Default fan speed exceeds 100 percent');
     const kind = String(this.config.type).toLowerCase();
     const legacy = kind === 'fanv1';
+    if (this.config.fanSpeedByDirection !== undefined) {
+      if ((kind !== 'fan' && !legacy) || this.config.speedCycle) {
+        throw new Error('fanSpeedByDirection requires a fan or fanv1 without speedCycle');
+      }
+      this.directionalSpeeds = readDirectionalSpeeds(this.config.fanSpeedByDirection);
+    }
     const serviceType = legacy ? platform.Service.Fan : kind === 'air-purifier'
       ? platform.Service.AirPurifier : kind === 'humidifier-dehumidifier'
         ? platform.Service.HumidifierDehumidifier : platform.Service.Fanv2;
     this.service = accessory.getService(serviceType) || accessory.addService(serviceType, this.name);
     const C = platform.Characteristic;
     const speedValues = Object.keys(this.config.data || {}).filter(key => /^fanSpeed\d+$/.test(key)).map(key => Number(key.slice(8)));
-    this.restoreState({ active: stateEnum(0, 1), speed: value => stateNumber(0, 100)(value, {})
-      && (value === 0 || this.config.speedCycle && Number.isInteger(Number(value) / this.stepSize) || speedValues.includes(Number(value))) });
+    this.restoreState({ active: stateEnum(0, 1), speed: (value, state) => stateNumber(0, 100)(value, {})
+      && (value === 0 || this.config.speedCycle && Number.isInteger(Number(value) / this.stepSize) || (this.directionalSpeeds
+        ? this.directionalSpeeds[state.direction === 1 ? 1 : 0].some(entry => entry.speed === value)
+        : speedValues.includes(Number(value)))) });
     if (!this.active) this.speed = 0;
     if (legacy) {
       this.service.getCharacteristic(C.On).onGet(() => Boolean(this.active))
@@ -63,7 +102,14 @@ export class FanAccessory extends TimedAccessory {
           const target = Number(value);
           if (![0, 1].includes(target)) throw new Error('Invalid rotation direction');
           if (target === this.direction) return;
-          await this.sendConfigured(target === C.RotationDirection.CLOCKWISE ? 'clockwise' : 'counterClockwise');
+          if (this.directionalSpeeds) {
+            if (this.active) {
+              await this.sendDirectionalSpeed(this.speed || this.defaultSpeed(), target);
+              return;
+            }
+          } else {
+            await this.sendConfigured(directionKeys[target]);
+          }
           this.direction = target;
         }));
     } else {
@@ -87,8 +133,9 @@ export class FanAccessory extends TimedAccessory {
         && this.service.getCharacteristic(C.SwingMode);
       if (characteristic) this.service.removeCharacteristic(characteristic);
     }
-    if (this.service.testCharacteristic(C.RotationDirection)) {
-      this.restoreState({ direction: stateEnum(0, 1) });
+    const hasDirection = this.service.testCharacteristic(C.RotationDirection);
+    if (hasDirection || this.directionalSpeeds) this.restoreState({ direction: stateEnum(0, 1) });
+    if (hasDirection) {
       this.service.updateCharacteristic(C.RotationDirection, this.direction);
     }
     if (this.service.testCharacteristic(C.SwingMode)) {
@@ -149,6 +196,10 @@ export class FanAccessory extends TimedAccessory {
       this.observedActiveChanged();
       return;
     }
+    if (target && this.directionalSpeeds) {
+      await this.sendDirectionalSpeed(this.defaultSpeed(), this.direction, true);
+      return;
+    }
     await this.sendConfigured(target ? 'on' : 'off');
     this.power?.recordSent(Boolean(target));
     this.cycleStep = target && this.config.speedCycle ? this.config.defaultSpeedStep ?? 1 : undefined;
@@ -167,8 +218,7 @@ export class FanAccessory extends TimedAccessory {
     await this.activeChanged();
     this.automaticPower(Boolean(target), on => this.setActive(on));
     if (target && applyDefaults && this.config.alwaysResetToDefaults) {
-      const desired = this.config.defaultSpeedStep ? this.config.defaultSpeedStep * this.stepSize : this.config.defaultFanSpeed ?? 100;
-      await this.setSpeed(desired);
+      await this.setSpeed(this.defaultSpeed());
     }
   }
 
@@ -182,6 +232,27 @@ export class FanAccessory extends TimedAccessory {
     }
   }
 
+  private defaultSpeed(): number {
+    return this.config.defaultSpeedStep
+      ? this.config.defaultSpeedStep * this.stepSize
+      : this.config.defaultFanSpeed ?? 100;
+  }
+
+  private async sendDirectionalSpeed(requested: number, direction: number, force = false): Promise<void> {
+    const speeds = this.directionalSpeeds![direction];
+    const closest = speeds.reduce((best, entry) =>
+      Math.abs(entry.speed - requested) < Math.abs(best.speed - requested) ? entry : best);
+    if (!force && this.active && this.direction === direction && this.speed === closest.speed) return;
+    await this.sendCommands(closest.steps);
+    this.power?.recordSent(true);
+    this.active = 1;
+    this.speed = closest.speed;
+    this.direction = direction;
+    this.publishPower();
+    this.service.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.speed);
+    this.automaticPower(true, on => this.setActive(on));
+  }
+
   private async setSpeed(value: CharacteristicValue): Promise<void> {
     const requested = Number(value);
     if (!Number.isFinite(requested) || requested < 0 || requested > 100) {
@@ -189,6 +260,10 @@ export class FanAccessory extends TimedAccessory {
     }
     if (requested === 0) {
       await this.setActive(0);
+      return;
+    }
+    if (this.directionalSpeeds) {
+      await this.sendDirectionalSpeed(requested, this.direction);
       return;
     }
     if (this.config.speedCycle) {

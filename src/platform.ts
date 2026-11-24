@@ -7,6 +7,7 @@ import {
   Service,
   Characteristic,
 } from 'homebridge';
+import { IRScheduler } from './helpers/irScheduler';
 import { ExternalStateStore } from './helpers/externalState';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { DeviceManager } from './deviceManager';
@@ -18,6 +19,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   public readonly accessories: Map<string, PlatformAccessory> = new Map();
   public readonly instances: Map<string, BaseAccessory> = new Map();
   public readonly deviceManager: DeviceManager;
+  public readonly irScheduler: IRScheduler;
   private stopped = false;
   private readonly externalIds = new Set<string>();
   private externalStateStore?: ExternalStateStore;
@@ -35,6 +37,7 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
+    this.irScheduler = new IRScheduler(config.irCommandDelay, config.irDeviceGroupDelay);
     this.deviceManager = new DeviceManager(this.log);
 
     this.log.info(`[${PLATFORM_NAME}] Initializing Broadlink RM v5 platform...`);

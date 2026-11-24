@@ -83,3 +83,38 @@ corresponding code groups are removed.
 
 Run `npm test` for mocked control, queue ordering, and transmission failure tests.
 Live Homebridge and physical light validation remain outstanding.
+
+## Relative brightness
+
+For lights whose remotes have brighter and dimmer buttons, configure
+`availableBrightnessSteps` under **Settings → Brightness**. Add the two button
+codes alongside the power codes in **Command Data**.
+
+```json
+{
+  "name": "Dimmable Light",
+  "type": "light",
+  "availableBrightnessSteps": 4,
+  "defaultBrightness": 100,
+  "data": {
+    "on": "YOUR_ON_HEX",
+    "off": "YOUR_OFF_HEX",
+    "brightness+": "YOUR_BRIGHTER_HEX",
+    "brightness-": "YOUR_DIMMER_HEX"
+  }
+}
+```
+
+Count the nonzero levels from dimmest to brightest. Four levels map to 25%, 50%,
+75%, and 100%. The plugin selects the nearest level and sends one pulse per step.
+`onDelay` also controls the gap between pulses. Zero sends Off. Configuring
+relative levels selects relative dimming even if absolute `brightnessXX` codes
+are present.
+
+Set `defaultBrightness` to the level the light actually starts at. If the light
+itself resumes its previous level, enable `useLastKnownBrightness` to use the
+last level tracked by the plugin. Changes made with the physical remote are
+invisible to Homebridge. If a relative send fails while the light is on, the
+next adjustment establishes full brightness with a series of brighter pulses
+before moving to the requested level. Use this mode with lights that stop at the
+top level when repeatedly brightened.

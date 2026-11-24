@@ -474,3 +474,27 @@ test('payload checksum failures and malformed ciphertext fail instead of returni
   };
   await assert.rejects(device.sendData('260002000102'), /encrypted Broadlink response length/);
 });
+
+test('learning diagnostics distinguish authentication errors from capture errors', async t => {
+  const { device } = fixture(t);
+  const failure = new Error('test authentication failure');
+  const authenticate = device.ensureAuthenticated.bind(device);
+  device.ensureAuthenticated = async () => { throw failure; };
+  await assert.rejects(device.learnData(), {
+    message: /during authentication: test authentication failure/, cause: failure,
+  });
+  assert.equal(device.learning, false);
+  device.ensureAuthenticated = authenticate;
+  device.pause = async () => {};
+  device.sendPacket = async (packetType, payload) => {
+    if (packetType === 0x65) {
+      const auth = Buffer.alloc(20); sessionKey.copy(auth, 4); return auth;
+    }
+    const command = payload.readUInt32LE(2);
+    if (command === 0x1a) return inner(command, Buffer.from([1]));
+    if (command === 4) throw new Error('test capture failure');
+    return inner(command);
+  };
+  await assert.rejects(device.learnRFData(), /during RF code capture: test capture failure/);
+  assert.equal(device.learning, false);
+});

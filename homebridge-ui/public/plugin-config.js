@@ -3,49 +3,138 @@
   const sectionTabs = ['settings-tab', 'data-tab'].map(id => document.getElementById(id));
   const sections = ['settings-panel', 'data-panel'].map(id => document.getElementById(id));
   const form = document.getElementById('accessory-settings');
-  const acFields = document.getElementById('ac-fields');
-  const acSettings = document.getElementById('ac-settings');
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
   const commandEditorHost = document.getElementById('command-editor');
-  const instructions = 'Use JSON Config for platform settings, adding accessories, or editing other options.';
+  const instructions = 'Use JSON Config for platform settings, adding accessories, or editing options outside the accessory schema.';
   const controls = new Map([
     ['data', commandData],
     ['disabled', document.getElementById('field-disabled')]
   ]);
+  const settings = new Map();
+  const groups = [];
+  const groupDefinitions = [
+    ['Temperature', [
+      'coolOnly', 'heatOnly', 'minTemperature', 'maxTemperature', 'tempStepSize',
+      'defaultMode', 'defaultCoolTemperature', 'defaultHeatTemperature', 'defaultAutoTemperature',
+      'replaceAutoMode', 'resetTemperatureOnModeChange', 'fallbackToDefaultTemperature',
+      'ignoreTemperatureWhenOff', 'modeChangeDelay', 'heatingThresholdTemperature',
+      'coolingThresholdTemperature', 'autoHeatTemperature', 'autoCoolTemperature',
+      'minimumAutoOnOffDuration', 'autoMinimumDuration', 'autoSwitchName', 'autoSwitch',
+      'heatTemperature', 'units', 'temperatureUnits', 'tempSourceUnits', 'temperatureFilePath',
+      'temperatureAdjustment', 'temperatureUpdateFrequency', 'pseudoDeviceTemperature',
+      'w1DeviceID', 'w1Device'
+    ]],
+    ['Humidity', [
+      'humidifierOnly', 'deHumidifierOnly', 'noHumidity', 'humidifierThreshold',
+      'dehumidifierThreshold', 'humidityFilePath', 'humidityAdjustment', 'humidityUpdateFrequency'
+    ]],
+    ['MQTT', ['mqttURL', 'mqttUsername', 'mqttPassword', 'mqttTopic', 'mqttMaxAge']],
+    ['Fan controls', [
+      'fanSpeedByDirection', 'speedSteps', 'stepSize', 'hideSwingMode', 'hideRotationDirection', 'defaultRotationSpeed',
+      'fanStepSize', 'speedCycle', 'speedCycleInterval', 'defaultSpeedStep', 'defaultFanSpeed',
+      'alwaysResetToDefaults'
+    ]],
+    ['Brightness', ['availableBrightnessSteps', 'defaultBrightness', 'useLastKnownBrightness']],
+    ['Power and timing', [
+      'enableAutoOn', 'enableAutoOff', 'disableAutomaticOn', 'disableAutomaticOff', 'onDelay',
+      'onDuration', 'offDuration', 'turnOnWhenOff', 'sendOnWhenOff', 'powerSensor', 'pingIPAddress',
+      'pingUseArp', 'pingIPAddressStateOnly', 'pingFrequency', 'pingTimeout', 'pingGrace', 'minimumPingFailures',
+      'irDeviceGroup', 'interval', 'sendCount', 'onSendCount', 'offSendCount'
+    ]],
+    ['Travel and position', [
+      'totalDurationOpen', 'totalDurationClose', 'openDuration', 'closeDuration',
+      'openCloseDuration', 'lockDuration', 'unlockDuration', 'lockUnlockDuration',
+      'autoCloseDelay', 'autoLockDelay', 'initialPosition', 'sendStopAt0', 'sendStopAt100',
+      'initialDelay'
+    ]],
+    ['Sensor feedback', [
+      'closedSensor', 'openSensor', 'obstructionSensor', 'lockSensor', 'jamSensor',
+      'sensorPollInterval', 'batteryAlerts', 'batteryFilePath'
+    ]]
+  ];
   const accessories = [];
   const tabs = [];
   let selectedAccessory = 0;
   const errors = new Map();
   let blocks;
-  let accessoryTypes;
+  let properties;
   let revision = 0;
   let commandEditor;
   let loadingEditor = false;
   let switchingAccessory = false;
   let pending = Promise.resolve();
 
-  function addField(container, name, title, kind = 'text', choices) {
+  function addField(container, name, schema) {
+    const { title, description, type, oneOf, format } = schema;
+    const choices = oneOf?.map(({ title, enum: [value] }) => [value, title]) ??
+      schema.enum?.map(value => [value, String(value)]) ??
+      (type === 'boolean' ? [[true, 'Yes'], [false, 'No']] : undefined);
+    const types = Array.isArray(type) ? type : [type];
+    const structured = !choices && (types.length > 1 || ['object', 'array'].includes(type));
+    const numeric = type === 'number' || type === 'integer';
     const field = document.createElement('div');
     const label = document.createElement('label');
     label.className = 'form-label';
     label.htmlFor = 'field-' + name;
     label.textContent = title;
-    const control = document.createElement(choices ? 'select' : 'input');
+    const control = document.createElement(choices ? 'select' : structured ? 'textarea' : 'input');
     control.className = choices ? 'form-select' : 'form-control';
     control.id = label.htmlFor;
     control.name = name;
-    control.dataset.kind = kind;
     control.setAttribute('aria-describedby', 'config-status');
-    if (choices) {
-      for (const [value, caption] of choices) control.add(new Option(caption, value));
-    } else {
-      control.type = kind;
-      if (kind === 'number') control.step = 'any';
+    if (structured) {
+      control.rows = 3;
+      control.spellcheck = false;
+      control.placeholder = 'JSON';
+    } else if (!choices) {
+      control.type = numeric ? 'number' : format === 'password' ? 'password' : 'text';
+      if (numeric) control.step = type === 'integer' ? '1' : 'any';
     }
     field.append(label, control);
+    if (description) {
+      const help = document.createElement('div');
+      help.className = 'form-text';
+      help.id = control.id + '-help';
+      help.textContent = description;
+      control.setAttribute('aria-describedby', help.id + ' config-status');
+      field.append(help);
+    }
     container.append(field);
     controls.set(name, control);
+    settings.set(name, {
+      field, choices, types, structured, numeric, required: schema.required === true,
+      visible: schema.condition && new Function('model', 'arrayIndices', schema.condition.functionBody)
+    });
+    return field;
+  }
+
+  function addSettings() {
+    const general = document.getElementById('accessory-fields');
+    const panel = document.getElementById('settings-panel');
+    const remaining = new Map(Object.entries(properties).filter(([name]) => !controls.has(name)));
+    function addFields(container, names) {
+      return names.map(name => {
+        const field = addField(container, name, remaining.get(name));
+        remaining.delete(name);
+        return field;
+      });
+    }
+
+    addFields(general, ['name', 'type', 'host']);
+    for (const [title, names] of [...groupDefinitions, ['Other settings']]) {
+      const fieldset = document.createElement('fieldset');
+      fieldset.className = 'broadlink-group';
+      const legend = document.createElement('legend');
+      legend.textContent = title;
+      const grid = document.createElement('div');
+      grid.className = 'broadlink-fields';
+      const fields = addFields(grid, (names ?? [...remaining.keys()]).filter(name => remaining.has(name)));
+      if (!fields.length) continue;
+      fieldset.append(legend, grid);
+      panel.append(fieldset);
+      groups.push({ fieldset, fields });
+    }
   }
 
   function bindTabs(buttons, activate) {
@@ -104,18 +193,20 @@
     const accessory = accessories[selectedAccessory];
     for (const [name, control] of controls) {
       const value = accessory[name];
-      if (name === 'type') {
+      const setting = settings.get(name);
+      if (setting?.choices) {
         control.replaceChildren();
-        const placeholder = new Option('Select a type', '');
-        placeholder.disabled = true;
+        const placeholder = new Option(setting.required ? 'Select a type' : 'Default', '');
+        placeholder.disabled = Boolean(setting.required);
         control.add(placeholder);
-        for (const { title, enum: [type] } of accessoryTypes) control.add(new Option(title, type));
-        if (typeof value === 'string' && value && !accessoryTypes.some(({ enum: [type] }) => type === value)) {
-          control.add(new Option(value, value));
+        for (const [choice, title] of setting.choices) control.add(new Option(title, String(choice)));
+        if (value !== undefined && value !== '' && !setting.choices.some(([choice]) => choice === value)) {
+          control.add(new Option(String(value), String(value)));
         }
       }
       if (control.type === 'checkbox') control.checked = value === true;
-      else control.value = value === undefined ? '' : name === 'data' ? JSON.stringify(value, null, 2) : String(value);
+      else if (value === undefined) control.value = '';
+      else control.value = name === 'data' || setting?.structured ? JSON.stringify(value, null, 2) : String(value);
       control.removeAttribute('aria-invalid');
     }
     if (commandEditor) {
@@ -126,39 +217,50 @@
         switchingAccessory = false;
       }
     }
-    showAcFields(accessory);
+    updateFieldVisibility();
   }
 
-  function showAcFields(accessory) {
-    acSettings.hidden = !['air-conditioner', 'airconditioner'].includes(String(accessory.type).toLowerCase());
+  function updateFieldVisibility() {
+    for (const { field, visible } of settings.values()) {
+      field.hidden = Boolean(visible && !visible({ accessories }, [selectedAccessory]));
+    }
+    for (const { fieldset, fields } of groups) {
+      fieldset.hidden = fields.every(field => field.hidden);
+    }
   }
 
   function fieldValue(control) {
     if (control.type === 'checkbox') return control.checked;
-    const value = control.value;
+    const { name, value } = control;
+    const setting = settings.get(name);
     if (control.validity.badInput) throw new Error('Enter a valid number.');
     if (value === '') {
-      if (control.name === 'name' || control.name === 'type') throw new Error('Name and type are required.');
+      if (setting?.required) throw new Error('Name and type are required.');
       return undefined;
     }
-    switch (control.dataset.kind) {
-      case 'number': return control.valueAsNumber;
-      case 'boolean': return value === 'true';
-      case 'json': {
-        if (!value.trim()) return undefined;
-        let data;
-        try {
-          data = JSON.parse(value);
-        } catch {
-          throw new Error('Enter valid JSON for the command data.');
-        }
-        if (data === null || (typeof data !== 'object' && typeof data !== 'string')) {
-          throw new Error('Command data must be a JSON object, array, or string.');
-        }
-        return data;
-      }
-      default: return value;
+    if (setting?.numeric) {
+      if (control.validity.stepMismatch) throw new Error('Enter a whole number.');
+      return control.valueAsNumber;
     }
+    if (setting?.choices) {
+      const choice = setting.choices.find(([option]) => String(option) === value);
+      return choice ? choice[0] : value;
+    }
+    if (name === 'data' || setting?.structured) {
+      if (!value.trim()) return undefined;
+      const title = name === 'data' ? 'Command data' : properties[name].title;
+      const types = name === 'data' ? properties.data.type : setting.types;
+      let parsed;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        throw new Error(title + ' must be valid JSON.');
+      }
+      const type = parsed === null ? 'null' : Array.isArray(parsed) ? 'array' : typeof parsed;
+      if (!types.includes(type)) throw new Error(title + ' requires JSON of type ' + types.join(' or ') + '.');
+      return parsed;
+    }
+    return value;
   }
 
   homebridge.disableSaveButton();
@@ -168,7 +270,8 @@
       homebridge.getPluginConfigSchema()
     ]);
     blocks = config;
-    accessoryTypes = configSchema.schema.properties.accessories.items.properties.type.oneOf;
+    properties = configSchema.schema.properties.accessories.items.properties;
+    addSettings();
     for (const block of blocks) {
       if (!Array.isArray(block.accessories)) continue;
       for (const accessory of block.accessories) {
@@ -194,19 +297,6 @@
     status.textContent = 'Use JSON Config to add your first accessory.';
     return;
   }
-
-  const fields = document.getElementById('accessory-fields');
-  const toggle = [['', 'Default'], ['true', 'Yes'], ['false', 'No']];
-  addField(fields, 'name', 'Name');
-  addField(fields, 'type', 'Type', 'text', []);
-  addField(fields, 'host', 'Host (IP or MAC)');
-  addField(acFields, 'minTemperature', 'Minimum temperature', 'number');
-  addField(acFields, 'maxTemperature', 'Maximum temperature', 'number');
-  addField(acFields, 'tempStepSize', 'Temperature step size', 'number');
-  addField(acFields, 'coolOnly', 'Cool only', 'boolean', toggle);
-  addField(acFields, 'defaultCoolTemperature', 'Default cooling temperature', 'number');
-  addField(acFields, 'defaultMode', 'Default mode', 'text', [['', 'Default'], ['cool', 'Cool'], ['heat', 'Heat'], ['auto', 'Auto']]);
-  addField(acFields, 'turnOnWhenOff', 'Send power-on command when off', 'boolean', toggle);
 
   const selectSection = bindTabs(sectionTabs, index => {
     sections.forEach((section, position) => { section.hidden = position !== index; });
@@ -250,7 +340,7 @@
       return;
     }
 
-    showAcFields(accessory);
+    updateFieldVisibility();
     tabs[selectedAccessory].textContent = accessory.name || accessory.type || 'Unnamed accessory';
     const snapshot = JSON.parse(JSON.stringify(blocks));
     status.textContent = 'Applying changes…';

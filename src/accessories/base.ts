@@ -1,6 +1,7 @@
 import { PlatformAccessory, Service, Logging } from 'homebridge';
 import type { BroadlinkRMPlatform } from '../platform';
 import { RMDevice } from '../broadlink';
+import { isIRCode } from '../helpers/irScheduler';
 import { compileCommands, type CommandStep } from '../helpers/commands';
 import type { SensorSource } from './sensorSource';
 import { stateKind, type StateFields } from '../helpers/state';
@@ -11,6 +12,7 @@ export abstract class BaseAccessory {
   protected readonly config: Record<string, any>;
   protected readonly log: Logging;
   protected readonly name: string;
+  private readonly irDeviceGroup?: string;
   private readonly commandShutdown = new AbortController();
   private stateFields: StateFields = {};
   private stateDirty = false;
@@ -22,6 +24,10 @@ export abstract class BaseAccessory {
     this.log = platform.log;
     this.name = this.config.name || accessory.displayName || 'Broadlink Accessory';
     if (this.config.persistState !== undefined && typeof this.config.persistState !== 'boolean') throw new Error('persistState must be a boolean');
+
+    const group = this.config.irDeviceGroup;
+    if (group !== undefined && typeof group !== 'string') throw new Error('irDeviceGroup must be a string');
+    this.irDeviceGroup = group?.trim() || undefined;
 
     // Configure standard AccessoryInformation Service
     const infoService =
@@ -107,8 +113,14 @@ export abstract class BaseAccessory {
           signal.addEventListener('abort', aborted, { once: true });
         });
       } else {
-        try { await device.sendData(step.code); }
-        catch (error) { this.log.error(`[${this.name}] Code transmission failed`); throw error; }
+        try {
+          const scheduler = this.platform.irScheduler;
+          if (scheduler && isIRCode(step.code)) {
+            await scheduler.send(device.macAddress, this.irDeviceGroup, signal, () => device.sendData(step.code));
+          } else {
+            await device.sendData(step.code);
+          }
+        } catch (error) { this.log.error(`[${this.name}] Code transmission failed`); throw error; }
         if (signal.aborted) throw new Error('Accessory has shut down');
       }
     }

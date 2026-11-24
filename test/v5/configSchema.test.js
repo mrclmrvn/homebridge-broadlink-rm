@@ -79,13 +79,14 @@ test('Plugin Config stages accessory edits without dropping command maps or othe
       removeAttribute() {},
       append(...children) {
         for (const child of children) {
+          child.parentElement = this;
           if (child.id) elements.set(child.id, child);
         }
       }
     };
   }
 
-  for (const id of ['accessory-tabs', 'settings-tab', 'data-tab', 'settings-panel', 'data-panel', 'accessory-settings', 'accessory-fields', 'ac-fields', 'ac-settings', 'config-status', 'command-data', 'field-disabled']) {
+  for (const id of ['accessory-tabs', 'settings-tab', 'data-tab', 'settings-panel', 'data-panel', 'accessory-settings', 'accessory-fields', 'config-status', 'command-data', 'field-disabled']) {
     elements.set(id, element());
   }
   const data = elements.get('command-data');
@@ -127,6 +128,13 @@ test('Plugin Config stages accessory edits without dropping command maps or othe
   assert.deepEqual(type.options.slice(1).map(({ text, value }) => [text, value]),
     fields.type.oneOf.map(({ title, enum: [value] }) => [title, value]));
   assert.deepEqual(JSON.parse(data.value), original[0].accessories[0].data);
+  assert.equal(elements.get('field-speedSteps').parentElement.hidden, true);
+  assert.equal(elements.get('field-autoCoolTemperature').parentElement.hidden, false);
+  assert.equal(elements.get('field-autoCoolTemperature').value, '');
+  const temperatureGroup = temperature.parentElement.parentElement.parentElement;
+  const mqttGroup = elements.get('field-mqttURL').parentElement.parentElement.parentElement;
+  assert.equal(temperatureGroup.hidden, false);
+  assert.equal(mqttGroup.hidden, false);
   temperature.value = '25';
   temperature.valueAsNumber = 25;
   form.input({ target: temperature });
@@ -156,7 +164,18 @@ test('Plugin Config stages accessory edits without dropping command maps or othe
   elements.get('accessory-tab-1').click();
   assert.equal(elements.get('accessory-tab-1')['aria-selected'], 'true');
   assert.equal(elements.get('settings-panel').hidden, false);
-  assert.equal(elements.get('ac-settings').hidden, true);
+  assert.equal(temperature.parentElement.hidden, true);
+  assert.equal(temperatureGroup.hidden, true);
+  assert.equal(mqttGroup.hidden, true);
+  const speedSteps = elements.get('field-speedSteps');
+  assert.equal(speedSteps.parentElement.hidden, false);
+  assert.equal(speedSteps.value, '');
+  speedSteps.value = '3';
+  speedSteps.valueAsNumber = 3;
+  form.input({ target: speedSteps });
+  await new Promise(setImmediate);
+  edited[0].accessories[1].speedSteps = 3;
+  assert.deepEqual(staged, edited);
   assert.deepEqual(JSON.parse(data.value), original[0].accessories[1].data);
   assert.equal(disabled.checked, false);
   disabled.checked = true;
@@ -182,5 +201,23 @@ test('Plugin Config stages accessory edits without dropping command maps or othe
   form.input({ target: type });
   await new Promise(setImmediate);
   edited[0].accessories[2].type = 'outlet';
+  assert.deepEqual(staged, edited);
+
+  type.value = 'garage-door-opener';
+  form.input({ target: type });
+  await new Promise(setImmediate);
+  edited[0].accessories[2].type = 'garage-door-opener';
+  const closedSensor = elements.get('field-closedSensor');
+  assert.equal(closedSensor.parentElement.hidden, false);
+  assert.equal(closedSensor.value, '');
+  closedSensor.value = '[]';
+  form.input({ target: closedSensor });
+  assert.equal(canSave, false);
+  assert.deepEqual(staged, edited);
+  closedSensor.value = '{"filePath":"/tmp/closed"}';
+  form.input({ target: closedSensor });
+  await new Promise(setImmediate);
+  edited[0].accessories[2].closedSensor = { filePath: '/tmp/closed' };
+  assert.equal(canSave, true);
   assert.deepEqual(staged, edited);
 });

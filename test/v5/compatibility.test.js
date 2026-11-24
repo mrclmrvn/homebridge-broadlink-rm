@@ -77,6 +77,19 @@ test('power observations never transmit; guarded toggles use fresh state and gra
   assert.equal(f.clock.timers.size, 0);
 });
 
+test('power polling requires consecutive missed pings and reports recovery immediately', async t => {
+  const probe = interceptProbe(t);
+  const f = fixture(t, 'switch', { pingIPAddress: '192.0.2.1', minimumPingFailures: 2 });
+  await f.clock.tick(0);
+  assert.equal(f.get('On'), true);
+  for (const [code, on] of [[1, true], [0, true], [1, true], ['ENOENT', true], [1, true], [1, false], [0, true]]) {
+    probe.code = code;
+    await f.clock.tick(1000);
+    assert.equal(f.get('On'), on);
+  }
+  assert.deepEqual(f.sent, []);
+});
+
 test('outlet state-only detection reports use independently of commanded power', async t => {
   const probe = interceptProbe(t);
   const f = fixture(t, 'outlet', { pingIPAddress: '192.0.2.1', pingIPAddressStateOnly: true, data: { on: 'on', off: 'off' } });
@@ -292,6 +305,53 @@ test('binary MQTT feedback reaches a lock without polling and releases its conne
   assert.deepEqual(f.sent, []);
   await f.clock.tick(1000);
   await assert.rejects(f.get('LockCurrentState'), /stale/);
+  f.instance.dispose();
+  assert.equal(client.ended, true);
+  assert.equal(f.clock.timers.size, 0);
+});
+
+test('MQTT wattage tracks appliance power and guards toggles using fresh live readings', async t => {
+  class Client extends EventEmitter {
+    subscribe(filters, options, callback) { callback(null, filters.map(topic => ({ topic, qos: 0 }))); }
+    end(force, options, callback) { this.ended = true; callback(); }
+  }
+  const client = new Client();
+  t.mock.method(require('mqtt').default, 'connect', () => client);
+  const f = fixture(t, 'switch', { pingFrequency: 0.5, pingGrace: 0,
+    powerSensor: {
+      mqttURL: 'mqtt://broker.invalid',
+      mqttTopic: [{ identifier: 'power', topic: 'plug', path: 'meter.watts' }],
+      mqttMaxAge: 1, onThresholdWatts: 5,
+    },
+    data: { on: 'toggle', off: 'toggle' },
+  });
+  await f.clock.tick(0);
+  client.emit('connect');
+  const watts = (value, retain = false) =>
+    client.emit('message', 'plug', Buffer.from(JSON.stringify({ meter: { watts: value } })), { retain });
+
+  watts(20, true);
+  await assert.rejects(f.set('On', true), /indeterminate/);
+  watts(5);
+  await f.clock.tick(500);
+  assert.equal(f.get('On'), true);
+  await f.set('On', true);
+  assert.deepEqual(f.sent, []);
+
+  watts(-1);
+  await assert.rejects(f.set('On', false), /indeterminate/);
+  watts(6);
+  await f.clock.tick(1000);
+  await assert.rejects(f.set('On', false), /indeterminate/);
+  assert.equal(f.get('On'), true);
+
+  watts(0.5);
+  await f.clock.tick(500);
+  assert.equal(f.get('On'), false);
+  await f.set('On', true);
+  assert.deepEqual(f.sent, ['toggle']);
+  client.emit('close');
+  await assert.rejects(f.set('On', false), /indeterminate/);
   f.instance.dispose();
   assert.equal(client.ended, true);
   assert.equal(f.clock.timers.size, 0);

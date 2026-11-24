@@ -17,7 +17,7 @@ export class SwitchAccessory extends TimedAccessory {
     super(platform, accessory);
     if (this.config.virtual !== undefined && typeof this.config.virtual !== 'boolean') throw new Error('virtual must be a boolean');
     if (this.config.virtual && (!['switch', 'outlet'].includes(String(this.config.type).toLowerCase())
-      || this.config.data !== undefined || this.config.pingIPAddress !== undefined)) throw new Error('Virtual switches/outlets cannot configure data or power probes');
+      || this.config.data !== undefined || this.config.pingIPAddress !== undefined || this.config.powerSensor !== undefined)) throw new Error('Virtual switches/outlets cannot configure data or power probes');
     this.outlet = String(this.config.type).toLowerCase() === 'outlet';
     this.onDuration = this.seconds(this.config.onDuration, this.config.enableAutoOff ? 60 : 0);
     this.offDuration = this.seconds(this.config.offDuration, 60);
@@ -25,7 +25,7 @@ export class SwitchAccessory extends TimedAccessory {
     const actionOnly = typeof this.config.data === 'string' || Buffer.isBuffer(this.config.data) || Array.isArray(this.config.data);
     if (!this.config.stateless && !actionOnly) this.restoreState({ state: stateBoolean });
     // Outlet use is a live observation when a power probe is configured.
-    this.inUse = !this.config.pingIPAddress && this.state;
+    this.inUse = !this.config.pingIPAddress && this.config.powerSensor === undefined && this.state;
     const type = this.outlet ? platform.Service.Outlet : platform.Service.Switch;
     this.service = accessory.getService(type) || accessory.addService(type, this.name);
     this.service.getCharacteristic(platform.Characteristic.On).onGet(() => this.state)

@@ -92,7 +92,7 @@ function fixture(t, type, options = {}) {
   const sent = [];
   const errors = [];
   const readings = { temperature: 24, humidity: 50 };
-  const device = { async sendData(code) { sent.push(code); }, async checkSensors() { return { ...readings }; } };
+  const device = { host: '192.0.2.10', devType: 0x520b, async sendData(code) { sent.push(code); }, async checkSensors() { return { ...readings }; } };
   const log = { info() {}, debug() {}, warn() {}, error(message) { errors.push(message); } };
   const platform = { Service: S, Characteristic: C, log, updateAccessoryContext() {}, deviceManager: { getDevice: () => device } };
   const config = { name: 'Test', type, data: { open: 'open', close: 'close', stop: 'stop', lock: 'lock', unlock: 'unlock' }, ...options };

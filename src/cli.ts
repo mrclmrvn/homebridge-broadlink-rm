@@ -25,7 +25,7 @@ Device type defaults to 0x520b. Use the actual discovered type where possible.`)
   if (command === 'discover') {
     const devices = await discoverDevices(4000);
     try {
-      if (!devices.length) console.log('No Broadlink devices responded.');
+      if (!devices.length) console.log('No Broadlink devices responded. Check local UDP discovery and network isolation, or try auth with the known IP, MAC and device type.');
       for (const item of devices) console.log(`${item.host} ${item.macAddress} 0x${item.devType.toString(16)} ${getDeviceInfo(item.devType).name}`);
     } finally { for (const item of devices) item.device.close(); }
     return;

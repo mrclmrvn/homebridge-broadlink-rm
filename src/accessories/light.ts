@@ -8,6 +8,8 @@ type CodeStep = { value: number; key: string };
 /** Discrete IR light controls, using legacy brightnessXX and hueXX code names. */
 export class LightAccessory extends TimedAccessory {
   private readonly service: Service;
+  private readonly relativeLevels: number[] = [];
+  private relativeBrightnessUncertain = false;
   private on = false;
   private brightness = 0;
   private lastBrightness = 0;
@@ -22,10 +24,24 @@ export class LightAccessory extends TimedAccessory {
     if (this.config.stateless) this.seconds(this.config.onDuration, 0.5, true);
     if (this.config.exclusives !== undefined && (!Array.isArray(this.config.exclusives)
       || this.config.exclusives.some((name: unknown) => typeof name !== 'string' || !name))) throw new Error('exclusives must be an array of accessory names');
+    const count = this.config.availableBrightnessSteps;
+    if (count !== undefined) {
+      if (!Number.isInteger(count) || count < 2 || count > 100) {
+        throw new Error('availableBrightnessSteps must be an integer from 2 to 100');
+      }
+      if (!['on', 'off', 'brightness+', 'brightness-'].every(key => this.config.data?.[key])) {
+        throw new Error('availableBrightnessSteps requires data.on, data.off, data.brightness+ and data.brightness-');
+      }
+      this.number(this.config.defaultBrightness ?? 100, 1, 100);
+      this.relativeLevels = Array.from({ length: count }, (_, index) => Math.round(100 * (index + 1) / count));
+    }
+    const levels = this.relativeLevels.length ? this.relativeLevels : this.steps('brightness', 1, 100).map(step => step.value);
+    const validBrightness = (value: unknown) => value === 0 || typeof value === 'number' && levels.includes(value);
     this.restoreState({
       ...(!this.config.stateless ? { on: stateBoolean } : {}),
-      brightness: value => value === 0 || this.steps('brightness', 1, 100).some(step => step.value === value),
-      lastBrightness: value => value === 0 || this.steps('brightness', 1, 100).some(step => step.value === value),
+      brightness: validBrightness,
+      lastBrightness: validBrightness,
+      ...(this.relativeLevels.length ? { relativeBrightnessUncertain: stateBoolean } : {}),
       hue: value => this.steps('hue', 0, 360).some(step => step.value === value),
       saturation: value => value === 100 || value === 0 && Boolean(this.config.data?.white)
         || this.steps('saturation', 0, 100).some(step => step.value === value),
@@ -37,7 +53,7 @@ export class LightAccessory extends TimedAccessory {
       || accessory.addService(platform.Service.Lightbulb, this.name);
     this.service.getCharacteristic(C.On).onGet(() => this.on)
       .onSet(value => this.enqueue(() => this.setOn(Boolean(value))));
-    this.optional(C.Brightness, this.steps('brightness', 1, 100).length > 0,
+    this.optional(C.Brightness, levels.length > 0,
       () => this.brightness, value => this.setBrightness(this.number(value, 0, 100)));
     const hasHue = this.steps('hue', 0, 360).length > 0;
     this.optional(C.Hue, hasHue, () => this.hue,
@@ -112,6 +128,10 @@ export class LightAccessory extends TimedAccessory {
     if (this.on) return;
     if (this.config.data?.on) {
       await this.sendConfigured('on');
+      if (this.relativeLevels.length) {
+        if (!this.config.useLastKnownBrightness) this.relativeBrightnessUncertain = false;
+        this.updateBrightness(this.nearestRelativeLevel(this.preferredBrightness()));
+      }
       this.markOn();
       const delay = Number(this.config.onDelay ?? 0.1);
       if (Number.isFinite(delay) && delay > 0) {
@@ -148,12 +168,58 @@ export class LightAccessory extends TimedAccessory {
 
   private get resend(): boolean { return this.config.allowResend ?? this.config.preventResendHex === false; }
 
+  private preferredBrightness(): number {
+    return this.config.useLastKnownBrightness && this.lastBrightness > 0
+      ? this.lastBrightness : this.number(this.config.defaultBrightness ?? 100, 1, 100);
+  }
+
+  private updateBrightness(value: number): void {
+    this.brightness = this.lastBrightness = value;
+    this.service.updateCharacteristic(this.platform.Characteristic.Brightness, value);
+  }
+
+  private nearestRelativeLevel(value: number): number {
+    return this.relativeLevels.reduce((best, level) =>
+      Math.abs(level - value) < Math.abs(best - value) ? level : best);
+  }
+
+  private async setRelativeBrightness(value: number): Promise<void> {
+    const target = this.relativeLevels.indexOf(this.nearestRelativeLevel(value));
+    await this.ensureOn();
+    let current = this.relativeLevels.indexOf(this.brightness);
+    const interval = this.seconds(this.config.onDelay, 0.1);
+    let sent = false;
+    const pulse = async (key: string) => {
+      if (sent) await this.delay(interval);
+      await this.sendConfigured(key);
+      sent = true;
+    };
+    try {
+      if (this.relativeBrightnessUncertain || current < 0) {
+        // Saturating at full brightness restores a known level after an ambiguous send.
+        for (let index = 1; index < this.relativeLevels.length; index++) await pulse('brightness+');
+        current = this.relativeLevels.length - 1;
+        this.relativeBrightnessUncertain = false;
+        this.updateBrightness(this.relativeLevels[current]);
+      }
+      const direction = Math.sign(target - current);
+      while (current !== target) {
+        await pulse(direction > 0 ? 'brightness+' : 'brightness-');
+        current += direction;
+        this.updateBrightness(this.relativeLevels[current]);
+      }
+    } catch (error) {
+      this.relativeBrightnessUncertain = true;
+      if (!this.disposed) this.persistState();
+      throw error;
+    }
+    if (sent) this.markOn();
+  }
+
   private async setOn(target: boolean): Promise<void> {
     if (target === this.on && !this.resend) return;
-    if (target && this.steps('brightness', 1, 100).length) {
-      const requested = this.config.useLastKnownBrightness && this.lastBrightness > 0
-        ? this.lastBrightness : this.number(this.config.defaultBrightness ?? 100, 1, 100);
-      await this.setBrightness(requested);
+    if (target && (this.relativeLevels.length || this.steps('brightness', 1, 100).length)) {
+      await this.setBrightness(this.preferredBrightness());
       return;
     }
     await this.sendConfigured(target ? 'on' : 'off');
@@ -171,6 +237,10 @@ export class LightAccessory extends TimedAccessory {
   private async setBrightness(value: number): Promise<void> {
     if (value === 0) {
       await this.setOn(false);
+      return;
+    }
+    if (this.relativeLevels.length) {
+      await this.setRelativeBrightness(value);
       return;
     }
     const step = this.closest('brightness', value, 1, 100);

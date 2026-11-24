@@ -260,3 +260,37 @@ test('humidity-only sensor aliases read humidity and single-function appliance f
   assert.deepEqual(f.sent, ['on', 'dry']);
   await assert.rejects(service.getCharacteristic(f.C.TargetHumidifierDehumidifierState).set(1), /Unsupported/);
 });
+
+test('HeaterCooler advertises and sends native Auto only when its codes are configured', async t => {
+  const f = fixture(t, 'heater-cooler', { sensorPollInterval: 0, data: {
+    heat: { on: 'heat', off: 'heat-off' }, cool: { on: 'cool', off: 'cool-off' },
+    auto: { on: { data: 'auto' } }, off: 'shared-off',
+  } });
+  assert.deepEqual(f.control('TargetHeaterCoolerState').props.validValues, [0, 1, 2]);
+  assert.equal(f.get('TargetHeaterCoolerState'), 2);
+  await f.set('TargetHeaterCoolerState', 0);
+  assert.deepEqual(f.sent, []);
+  await f.set('Active', 1);
+  assert.equal(f.get('CurrentHeaterCoolerState'), 1);
+  await f.set('CoolingThresholdTemperature', 25);
+  assert.equal(f.get('CoolingThresholdTemperature'), 25);
+  await f.set('Active', 0);
+  assert.deepEqual(f.sent, ['auto', 'shared-off']);
+});
+
+test('HeaterCooler switches into native Auto while active only after a successful send', async t => {
+  const f = fixture(t, 'heater-cooler', { sensorPollInterval: 0, defaultMode: 'auto', data: {
+    cool: { on: 'cool', off: 'cool-off' }, auto: { on: 'auto', off: 'auto-off' },
+  } });
+  assert.equal(f.get('TargetHeaterCoolerState'), 0);
+  await f.set('TargetHeaterCoolerState', 2);
+  await f.set('Active', 1);
+  const send = f.device.sendData;
+  f.device.sendData = async () => { throw new Error('offline'); };
+  await assert.rejects(f.set('TargetHeaterCoolerState', 0), /offline/);
+  assert.equal(f.get('TargetHeaterCoolerState'), 2);
+  f.device.sendData = send;
+  await f.set('TargetHeaterCoolerState', 0);
+  await f.set('Active', 0);
+  assert.deepEqual(f.sent, ['cool', 'auto', 'auto-off']);
+});
