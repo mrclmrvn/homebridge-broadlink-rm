@@ -31,7 +31,7 @@ export async function probePower(address: string, arp: boolean, timeoutMs: numbe
     if (!['linux', 'darwin', 'win32'].includes(platform)) return undefined;
     result = await execute('arp', [platform === 'win32' ? '-a' : '-n', address], timeoutMs, signal);
     if (result.code === undefined || ![0, 1].includes(result.code)) return undefined;
-    const escaped = address.replace(/\./g, '\\.');
+    const escaped = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const line = result.stdout.split(/\r?\n/).find(line => new RegExp(`(?:^|[^0-9.])${escaped}(?:$|[^0-9.])`).test(line));
     if (!line) return result.code === 0 || result.code === 1 ? false : undefined;
     if (/incomplete/i.test(line)) return false;
