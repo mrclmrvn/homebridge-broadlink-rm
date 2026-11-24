@@ -157,3 +157,31 @@ State whether the CLI reproduces the problem and whether the appliance physicall
 responded. Never include pairing codes, authentication tokens, or unrelated
 service credentials. Report issues in the
 [project repository](https://github.com/mrclmrvn/homebridge-broadlink-rm/issues).
+
+### Capture logs from the Broadlink child bridge
+
+In Homebridge **JSON Config**, find the `BroadlinkRM` entry under `platforms`.
+If it already runs as a child bridge, merge this fragment into its existing
+`_bridge` object. Keep the existing username, port, and any other settings.
+
+```json
+{
+  "debugModeEnabled": true,
+  "env": {
+    "DEBUG": "HAP-NodeJS:Accessory,HAP-NodeJS:HAPServer"
+  }
+}
+```
+
+`debugModeEnabled` enables Homebridge and plugin debug messages for that child
+bridge. Use `env.DEBUG` when diagnosing an Apple Home or HomeKit control issue.
+`HAP-NodeJS:HAPServer` traces incoming HomeKit requests.
+`HAP-NodeJS:Accessory` traces characteristic writes and can show why HAP
+rejected a write before it reached the plugin. If `env.DEBUG` already has a
+value, append both namespaces to its comma-separated list.
+
+Save the configuration, restart the Broadlink child bridge, and reproduce the
+issue once. Include the relevant log lines and the Apple Home action that
+triggered them. Redact pairing information, credentials, local addresses, and
+unrelated accessory details before sharing. Restore your previous debug
+settings and restart the child bridge after capturing the logs.

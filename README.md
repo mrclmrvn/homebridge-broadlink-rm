@@ -156,6 +156,7 @@ Documentation is available in the [setup guide](https://cdn.jsdelivr.net/npm/@mr
 [accessory guides](#accessory-guides). If you still have trouble after reading
 them, include the details listed below when reporting a problem to the maintainer.
 The development repository and its issue tracker require repository access.
+For diagnostic logs, follow the [child bridge logging guide](docs/troubleshooting.md#capture-logs-from-the-broadlink-child-bridge).
 
 If discovery finds nothing, check reachability from the machine or container
 running Homebridge and review [discovery troubleshooting](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.4/docs/troubleshooting.md#discovery-finds-nothing).

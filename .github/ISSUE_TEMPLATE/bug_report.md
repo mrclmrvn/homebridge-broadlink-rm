@@ -36,3 +36,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Additional context**
 Add any other context about the problem here.
+
+**Diagnostic logs**
+If Broadlink RM runs as a child bridge, see the [child bridge logging guide](https://github.com/mrclmrvn/homebridge-broadlink-rm/blob/HEAD/docs/troubleshooting.md#capture-logs-from-the-broadlink-child-bridge).
+Include the relevant lines for one reproduction with pairing details, credentials, and local addresses removed.
