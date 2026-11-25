@@ -1,6 +1,6 @@
-# v5.0.1 — Apple Home AC tile activation
+# v5.0.1 — Apple Home mode-write compatibility
 
-Fix Apple Home tile activation for cool-only air conditioners. Apple Home can
+Accept Heat writes as Cool for cooling-only air conditioners. Apple Home can
 send Heat (1) when activating an Off thermostat; rejecting that value previously
 caused “No response” before the plugin could receive the request.
 
@@ -13,7 +13,11 @@ HomeKit requires the accepted Heat alias to be advertised, so a cool-only mode
 picker may also show Heat. That alias sends cooling commands. See
 [AC configuration](air-conditioner.md) for details.
 
-Live testing confirmed Apple Home tile activation with a retained 23 C target.
+The original live capture recorded a Heat request routed to Cool at a retained
+23 C target. Later iPhone testing on 5.0.2 and 5.0.6 still opened accessory
+details on tile taps, including after re-pairing. The compatibility handler
+runs when Apple Home sends a mode write.
+
 Regression coverage includes actual HAP client writes, mode normalization and
 remembered-temperature Off/On cycles. The local Homebridge suite passes 253
 tests. GitHub Actions jobs could not start because of the account billing or

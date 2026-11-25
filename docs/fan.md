@@ -31,6 +31,10 @@ before sending its speed code. Zero sends `data.off` and resets speed to zero.
 Direction uses `data.clockwise` and `data.counterClockwise`. Swing uses
 `data.swingOn` / `data.swingOff`, falling back to `data.swingToggle`.
 Repeated direction and swing requests do not transmit duplicate toggle codes.
+Set `hideRotationSpeed: true` under **Settings → Fan controls** for a fan that
+only needs On/Off, swing, or direction controls in HomeKit. It hides the speed
+slider while keeping configured power-on defaults and direction-aware codes.
+
 Hide controls using `hideRotationDirection` / `hideSwingMode`, or set the legacy
 `showRotationDirection` / `showSwingMode` options to false. Missing codes report
 an error to HomeKit; failed sends do not commit the affected control's state.

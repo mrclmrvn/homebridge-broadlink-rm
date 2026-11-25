@@ -2,13 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import type { MqttClient, IClientOptions, IPublishPacket } from 'mqtt';
 
-export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction' | 'battery' | 'jam' | 'power';
+export type Quantity = 'temperature' | 'humidity' | 'contact' | 'lock' | 'obstruction' | 'battery' | 'jam' | 'power' | 'mode';
 type Identifier = Quantity | 'combined' | 'unknown';
 interface Topic { identifier: Identifier; topic: string; path?: string }
 interface Reading { value?: number; received: number; error?: string }
 export type ConnectMQTT = (url: string, options: IClientOptions) => MqttClient;
 
-const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'battery', 'jam', 'power'];
+const quantities: Quantity[] = ['temperature', 'humidity', 'contact', 'lock', 'obstruction', 'battery', 'jam', 'power', 'mode'];
 const aliases: Record<Quantity, string[]> = {
   temperature: ['temperature', 'temp', 'local_temperature'],
   humidity: ['humidity', 'hum', 'relativehumidity', 'relative_humidity'],
@@ -16,6 +16,7 @@ const aliases: Record<Quantity, string[]> = {
   lock: ['locked', 'lock'],
   obstruction: ['obstruction', 'obstructed'],
   jam: ['jam', 'jammed'],
+  mode: ['mode', 'hvac_mode'],
   power: ['power', 'watts', 'wattage'],
   battery: ['battery', 'batterylevel', 'battery_level', 'batterypercentage', 'battery_percentage'],
 };
@@ -34,6 +35,17 @@ export function binaryValue(value: unknown, quantity: Quantity): number | undefi
 function numeric(value: unknown): number | undefined {
   if (typeof value === 'string' && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) value = Number(value);
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function measurement(value: unknown, quantity: Quantity): number | undefined {
+  if (quantity === 'mode') {
+    const index = typeof value === 'string' ? ['off', 'heat', 'cool', 'auto'].indexOf(value.trim().toLowerCase()) : -1;
+    return index >= 0 ? index : undefined;
+  }
+  if (['contact', 'lock', 'obstruction', 'jam'].includes(quantity)) return binaryValue(value, quantity);
+  const number = numeric(value);
+  if (number !== undefined && (quantity === 'battery' && (number < 0 || number > 100) || quantity === 'power' && number < 0)) return undefined;
+  return number;
 }
 
 function validFilter(filter: string): boolean {
@@ -121,7 +133,7 @@ export class MQTTSensor {
     const seconds = config.mqttMaxAge ?? 300;
     if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0 || seconds > 2147483) throw new Error('Invalid mqttMaxAge seconds');
     this.maxAge = seconds * 1000;
-    this.primary = config.type === 'power' ? 'power' : config.type === 'garage-door-opener' ? 'contact' : config.type === 'lock' ? 'lock' : config.type === 'obstruction' ? 'obstruction' : config.type === 'jam' ? 'jam' : ['humiditysensor', 'humidity-sensor', 'humidifier-dehumidifier'].includes(String(config.type).toLowerCase()) ? 'humidity' : 'temperature';
+    this.primary = config.type === 'power' || config.type === 'mode' ? config.type : config.type === 'garage-door-opener' ? 'contact' : config.type === 'lock' ? 'lock' : config.type === 'obstruction' ? 'obstruction' : config.type === 'jam' ? 'jam' : ['humiditysensor', 'humidity-sensor', 'humidifier-dehumidifier'].includes(String(config.type).toLowerCase()) ? 'humidity' : 'temperature';
   }
 
   public onUpdate(listener: (quantity?: Quantity) => void): () => void {
@@ -165,7 +177,7 @@ export class MQTTSensor {
   };
 
   private onMessage = (topic: string, payload: Buffer, packet?: IPublishPacket): void => {
-    if (this.disposed || this.primary === 'power' && packet?.retain) return;
+    if (this.disposed || (this.primary === 'power' || this.primary === 'mode') && packet?.retain) return;
     const matched = this.topics.filter(entry => matchesTopic(entry.topic, topic));
     if (!matched.length) return;
     let parsed: unknown;
@@ -173,11 +185,12 @@ export class MQTTSensor {
     if (text) {
       try { parsed = JSON.parse(text); } catch { parsed = text; }
     }
+    const available = this.primary === 'mode' ? ['mode' as const] : quantities.filter(quantity => quantity !== 'mode');
     const changed = new Map<Quantity, Reading>();
     for (const entry of matched) {
       const targeted = quantities.includes(entry.identifier as Quantity);
       const wanted: Quantity[] = targeted ? [entry.identifier as Quantity]
-        : parsed && typeof parsed === 'object' || entry.identifier === 'combined' || (['contact', 'lock', 'obstruction', 'jam'].includes(this.primary) ? binaryValue(parsed, this.primary) : numeric(parsed)) === undefined ? quantities : [this.primary];
+        : parsed && typeof parsed === 'object' || entry.identifier === 'combined' || measurement(parsed, this.primary) === undefined ? available : [this.primary];
       let found = false;
       for (const quantity of wanted) {
         const raw = entry.path || parsed && typeof parsed === 'object' ? field(parsed, quantity, entry.path)
@@ -185,15 +198,13 @@ export class MQTTSensor {
         // Combined partial objects leave omitted quantities unchanged.
         if (!targeted && parsed && typeof parsed === 'object' && raw === undefined) continue;
         found = true;
-        let value = ['contact', 'lock', 'obstruction', 'jam'].includes(quantity) ? binaryValue(raw, quantity) : numeric(raw);
-        if (quantity === 'battery' && value !== undefined && (value < 0 || value > 100)) value = undefined;
-        if (quantity === 'power' && value !== undefined && value < 0) value = undefined;
+        const value = measurement(raw, quantity);
         changed.set(quantity, { value, received: performance.now(), error: value === undefined ? 'Invalid MQTT measurement' : undefined });
       }
       // Status-only combined updates do not refresh or erase earlier measurements.
       if (!found && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length > 0) continue;
       if (!found) {
-        for (const quantity of targeted ? wanted : quantities) {
+        for (const quantity of targeted ? wanted : available) {
           changed.set(quantity, { received: performance.now(), error: 'No MQTT measurement in payload' });
         }
       }

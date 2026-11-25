@@ -31,7 +31,7 @@
     ]],
     ['MQTT', ['mqttURL', 'mqttUsername', 'mqttPassword', 'mqttTopic', 'mqttMaxAge']],
     ['Fan controls', [
-      'fanSpeedByDirection', 'speedSteps', 'stepSize', 'hideSwingMode', 'hideRotationDirection', 'defaultRotationSpeed',
+      'fanSpeedByDirection', 'speedSteps', 'stepSize', 'hideRotationSpeed', 'hideSwingMode', 'hideRotationDirection', 'defaultRotationSpeed',
       'fanStepSize', 'speedCycle', 'speedCycleInterval', 'defaultSpeedStep', 'defaultFanSpeed',
       'alwaysResetToDefaults'
     ]],
@@ -49,7 +49,7 @@
       'initialDelay'
     ]],
     ['Sensor feedback', [
-      'closedSensor', 'openSensor', 'obstructionSensor', 'lockSensor', 'jamSensor',
+      'stateFeedback', 'closedSensor', 'openSensor', 'obstructionSensor', 'lockSensor', 'jamSensor',
       'sensorPollInterval', 'batteryAlerts', 'batteryFilePath'
     ]]
   ];

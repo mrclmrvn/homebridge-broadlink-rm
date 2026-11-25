@@ -273,8 +273,8 @@ test('feedback loss at a transition deadline does not suppress retries after rec
 test('Thermostat validates modes and temperatures and commits state only after successful sends', async t => {
   const f = fixture(t, 'air-conditioner', { sensorPollInterval: 0, coolOnly: true,
     tempStepSize: 0.5, data: { on: 'on', off: 'off', temperature24: { data: 'cool24', sendCount: 2, interval: 0 }, 'temperature24.5': 'cool245' } });
-  await f.set('TargetHeatingCoolingState', 1);
-  assert.equal(f.get('TargetHeatingCoolingState'), 2);
+  await assert.rejects(f.set('TargetHeatingCoolingState', 1), /Unsupported/);
+  assert.equal(f.get('TargetHeatingCoolingState'), 0);
   await assert.rejects(f.set('TargetHeatingCoolingState', 3), /Unsupported/);
   await f.set('TargetHeatingCoolingState', 2);
   assert.deepEqual(f.sent, ['cool24', 'cool24']);
@@ -415,4 +415,54 @@ test('only accepted AC temperature writes update persisted state', async t => {
   await assert.rejects(f.set('TargetTemperature', 31), /range/);
   assert.equal(save.mock.callCount(), 2);
   assert.deepEqual(f.accessory.context.broadlinkRMState, { targetTemperature: 18, targetHeatingCoolingState: 2, lastMode: 2 });
+});
+
+test('AC mode feedback follows the external remote without replaying IR or changing its setpoint', async t => {
+  class Client extends EventEmitter {
+    subscribe(filters, options, callback) { callback(null, filters.map(topic => ({ topic, qos: 0 }))); }
+    end(force, options, callback) { this.ended = true; callback(); }
+  }
+  const client = new Client();
+  t.mock.method(require('mqtt').default, 'connect', () => client);
+  const f = fixture(t, 'air-conditioner', {
+    coolOnly: true, sensorPollInterval: 0, defaultCoolTemperature: 25,
+    stateFeedback: { mqttURL: 'mqtt://broker.invalid', mqttTopic: 'ac/status' },
+    data: { cool25: 'cool', off: 'off' },
+  });
+  client.emit('connect');
+  async function report(payload, retain = false) {
+    client.emit('message', 'ac/status', Buffer.from(payload), { retain });
+    await f.clock.tick(0);
+  }
+  await report('cool', true);
+  assert.equal(f.get('TargetHeatingCoolingState'), 0);
+  await report('{"mode":"cool"}');
+  assert.equal(f.get('TargetHeatingCoolingState'), 2);
+  assert.equal(f.get('CurrentHeatingCoolingState'), 2);
+  await f.set('TargetHeatingCoolingState', 2);
+  assert.deepEqual(f.sent, []);
+  await report('heat');
+  await report('invalid');
+  assert.equal(f.get('TargetHeatingCoolingState'), 2);
+  await report('off');
+  assert.equal(f.get('TargetHeatingCoolingState'), 0);
+  assert.equal(f.get('TargetTemperature'), 25);
+  assert.equal(f.accessory.context.broadlinkRMState.lastMode, 2);
+  assert.deepEqual(f.sent, []);
+  let acknowledge;
+  const acknowledgement = new Promise(resolve => { acknowledge = resolve; });
+  f.device.sendData = async code => { f.sent.push(code); await acknowledgement; };
+  const turningOn = f.set('TargetHeatingCoolingState', 2);
+  await flush();
+  assert.deepEqual(f.sent, ['cool']);
+  await report('off');
+  acknowledge();
+  await turningOn;
+  await f.clock.tick(0);
+  assert.equal(f.get('TargetHeatingCoolingState'), 2);
+  await report('off');
+  assert.equal(f.get('TargetHeatingCoolingState'), 0);
+  assert.deepEqual(f.sent, ['cool']);
+  f.instance.dispose();
+  assert.equal(client.ended, true);
 });

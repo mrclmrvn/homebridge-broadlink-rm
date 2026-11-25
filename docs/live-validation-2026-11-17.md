@@ -27,3 +27,13 @@ HomeKit alias so the request can reach the plugin; the visible Apple Home picker
 may therefore show Heat. The plugin normalizes displayed and saved mode to Cool
 and never selects heating-mode codes for that activation. Heat-only operation
 retains Heat/Off behavior and is covered automatically, not by a new live check.
+
+## November 25 follow-up
+
+On iPhone, the user reported that both AC tiles opened accessory details on
+5.0.2 and 5.0.6, including after re-pairing. Detail-screen writes for Off and
+Cool reached Broadlink and the transmitter acknowledged the commands. A
+separate trace also captured Heat being routed to Cool, but the log itself
+cannot identify which gesture produced that write. The native tap-to-toggle
+gesture remains unresolved. The November 17 observation records the original
+test conditions.

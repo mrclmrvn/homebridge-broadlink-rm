@@ -229,7 +229,7 @@
               "title": "Cool Only",
               "type": "boolean",
               "default": true,
-              "description": "For Air Conditioners: operates in Off/Cool. Apple Home tile Heat (1) activation requests automatically route to Cool at the saved/default target. Heat is advertised as an accepted alias but no Heat codes are sent.",
+              "description": "For Air Conditioners: exposes only Off and Cool.",
               "condition": {
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
@@ -368,6 +368,15 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100,
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
+            "hideRotationSpeed": {
+              "title": "Hide Fan Speed Control",
+              "type": "boolean",
+              "default": false,
+              "description": "Hide the HomeKit fan speed control. Configured power, swing, direction, and default speed behavior still apply.",
               "condition": {
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"fan\", \"fanv1\", \"air-purifier\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
@@ -879,6 +888,40 @@
               },
               "condition": {
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\", \"heater-cooler\", \"temperature-sensor\", \"temperaturesensor\", \"humidity-sensor\", \"humiditysensor\", \"humidifier-dehumidifier\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
+            "stateFeedback": {
+              "title": "MQTT AC Mode Feedback",
+              "type": "object",
+              "description": "Read live off, heat, cool, or auto reports from an external MQTT source. This updates HomeKit without sending a command.",
+              "properties": {
+                "mqttURL": { "title": "MQTT Broker URL", "type": "string" },
+                "mqttUsername": { "title": "MQTT Username", "type": "string" },
+                "mqttPassword": { "title": "MQTT Password", "type": "string", "format": "password" },
+                "mqttTopic": {
+                  "title": "MQTT Mode Topic",
+                  "type": ["string", "array"],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "identifier": { "type": "string", "enum": ["mode", "combined", "unknown"] },
+                      "topic": { "type": "string" },
+                      "path": { "type": "string" }
+                    },
+                    "required": ["identifier", "topic"]
+                  }
+                },
+                "mqttMaxAge": {
+                  "title": "Maximum Reading Age (seconds)",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2147483,
+                  "default": 300
+                }
+              },
+              "required": ["mqttURL", "mqttTopic"],
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
             },
             "powerSensor": {
@@ -1722,6 +1765,7 @@
                 "accessories[].speedSteps",
                 "accessories[].fanSpeedByDirection",
                 "accessories[].stepSize",
+                "accessories[].hideRotationSpeed",
                 "accessories[].hideSwingMode",
                 "accessories[].hideRotationDirection",
                 "accessories[].availableBrightnessSteps",
@@ -1778,6 +1822,7 @@
                 "accessories[].mqttPassword",
                 "accessories[].mqttMaxAge",
                 "accessories[].mqttTopic",
+                "accessories[].stateFeedback",
                 "accessories[].powerSensor",
                 "accessories[].pingIPAddress",
                 "accessories[].pingUseArp",
