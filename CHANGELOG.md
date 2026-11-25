@@ -69,8 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   advertised Heat alias for cool-only clients and the resulting picker behavior.
 - Add real-HAP client-write coverage, deferred display normalization, and
   remembered-temperature Off/On cycles for both Cool and Heat behavior.
-- Live beta.3 validation confirmed tile activation at a retained 23 C target
-  without the temporary test flag. See the November 17 validation record.
+- Live beta.3 validation recorded a Heat request routed to Cool at a retained
+  23 C target. Follow-up iPhone testing on 5.0.2 and 5.0.6 found that taps
+  opened accessory details on both ACs, including after re-pairing. See the
+  November 17 validation record and its follow-up.
 
 ## [5.0.0] — 2026-11-16
 

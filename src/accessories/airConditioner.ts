@@ -130,8 +130,8 @@ export class AirConditionerAccessory extends TimedAccessory {
         return this.serialize(async () => { await this.setTargetHeatingCoolingState(value); this.manualOverride(); this.deferDisplay(); });
       });
 
-    const advertisedModes = [...new Set([...this.allowedModes, ...(this.config.coolOnly ? [1] : []),
-      ...(this.config.replaceAutoMode ? [3] : [])])].sort((a, b) => a - b);
+    const advertisedModes = !this.config.coolOnly && this.config.replaceAutoMode
+      ? [...new Set([...this.allowedModes, 3])] : this.allowedModes;
     // Keep numeric bounds aligned with the advertised modes. Leaving the HAP
     // default maximum of Auto (3) advertises an unsupported upper bound for
     // fixed-mode ACs, even when validValues excludes Auto.
@@ -231,11 +231,7 @@ export class AirConditionerAccessory extends TimedAccessory {
 
   private async setTargetHeatingCoolingState(value: CharacteristicValue, ambient = false): Promise<void> {
     let state = Number(value);
-    if (state === 1 && this.config.coolOnly && !ambient) {
-      this.log.info?.(`[${this.name}] Home app tile compatibility: routing Heat request to Cool.`);
-      state = 2;
-    }
-    if (state === 3 && this.config.replaceAutoMode) state = this.config.replaceAutoMode === 'heat' ? 1 : 2;
+    if (state === 3 && !this.config.coolOnly && this.config.replaceAutoMode) state = this.config.replaceAutoMode === 'heat' ? 1 : 2;
     if (!this.allowedModes.includes(state)) throw new Error('Unsupported Thermostat mode');
     if (state === this.targetHeatingCoolingState && !this.resend) {
       this.log.info?.(`[${this.name}] Mode already ${this.modeLabel(state)}; duplicate request skipped.`);

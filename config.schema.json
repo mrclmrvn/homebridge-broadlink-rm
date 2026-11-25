@@ -229,7 +229,7 @@
               "title": "Cool Only",
               "type": "boolean",
               "default": true,
-              "description": "For Air Conditioners: operates in Off/Cool. Apple Home tile Heat (1) activation requests automatically route to Cool at the saved/default target. Heat is advertised as an accepted alias but no Heat codes are sent.",
+              "description": "For Air Conditioners: exposes only Off and Cool.",
               "condition": {
                 "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"air-conditioner\", \"airconditioner\"].includes(String(accessory.type || \"\").toLowerCase());"
               }
