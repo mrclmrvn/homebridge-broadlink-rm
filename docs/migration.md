@@ -65,7 +65,7 @@ remain separate requirements.
 
 See the type-specific guides for exact options. The old sample configs at the
 repository root and [historical HeaterCooler guide](v4-heater-cooler.md) contain
-unported features; use [config-v5-sample.json](../config-v5-sample.json) and the v5
+unported features; use [config-sample.json](../config-sample.json) and the v5
 guides for a new trial configuration.
 
 ## Identity and pairing

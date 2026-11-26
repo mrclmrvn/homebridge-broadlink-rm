@@ -39,7 +39,7 @@
 1. All *italicized* keys are required.
 2. At least one of heat or cool object should be present else the device will not be configured and cause an error.
 3. 'minTemperature' and 'maxTemperature' are required if device has temperatureCodes
-4. This accessory supports combined hex codes for temperature, fan speed and rotation. Please check the config-sample.json file for more details and examples.
+4. This accessory supports combined hex codes for temperature, fan speed and rotation. Please check the config-v4-sample.json file for more details and examples.
 5. Swing operation can be supported by providing 'swingOn' and 'swingOff' OR 'swingToggle' and 'swingDnd'.
 
 ## How to set-up config.json

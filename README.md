@@ -123,7 +123,7 @@ ship inside the installed package; the public documentation links below read
 those files from the published npm package.
 
 See [installation and configuration](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.6/docs/setup.md) for static hosts, multiple
-RM devices, platform options, and a [v5 sample config](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.6/config-v5-sample.json).
+RM devices, platform options, and the [sample config](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.6/config-sample.json).
 
 ## Accessory guides
 
@@ -237,7 +237,7 @@ testing, documentation, and bug reports.
 
 The [legacy README](https://cdn.jsdelivr.net/npm/@mrclmrvn/homebridge-broadlink-rm@5.0.6/docs/v4-readme.md) retains the v4 reference material and
 acknowledgments with an updated introduction explaining the continuation. The root
-`config-sample.json`, `config-multiple-rm-devices-sample.json`, and
+`config-v4-sample.json`, `config-multiple-rm-devices-sample.json`, and
 `config-sample.json-W1` files are legacy references, not v5 compatibility examples.
 
 License: [ISC](LICENSE).

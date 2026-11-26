@@ -59,7 +59,7 @@ local-build instructions do not publish anything to npm.
 ## Platform options
 
 Add a platform object to the existing `platforms` array. Do not replace your
-whole Homebridge config with a platform fragment. [config-v5-sample.json](../config-v5-sample.json)
+whole Homebridge config with a platform fragment. [config-sample.json](../config-sample.json)
 is an example platforms array: only the learning button is enabled; example
 controls contain placeholders and stay disabled until configured.
 
