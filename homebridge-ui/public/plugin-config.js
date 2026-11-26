@@ -278,6 +278,31 @@
     blocks = config;
     properties = configSchema.schema.properties.accessories.items.properties;
     addSettings();
+    const configuredAccessories = blocks.flatMap(block => Array.isArray(block?.accessories) ? block.accessories : []);
+    const hasLearningAccessory = configuredAccessories.some(accessory =>
+      ['learn-ir', 'learn-code'].includes(String(accessory?.type || '').toLowerCase()));
+    if (!hasLearningAccessory) {
+      let platformBlock = blocks.find(block => block?.platform === 'BroadlinkRM') || blocks[0];
+      if (!platformBlock) {
+        platformBlock = { platform: 'BroadlinkRM', name: 'BroadlinkRM' };
+        blocks.push(platformBlock);
+      }
+      const defaults = [];
+      if (!platformBlock.hideLearnButton) defaults.push({ name: 'Learn', type: 'learn-code' });
+      if (!platformBlock.hideScanFrequencyButton) {
+        defaults.push({ name: 'Scan Frequency', type: 'learn-code', scanFrequency: true });
+      }
+      if (defaults.length) {
+        if (!Array.isArray(platformBlock.accessories)) platformBlock.accessories = [];
+        platformBlock.accessories.push(...defaults);
+        try {
+          await homebridge.updatePluginConfig(JSON.parse(JSON.stringify(blocks)));
+          homebridge.enableSaveButton();
+        } catch {
+          status.textContent = 'Default learning accessories were added but could not be applied. Edit a field to retry.';
+        }
+      }
+    }
     for (const block of blocks) {
       if (!Array.isArray(block.accessories)) continue;
       for (const accessory of block.accessories) {

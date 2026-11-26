@@ -98,11 +98,26 @@ export class BroadlinkRMPlatform implements DynamicPlatformPlugin {
     if (!disableDiscovery) this.deviceManager.startRediscovery(this.config.rediscoveryInterval);
 
     // 3. Register and bind accessories from config
-    const configuredAccessories = this.config.accessories || [];
+    const configuredAccessories = Array.isArray(this.config.accessories) ? this.config.accessories : [];
+    const hasLearningAccessory = configuredAccessories.some((accessory: any) =>
+      ['learn-ir', 'learn-code'].includes(String(accessory?.type || '').toLowerCase()));
+    const platformOptions = this.config as PlatformConfig & {
+      hideLearnButton?: boolean;
+      hideScanFrequencyButton?: boolean;
+    };
+    const accessoriesToRegister = [...configuredAccessories];
+    if (!hasLearningAccessory) {
+      if (!platformOptions.hideLearnButton) {
+        accessoriesToRegister.push({ name: 'Learn', type: 'learn-code' });
+      }
+      if (!platformOptions.hideScanFrequencyButton) {
+        accessoriesToRegister.push({ name: 'Scan Frequency', type: 'learn-code', scanFrequency: true });
+      }
+    }
     const activeUUIDs = new Set<string>();
     const configuredUUIDs = new Set<string>();
 
-    for (const accConfig of configuredAccessories) {
+    for (const accConfig of accessoriesToRegister) {
       if (!accConfig.name || !accConfig.type) {
         this.log.warn(`[${PLATFORM_NAME}] Skipping accessory missing "name" or "type"`);
         continue;

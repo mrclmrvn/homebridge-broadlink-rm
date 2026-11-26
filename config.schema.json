@@ -225,6 +225,15 @@
               "type": "boolean",
               "default": false
             },
+            "scanFrequency": {
+              "title": "Scan RF Frequency",
+              "type": "boolean",
+              "default": false,
+              "description": "Use RF learning and frequency detection instead of learning an IR code.",
+              "condition": {
+                "functionBody": "var accessory = model && model.accessories && model.accessories[arrayIndices[0]]; return !!accessory && [\"learn-code\", \"learn-ir\"].includes(String(accessory.type || \"\").toLowerCase());"
+              }
+            },
             "coolOnly": {
               "title": "Cool Only",
               "type": "boolean",
