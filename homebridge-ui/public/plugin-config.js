@@ -3,6 +3,7 @@
   const sectionTabs = ['settings-tab', 'data-tab'].map(id => document.getElementById(id));
   const sections = ['settings-panel', 'data-panel'].map(id => document.getElementById(id));
   const form = document.getElementById('accessory-settings');
+  const cancelAccessoryButton = document.getElementById('cancel-accessory');
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
   const commandEditorHost = document.getElementById('command-editor');
@@ -57,6 +58,7 @@
   ];
   const accessories = [];
   const tabs = [];
+  const newAccessories = new Set();
   let selectedAccessory = 0;
   const errors = new Map();
   let blocks;
@@ -152,11 +154,12 @@
     }
 
     buttons.forEach((button, index) => {
-      button.addEventListener('click', () => select(index));
+      button.addEventListener('click', () => select(buttons.indexOf(button)));
       button.addEventListener('keydown', event => {
+        const currentIndex = buttons.indexOf(button);
         const next = {
-          ArrowLeft: (index + buttons.length - 1) % buttons.length,
-          ArrowRight: (index + 1) % buttons.length,
+          ArrowLeft: (currentIndex + buttons.length - 1) % buttons.length,
+          ArrowRight: (currentIndex + 1) % buttons.length,
           Home: 0,
           End: buttons.length - 1
         }[event.key];
@@ -194,6 +197,7 @@
 
   function renderAccessory() {
     const accessory = accessories[selectedAccessory];
+    cancelAccessoryButton.hidden = !newAccessories.has(accessory);
     for (const [name, control] of controls) {
       const value = accessory[name];
       const setting = settings.get(name);
@@ -354,8 +358,10 @@
     }
     if (!Array.isArray(block.accessories)) block.accessories = [];
     const accessory = {};
+    newAccessories.add(accessory);
     block.accessories.push(accessory);
     accessories.push(accessory);
+    form.hidden = false;
     const tab = document.createElement('button');
     tab.type = 'button';
     tab.className = 'nav-link';
@@ -365,16 +371,55 @@
     tab.setAttribute('aria-controls', 'accessory-settings');
     accessoryTabs.insertBefore(tab, addAccessoryTab);
     tabs.push(tab);
-    const index = tabs.length - 1;
     addAccessoryTab.classList.remove('active');
     addAccessoryTab.setAttribute('aria-selected', 'false');
     // Bind the new tab using the same selection behavior as existing accessories.
-    tab.addEventListener('click', () => selectAccessory(index));
+    tab.addEventListener('click', () => selectAccessory(tabs.indexOf(tab)));
     tab.addEventListener('keydown', event => {
+      const index = tabs.indexOf(tab);
       if (event.key === 'ArrowLeft') tabs[index - 1]?.focus();
       if (event.key === 'ArrowRight') addAccessoryTab.focus();
     });
-    selectAccessory(index);
+    selectAccessory(tabs.length - 1);
+    const snapshot = JSON.parse(JSON.stringify(blocks));
+    homebridge.disableSaveButton();
+    status.textContent = 'Applying changes…';
+    pending = pending.then(async () => {
+      try {
+        await homebridge.updatePluginConfig(snapshot);
+        status.textContent = instructions;
+        homebridge.enableSaveButton();
+      } catch {
+        status.textContent = 'Unable to apply changes. Edit a field to retry.';
+      }
+    });
+  });
+  cancelAccessoryButton.addEventListener('click', () => {
+    const accessory = accessories[selectedAccessory];
+    if (!newAccessories.has(accessory)) return;
+    revision++;
+    errors.clear();
+    for (const block of blocks) {
+      if (!Array.isArray(block.accessories)) continue;
+      const index = block.accessories.indexOf(accessory);
+      if (index >= 0) {
+        block.accessories.splice(index, 1);
+        if (!block.accessories.length) delete block.accessories;
+        break;
+      }
+    }
+    const index = selectedAccessory;
+    tabs[index].remove();
+    tabs.splice(index, 1);
+    accessories.splice(index, 1);
+    newAccessories.delete(accessory);
+    cancelAccessoryButton.hidden = true;
+    if (tabs.length) {
+      selectAccessory(Math.min(index, tabs.length - 1));
+    } else {
+      form.hidden = true;
+      sections.forEach(section => { section.hidden = true; });
+    }
     const snapshot = JSON.parse(JSON.stringify(blocks));
     homebridge.disableSaveButton();
     status.textContent = 'Applying changes…';

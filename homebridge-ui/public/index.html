@@ -38,9 +38,12 @@
 <p id="config-status" class="form-text" role="status">Loading configuration…</p>
 
 <form id="accessory-settings" role="tabpanel" hidden>
-  <div class="btn-group mb-3" role="tablist" aria-label="Accessory configuration">
-    <button id="settings-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="settings-panel">Settings</button>
-    <button id="data-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="data-panel">Command Data</button>
+  <div class="d-flex align-items-start gap-3 mb-3">
+    <div class="btn-group" role="tablist" aria-label="Accessory configuration">
+      <button id="settings-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="settings-panel">Settings</button>
+      <button id="data-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="data-panel">Command Data</button>
+    </div>
+    <button id="cancel-accessory" class="btn btn-outline-secondary" type="button" hidden>Cancel</button>
   </div>
   <div id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
     <div id="accessory-fields" class="broadlink-fields"></div>
