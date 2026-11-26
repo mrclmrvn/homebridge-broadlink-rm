@@ -51,6 +51,10 @@
   </div>
   <div id="data-panel" role="tabpanel" aria-labelledby="data-tab" hidden>
     <label for="command-data" class="form-label">IR/RF command data (JSON)</label>
+    <div class="form-check mb-2">
+      <input id="command-wrap-lines" class="form-check-input" type="checkbox">
+      <label class="form-check-label" for="command-wrap-lines">Wrap lines</label>
+    </div>
     <div id="command-editor" class="border rounded" style="height: 20rem" hidden></div>
     <textarea id="command-data" name="data" data-kind="json" class="form-control font-monospace"
       rows="10" spellcheck="false" autocomplete="off" aria-describedby="config-status"></textarea>

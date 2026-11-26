@@ -6,6 +6,7 @@
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
   const commandEditorHost = document.getElementById('command-editor');
+  const commandWrapLines = document.getElementById('command-wrap-lines');
   const instructions = 'Use JSON Config for platform settings or editing options outside the accessory schema.';
   const addAccessoryTab = document.getElementById('add-accessory');
   const controls = new Map([
@@ -175,6 +176,7 @@
       const darkMode = await homebridge.userCurrentLightingMode?.() === 'dark';
       commandEditorHost.hidden = false;
       commandEditor = globalThis.createBroadlinkCommandEditor(commandEditorHost, commandData.value, darkMode);
+      commandEditor.updateOptions({ wordWrap: commandWrapLines.checked ? 'on' : 'off' });
       commandEditor.onDidChangeModelContent(() => {
         if (switchingAccessory) return;
         commandData.value = commandEditor.getValue();
@@ -265,6 +267,9 @@
   }
 
   homebridge.disableSaveButton();
+  commandWrapLines.addEventListener('change', () => {
+    commandEditor?.updateOptions({ wordWrap: commandWrapLines.checked ? 'on' : 'off' });
+  });
   try {
     const [config, configSchema] = await Promise.all([
       homebridge.getPluginConfig(),
