@@ -5,6 +5,10 @@
   const form = document.getElementById('accessory-settings');
   const deleteAccessoryButton = document.getElementById('delete-accessory');
   const cancelAccessoryButton = document.getElementById('cancel-accessory');
+  const accessoryConfirmation = document.getElementById('accessory-confirmation');
+  const accessoryConfirmationMessage = document.getElementById('accessory-confirmation-message');
+  const confirmAccessoryAction = document.getElementById('confirm-accessory-action');
+  const dismissAccessoryAction = document.getElementById('dismiss-accessory-action');
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
   const commandEditorHost = document.getElementById('command-editor');
@@ -60,6 +64,7 @@
   const accessories = [];
   const tabs = [];
   const newAccessories = new Set();
+  const firstInstallAccessories = new Set();
   const editedNewAccessories = new Set();
   let selectedAccessory = 0;
   const errors = new Map();
@@ -70,6 +75,67 @@
   let loadingEditor = false;
   let switchingAccessory = false;
   let pending = Promise.resolve();
+  let pendingConfirmationAction;
+
+  function askForConfirmation(message, action) {
+    accessoryConfirmationMessage.textContent = message;
+    pendingConfirmationAction = action;
+    accessoryConfirmation.hidden = false;
+    confirmAccessoryAction.focus();
+  }
+
+  function dismissConfirmation() {
+    accessoryConfirmation.hidden = true;
+    pendingConfirmationAction = undefined;
+  }
+
+  function removeAccessory(accessory) {
+    const index = accessories.indexOf(accessory);
+    if (index < 0) return false;
+    revision++;
+    errors.clear();
+    for (const block of blocks) {
+      if (!Array.isArray(block.accessories)) continue;
+      const accessoryIndex = block.accessories.indexOf(accessory);
+      if (accessoryIndex >= 0) {
+        block.accessories.splice(accessoryIndex, 1);
+        if (!block.accessories.length) delete block.accessories;
+        break;
+      }
+    }
+    tabs[index].remove();
+    tabs.splice(index, 1);
+    accessories.splice(index, 1);
+    newAccessories.delete(accessory);
+    firstInstallAccessories.delete(accessory);
+    editedNewAccessories.delete(accessory);
+    dismissConfirmation();
+    if (tabs.length) {
+      selectAccessory(Math.min(index, tabs.length - 1));
+    } else {
+      form.hidden = true;
+      sections.forEach(section => { section.hidden = true; });
+      deleteAccessoryButton.hidden = true;
+      cancelAccessoryButton.hidden = true;
+    }
+    return true;
+  }
+
+  async function stageCurrentConfig() {
+    const snapshot = JSON.parse(JSON.stringify(blocks));
+    homebridge.disableSaveButton();
+    status.textContent = 'Applying changes…';
+    pending = pending.then(async () => {
+      try {
+        await homebridge.updatePluginConfig(snapshot);
+        status.textContent = instructions;
+        homebridge.enableSaveButton();
+      } catch {
+        status.textContent = 'Unable to apply changes. Edit a field to retry.';
+      }
+    });
+    await pending;
+  }
 
   function addField(container, name, schema) {
     const { title, description, type, oneOf, format } = schema;
@@ -199,9 +265,10 @@
 
   function renderAccessory() {
     const accessory = accessories[selectedAccessory];
+    dismissConfirmation();
     const isNewAccessory = newAccessories.has(accessory);
     cancelAccessoryButton.hidden = !isNewAccessory;
-    deleteAccessoryButton.hidden = isNewAccessory;
+    deleteAccessoryButton.hidden = isNewAccessory || firstInstallAccessories.has(accessory);
     for (const [name, control] of controls) {
       const value = accessory[name];
       const setting = settings.get(name);
@@ -287,6 +354,7 @@
     properties = configSchema.schema.properties.accessories.items.properties;
     addSettings();
     const configuredAccessories = blocks.flatMap(block => Array.isArray(block?.accessories) ? block.accessories : []);
+    const isFirstInstall = configuredAccessories.length === 0;
     const hasLearningAccessory = configuredAccessories.some(accessory =>
       ['learn-ir', 'learn-code'].includes(String(accessory?.type || '').toLowerCase()));
     if (!hasLearningAccessory) {
@@ -301,6 +369,7 @@
         defaults.push({ name: 'Scan Frequency', type: 'learn-code', scanFrequency: true });
       }
       if (defaults.length) {
+        if (isFirstInstall) defaults.forEach(accessory => firstInstallAccessories.add(accessory));
         if (!Array.isArray(platformBlock.accessories)) platformBlock.accessories = [];
         platformBlock.accessories.push(...defaults);
         try {
@@ -401,86 +470,23 @@
   cancelAccessoryButton.addEventListener('click', () => {
     const accessory = accessories[selectedAccessory];
     if (!newAccessories.has(accessory)) return;
-    if (editedNewAccessories.has(accessory) &&
-      !confirm('Discard your edits to this new accessory?')) return;
-    revision++;
-    errors.clear();
-    for (const block of blocks) {
-      if (!Array.isArray(block.accessories)) continue;
-      const index = block.accessories.indexOf(accessory);
-      if (index >= 0) {
-        block.accessories.splice(index, 1);
-        if (!block.accessories.length) delete block.accessories;
-        break;
-      }
-    }
-    const index = selectedAccessory;
-    tabs[index].remove();
-    tabs.splice(index, 1);
-    accessories.splice(index, 1);
-    newAccessories.delete(accessory);
-    editedNewAccessories.delete(accessory);
-    cancelAccessoryButton.hidden = true;
-    if (tabs.length) {
-      selectAccessory(Math.min(index, tabs.length - 1));
-    } else {
-      form.hidden = true;
-      sections.forEach(section => { section.hidden = true; });
-    }
-    const snapshot = JSON.parse(JSON.stringify(blocks));
-    homebridge.disableSaveButton();
-    status.textContent = 'Applying changes…';
-    pending = pending.then(async () => {
-      try {
-        await homebridge.updatePluginConfig(snapshot);
-        status.textContent = instructions;
-        homebridge.enableSaveButton();
-      } catch {
-        status.textContent = 'Unable to apply changes. Edit a field to retry.';
-      }
-    });
+    const discard = () => {
+      if (removeAccessory(accessory)) void stageCurrentConfig();
+    };
+    if (editedNewAccessories.has(accessory)) {
+      askForConfirmation('Discard your edits to this new accessory?', discard);
+    } else discard();
   });
   deleteAccessoryButton.addEventListener('click', () => {
     const accessory = accessories[selectedAccessory];
     if (!accessory || newAccessories.has(accessory)) return;
     const name = accessory.name || accessory.type || 'this accessory';
-    if (!confirm(`Delete "${name}" from the plugin configuration?`)) return;
-    revision++;
-    errors.clear();
-    for (const block of blocks) {
-      if (!Array.isArray(block.accessories)) continue;
-      const index = block.accessories.indexOf(accessory);
-      if (index >= 0) {
-        block.accessories.splice(index, 1);
-        if (!block.accessories.length) delete block.accessories;
-        break;
-      }
-    }
-    const index = selectedAccessory;
-    tabs[index].remove();
-    tabs.splice(index, 1);
-    accessories.splice(index, 1);
-    if (tabs.length) {
-      selectAccessory(Math.min(index, tabs.length - 1));
-    } else {
-      form.hidden = true;
-      sections.forEach(section => { section.hidden = true; });
-      deleteAccessoryButton.hidden = true;
-      cancelAccessoryButton.hidden = true;
-    }
-    const snapshot = JSON.parse(JSON.stringify(blocks));
-    homebridge.disableSaveButton();
-    status.textContent = 'Applying changes…';
-    pending = pending.then(async () => {
-      try {
-        await homebridge.updatePluginConfig(snapshot);
-        status.textContent = instructions;
-        homebridge.enableSaveButton();
-      } catch {
-        status.textContent = 'Unable to apply changes. Edit a field to retry.';
-      }
+    askForConfirmation(`Delete "${name}" from the plugin configuration?`, () => {
+      if (removeAccessory(accessory)) void stageCurrentConfig();
     });
   });
+  confirmAccessoryAction.addEventListener('click', () => pendingConfirmationAction?.());
+  dismissAccessoryAction.addEventListener('click', dismissConfirmation);
   form.hidden = false;
   status.textContent = instructions;
   form.addEventListener('submit', event => event.preventDefault());

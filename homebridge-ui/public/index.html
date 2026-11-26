@@ -25,6 +25,9 @@
     max-width: 100%;
     overflow-wrap: anywhere;
   }
+  #accessory-confirmation:not([hidden]) {
+    display: flex;
+  }
   @media (min-width: 576px) {
     .broadlink-fields {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -45,6 +48,11 @@
     </div>
     <button id="delete-accessory" class="btn btn-outline-danger" type="button" hidden>Delete</button>
     <button id="cancel-accessory" class="btn btn-outline-secondary" type="button" hidden>Cancel</button>
+  </div>
+  <div id="accessory-confirmation" class="alert alert-warning align-items-center gap-3" role="alertdialog" aria-modal="true" hidden>
+    <span id="accessory-confirmation-message" class="flex-grow-1"></span>
+    <button id="confirm-accessory-action" class="btn btn-danger" type="button">Confirm</button>
+    <button id="dismiss-accessory-action" class="btn btn-outline-secondary" type="button">Keep</button>
   </div>
   <div id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
     <div id="accessory-fields" class="broadlink-fields"></div>
