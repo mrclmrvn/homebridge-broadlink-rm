@@ -3,6 +3,7 @@
   const sectionTabs = ['settings-tab', 'data-tab'].map(id => document.getElementById(id));
   const sections = ['settings-panel', 'data-panel'].map(id => document.getElementById(id));
   const form = document.getElementById('accessory-settings');
+  const deleteAccessoryButton = document.getElementById('delete-accessory');
   const cancelAccessoryButton = document.getElementById('cancel-accessory');
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
@@ -59,6 +60,7 @@
   const accessories = [];
   const tabs = [];
   const newAccessories = new Set();
+  const editedNewAccessories = new Set();
   let selectedAccessory = 0;
   const errors = new Map();
   let blocks;
@@ -197,7 +199,9 @@
 
   function renderAccessory() {
     const accessory = accessories[selectedAccessory];
-    cancelAccessoryButton.hidden = !newAccessories.has(accessory);
+    const isNewAccessory = newAccessories.has(accessory);
+    cancelAccessoryButton.hidden = !isNewAccessory;
+    deleteAccessoryButton.hidden = isNewAccessory;
     for (const [name, control] of controls) {
       const value = accessory[name];
       const setting = settings.get(name);
@@ -397,6 +401,8 @@
   cancelAccessoryButton.addEventListener('click', () => {
     const accessory = accessories[selectedAccessory];
     if (!newAccessories.has(accessory)) return;
+    if (editedNewAccessories.has(accessory) &&
+      !confirm('Discard your edits to this new accessory?')) return;
     revision++;
     errors.clear();
     for (const block of blocks) {
@@ -413,12 +419,54 @@
     tabs.splice(index, 1);
     accessories.splice(index, 1);
     newAccessories.delete(accessory);
+    editedNewAccessories.delete(accessory);
     cancelAccessoryButton.hidden = true;
     if (tabs.length) {
       selectAccessory(Math.min(index, tabs.length - 1));
     } else {
       form.hidden = true;
       sections.forEach(section => { section.hidden = true; });
+    }
+    const snapshot = JSON.parse(JSON.stringify(blocks));
+    homebridge.disableSaveButton();
+    status.textContent = 'Applying changes…';
+    pending = pending.then(async () => {
+      try {
+        await homebridge.updatePluginConfig(snapshot);
+        status.textContent = instructions;
+        homebridge.enableSaveButton();
+      } catch {
+        status.textContent = 'Unable to apply changes. Edit a field to retry.';
+      }
+    });
+  });
+  deleteAccessoryButton.addEventListener('click', () => {
+    const accessory = accessories[selectedAccessory];
+    if (!accessory || newAccessories.has(accessory)) return;
+    const name = accessory.name || accessory.type || 'this accessory';
+    if (!confirm(`Delete "${name}" from the plugin configuration?`)) return;
+    revision++;
+    errors.clear();
+    for (const block of blocks) {
+      if (!Array.isArray(block.accessories)) continue;
+      const index = block.accessories.indexOf(accessory);
+      if (index >= 0) {
+        block.accessories.splice(index, 1);
+        if (!block.accessories.length) delete block.accessories;
+        break;
+      }
+    }
+    const index = selectedAccessory;
+    tabs[index].remove();
+    tabs.splice(index, 1);
+    accessories.splice(index, 1);
+    if (tabs.length) {
+      selectAccessory(Math.min(index, tabs.length - 1));
+    } else {
+      form.hidden = true;
+      sections.forEach(section => { section.hidden = true; });
+      deleteAccessoryButton.hidden = true;
+      cancelAccessoryButton.hidden = true;
     }
     const snapshot = JSON.parse(JSON.stringify(blocks));
     homebridge.disableSaveButton();
@@ -440,6 +488,7 @@
     const accessory = accessories[selectedAccessory];
     const name = target.name;
     if (controls.get(name) !== target) return;
+    if (newAccessories.has(accessory)) editedNewAccessories.add(accessory);
     const edit = ++revision;
     homebridge.disableSaveButton();
     try {
