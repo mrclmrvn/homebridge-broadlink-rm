@@ -6,7 +6,8 @@
   const status = document.getElementById('config-status');
   const commandData = document.getElementById('command-data');
   const commandEditorHost = document.getElementById('command-editor');
-  const instructions = 'Use JSON Config for platform settings, adding accessories, or editing options outside the accessory schema.';
+  const instructions = 'Use JSON Config for platform settings or editing options outside the accessory schema.';
+  const addAccessoryTab = document.getElementById('add-accessory');
   const controls = new Map([
     ['data', commandData],
     ['disabled', document.getElementById('field-disabled')]
@@ -163,7 +164,7 @@
         if (select(next)) buttons[next].focus();
       });
     });
-    select(0);
+    if (buttons.length) select(0);
     return select;
   }
 
@@ -283,7 +284,7 @@
         tab.textContent = accessory.name || accessory.type || 'Unnamed accessory';
         tab.setAttribute('role', 'tab');
         tab.setAttribute('aria-controls', 'accessory-settings');
-        accessoryTabs.append(tab);
+        accessoryTabs.insertBefore(tab, addAccessoryTab);
         tabs.push(tab);
         accessories.push(accessory);
       }
@@ -293,17 +294,12 @@
     return;
   }
 
-  if (!accessories.length) {
-    status.textContent = 'Use JSON Config to add your first accessory.';
-    return;
-  }
-
   const selectSection = bindTabs(sectionTabs, index => {
     sections.forEach((section, position) => { section.hidden = position !== index; });
     if (index === 1) void showCommandEditor();
     return true;
   });
-  bindTabs(tabs, index => {
+  const selectAccessory = bindTabs(tabs, index => {
     if (errors.size) {
       status.textContent = 'Fix the current accessory’s invalid field before switching accessories. ' +
         errors.values().next().value;
@@ -314,6 +310,53 @@
     renderAccessory();
     selectSection(0);
     return true;
+  });
+  addAccessoryTab.addEventListener('click', () => {
+    if (errors.size) {
+      status.textContent = 'Fix the current accessory’s invalid field before adding another. ' +
+        errors.values().next().value;
+      return;
+    }
+    let block = blocks.find(item => item && typeof item === 'object' && !Array.isArray(item));
+    if (!block) {
+      block = {};
+      blocks.push(block);
+    }
+    if (!Array.isArray(block.accessories)) block.accessories = [];
+    const accessory = {};
+    block.accessories.push(accessory);
+    accessories.push(accessory);
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'nav-link';
+    tab.id = 'accessory-tab-' + (accessories.length - 1);
+    tab.textContent = 'Add new accessory';
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-controls', 'accessory-settings');
+    accessoryTabs.insertBefore(tab, addAccessoryTab);
+    tabs.push(tab);
+    const index = tabs.length - 1;
+    addAccessoryTab.classList.remove('active');
+    addAccessoryTab.setAttribute('aria-selected', 'false');
+    // Bind the new tab using the same selection behavior as existing accessories.
+    tab.addEventListener('click', () => selectAccessory(index));
+    tab.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft') tabs[index - 1]?.focus();
+      if (event.key === 'ArrowRight') addAccessoryTab.focus();
+    });
+    selectAccessory(index);
+    const snapshot = JSON.parse(JSON.stringify(blocks));
+    homebridge.disableSaveButton();
+    status.textContent = 'Applying changes…';
+    pending = pending.then(async () => {
+      try {
+        await homebridge.updatePluginConfig(snapshot);
+        status.textContent = instructions;
+        homebridge.enableSaveButton();
+      } catch {
+        status.textContent = 'Unable to apply changes. Edit a field to retry.';
+      }
+    });
   });
   form.hidden = false;
   status.textContent = instructions;
