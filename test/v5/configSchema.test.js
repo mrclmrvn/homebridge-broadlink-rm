@@ -86,7 +86,7 @@ test('Plugin Config stages accessory edits without dropping command maps or othe
     };
   }
 
-  for (const id of ['accessory-tabs', 'settings-tab', 'data-tab', 'settings-panel', 'data-panel', 'accessory-settings', 'accessory-fields', 'config-status', 'command-data', 'field-disabled']) {
+  for (const id of ['accessory-tabs', 'settings-tab', 'data-tab', 'settings-panel', 'data-panel', 'accessory-settings', 'accessory-fields', 'config-status', 'command-data', 'command-wrap-lines', 'field-disabled']) {
     elements.set(id, element());
   }
   const data = elements.get('command-data');
