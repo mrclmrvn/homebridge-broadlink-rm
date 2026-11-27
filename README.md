@@ -21,7 +21,7 @@ packaged as `@mrclmrvn/homebridge-broadlink-rm`.
 OpenAI's coding assistant. Changes are built and tested on Node.js 22, 24, and
 26 before release. Please review the changes and report any problems you find.
 
-**v5.0.5 is the current stable release of the rebuild.** Every legacy accessory
+**v5.0.8 is the current stable release of the rebuild.** Every legacy accessory
 type name has a v5 implementation. Full legacy option compatibility and broad
 hardware coverage remain incomplete. Existing hex codes can be reused; advanced
 options may need changes.
