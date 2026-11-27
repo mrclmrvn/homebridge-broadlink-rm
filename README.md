@@ -7,6 +7,10 @@ remote-control codes.
 This fork continues the Broadlink RM plugin as a TypeScript-based v5 rebuild,
 packaged as `@mrclmrvn/homebridge-broadlink-rm`.
 
+**Vibe-coded with Codex:** This version is being developed with help from Codex,
+OpenAI's coding assistant. Changes are built and tested on Node.js 22, 24, and
+26 before release. Please review the changes and report any problems you find.
+
 **v5.0.5 is the current stable release of the rebuild.** Every legacy accessory
 type name has a v5 implementation. Full legacy option compatibility and broad
 hardware coverage remain incomplete. Existing hex codes can be reused; advanced
