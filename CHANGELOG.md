@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.8] — 2026-11-27
+
+### Added
+
+- Add a schema-driven accessory editor for creating accessories and configuring
+  fields for the selected accessory type.
+- Add Learn and Scan Frequency accessories when no learning accessory is
+  configured. Scan Frequency uses RF learning.
+- Add confirmation prompts for discarding edited new accessories and deleting
+  existing accessories.
+- Add a command JSON editor line-wrap toggle, disabled by default.
+
+### Fixed
+
+- Keep the delete action hidden for first-install Learn and Scan Frequency
+  accessories.
+- Preserve existing plugin settings and command maps when staging accessory
+  edits.
+
 ## [5.0.7] — 2026-11-25
 
 ### Added
