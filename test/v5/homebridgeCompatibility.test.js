@@ -20,7 +20,7 @@ test('the selected Homebridge API provides the same HAP classes used by the test
 });
 
 test('real Homebridge registration, external TV publication and serialized target cache restoration work without starting a bridge', async t => {
-  const config = { platform: 'BroadlinkRM', disableDiscovery: true, accessories: [
+  const config = { platform: 'BroadlinkRM', disableDiscovery: true, hideLearnButton: true, hideScanFrequencyButton: true, accessories: [
     { name: 'AC', type: 'air-conditioner', coolOnly: true, sensorPollInterval: 0, noHumidity: true,
       data: { temperature18: '18', temperature25: '25', off: 'off' }, defaultCoolTemperature: 25 },
     { name: 'Automation', type: 'switch', virtual: true },
@@ -71,7 +71,8 @@ test('duplicate TV identities are skipped before Homebridge can publish collidin
   api.on('publishExternalAccessories', accessories => published.push(...accessories));
   api.on('registerPlatformAccessories', accessories => registered.push(...accessories));
   const log = { info() {}, debug() {}, error() {}, warn(message) { warnings.push(message); } };
-  const platform = new BroadlinkRMPlatform(log, { platform: 'BroadlinkRM', disableDiscovery: true, accessories: [
+  const platform = new BroadlinkRMPlatform(log, { platform: 'BroadlinkRM', disableDiscovery: true,
+    hideLearnButton: true, hideScanFrequencyButton: true, accessories: [
     { name: 'TV', type: 'tv', data: {} }, { name: 'TV', type: 'television', data: {} },
     { name: 'Gate', type: 'switch', virtual: true },
   ] }, api);
@@ -86,7 +87,7 @@ test('duplicate TV identities are skipped before Homebridge can publish collidin
 test('MAC-selected accessories follow rediscovery, while stale IP errors leave other accessories usable', async t => {
   const api = createHomebridgeAPI();
   const platform = new BroadlinkRMPlatform({ info() {}, warn() {}, error() {}, debug() {} }, {
-    platform: 'BroadlinkRM', disableDiscovery: true, accessories: [
+    platform: 'BroadlinkRM', disableDiscovery: true, hideLearnButton: true, hideScanFrequencyButton: true, accessories: [
       { name: 'By MAC', type: 'switch', host: 'AA-BB-CC-DD-EE-FF', data: { on: '260002000102' } },
       { name: 'Old IP', type: 'switch', host: '192.0.2.10', data: { on: '260002000102' } },
     ],

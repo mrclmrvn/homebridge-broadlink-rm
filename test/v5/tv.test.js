@@ -98,7 +98,8 @@ test('platform publishes TVs externally, migrates bridged cache, and keeps switc
     unregisterPlatformAccessories(plugin, platform, accessories) { calls.removed.push(...accessories); },
     updatePlatformAccessories() {},
   };
-  const platform = new BroadlinkRMPlatform(f.platform.log, { platform: 'BroadlinkRM', disableDiscovery: true, accessories: [f.config, { name: 'Switch', type: 'switch' }] }, api);
+  const platform = new BroadlinkRMPlatform(f.platform.log, { platform: 'BroadlinkRM', disableDiscovery: true,
+    hideLearnButton: true, hideScanFrequencyButton: true, accessories: [f.config, { name: 'Switch', type: 'switch' }] }, api);
   const cached = new f.Accessory('TV', 'TV:default');
   platform.configureAccessory(cached);
   await platform.initDevicesAndAccessories();
