@@ -1,5 +1,11 @@
 # Homebridge Broadlink RM v5
 
+[![npm downloads](https://img.shields.io/npm/dt/%40mrclmrvn%2Fhomebridge-broadlink-rm)](https://www.npmjs.com/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![CI status](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml/badge.svg?branch=master)](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml)
+[![Node.js version](https://img.shields.io/node/v/%40mrclmrvn%2Fhomebridge-broadlink-rm)](https://www.npmjs.com/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![Socket security score](https://socket.dev/api/badge/npm/package/%40mrclmrvn/homebridge-broadlink-rm)](https://socket.dev/npm/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![License: ISC](https://img.shields.io/npm/l/%40mrclmrvn%2Fhomebridge-broadlink-rm)](LICENSE)
+
 Control IR/RF appliances from Apple Home and Siri through Homebridge and Broadlink
 RM hardware. Configure accessories for your appliances and reuse their learned
 remote-control codes.
