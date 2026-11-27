@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://homebridge.io/"><img src="https://raw.githubusercontent.com/homebridge/branding/latest/logos/homebridge-wordmark-logo-vertical.svg" width="180" alt="Homebridge"></a>
+</p>
+
 # Homebridge Broadlink RM v5
 
 [![npm downloads](https://img.shields.io/npm/dt/%40mrclmrvn%2Fhomebridge-broadlink-rm)](https://www.npmjs.com/package/%40mrclmrvn/homebridge-broadlink-rm)
