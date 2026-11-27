@@ -39,7 +39,7 @@ export class LearnCodeAccessory extends BaseAccessory {
           ? `No Broadlink device matched host "${host}". Check its IP or MAC against discovery or the configured hosts.`
           : 'No Broadlink device is registered. Check discovery or configure a static host.');
       }
-      const rf = String(this.config.type).toLowerCase() === 'learn-rf';
+      const rf = String(this.config.type).toLowerCase() === 'learn-rf' || this.config.scanFrequency === true;
       this.log.debug(`[${this.name}] Starting ${rf ? 'RF' : 'IR'} learning on ${device.host} (type 0x${device.devType.toString(16)})`);
       if (!rf) this.log.info(`[${this.name}] Press one IR remote button after the Broadlink enters learning mode`);
       const code = rf ? await device.learnRFData({ signal: controller.signal, onProgress: stage =>

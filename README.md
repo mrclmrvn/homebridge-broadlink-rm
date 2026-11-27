@@ -1,4 +1,14 @@
+<p align="center">
+  <a href="https://homebridge.io/"><img src="https://raw.githubusercontent.com/homebridge/branding/latest/logos/homebridge-wordmark-logo-vertical.svg" width="180" alt="Homebridge"></a>
+</p>
+
 # Homebridge Broadlink RM v5
+
+[![npm downloads](https://img.shields.io/npm/dt/%40mrclmrvn%2Fhomebridge-broadlink-rm)](https://www.npmjs.com/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![CI status](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml/badge.svg?branch=master)](https://github.com/mrclmrvn/homebridge-broadlink-rm/actions/workflows/pipeline.yml)
+[![Node.js version](https://img.shields.io/node/v/%40mrclmrvn%2Fhomebridge-broadlink-rm)](https://www.npmjs.com/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![Socket security score](https://socket.dev/api/badge/npm/package/%40mrclmrvn/homebridge-broadlink-rm)](https://socket.dev/npm/package/%40mrclmrvn/homebridge-broadlink-rm)
+[![License: ISC](https://img.shields.io/npm/l/%40mrclmrvn%2Fhomebridge-broadlink-rm)](LICENSE)
 
 Control IR/RF appliances from Apple Home and Siri through Homebridge and Broadlink
 RM hardware. Configure accessories for your appliances and reuse their learned
@@ -6,6 +16,10 @@ remote-control codes.
 
 This fork continues the Broadlink RM plugin as a TypeScript-based v5 rebuild,
 packaged as `@mrclmrvn/homebridge-broadlink-rm`.
+
+**Vibe-coded with Codex:** This version is being developed with help from Codex,
+OpenAI's coding assistant. Changes are built and tested on Node.js 22, 24, and
+26 before release. Please review the changes and report any problems you find.
 
 **v5.0.5 is the current stable release of the rebuild.** Every legacy accessory
 type name has a v5 implementation. Full legacy option compatibility and broad

@@ -16,7 +16,7 @@ globalThis.createBroadlinkCommandEditor = (container, value, darkMode) => editor
   theme: darkMode ? 'vs-dark' : 'vs',
   ariaLabel: 'IR/RF command data (JSON)',
   automaticLayout: true,
-  wordWrap: 'on',
+  wordWrap: 'off',
   minimap: { enabled: false },
   scrollBeyondLastLine: false,
   tabSize: 2

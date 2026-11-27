@@ -25,6 +25,9 @@
     max-width: 100%;
     overflow-wrap: anywhere;
   }
+  #accessory-confirmation:not([hidden]) {
+    display: flex;
+  }
   @media (min-width: 576px) {
     .broadlink-fields {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -32,13 +35,24 @@
   }
 </style>
 
-<div id="accessory-tabs" class="nav nav-tabs mb-3" role="tablist" aria-label="Accessories"></div>
+<div id="accessory-tabs" class="nav nav-tabs mb-3" role="tablist" aria-label="Accessories">
+  <button id="add-accessory" class="nav-link" type="button" role="tab">Add new accessory</button>
+</div>
 <p id="config-status" class="form-text" role="status">Loading configuration…</p>
 
 <form id="accessory-settings" role="tabpanel" hidden>
-  <div class="btn-group mb-3" role="tablist" aria-label="Accessory configuration">
-    <button id="settings-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="settings-panel">Settings</button>
-    <button id="data-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="data-panel">Command Data</button>
+  <div class="d-flex align-items-start gap-3 mb-3">
+    <div class="btn-group" role="tablist" aria-label="Accessory configuration">
+      <button id="settings-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="settings-panel">Settings</button>
+      <button id="data-tab" class="btn btn-outline-primary" type="button" role="tab" aria-controls="data-panel">Command Data</button>
+    </div>
+    <button id="delete-accessory" class="btn btn-outline-danger" type="button" hidden>Delete</button>
+    <button id="cancel-accessory" class="btn btn-outline-secondary" type="button" hidden>Cancel</button>
+  </div>
+  <div id="accessory-confirmation" class="alert alert-warning align-items-center gap-3" role="alertdialog" aria-modal="true" hidden>
+    <span id="accessory-confirmation-message" class="flex-grow-1"></span>
+    <button id="confirm-accessory-action" class="btn btn-danger" type="button">Confirm</button>
+    <button id="dismiss-accessory-action" class="btn btn-outline-secondary" type="button">Keep</button>
   </div>
   <div id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
     <div id="accessory-fields" class="broadlink-fields"></div>
@@ -49,6 +63,10 @@
   </div>
   <div id="data-panel" role="tabpanel" aria-labelledby="data-tab" hidden>
     <label for="command-data" class="form-label">IR/RF command data (JSON)</label>
+    <div class="form-check mb-2">
+      <input id="command-wrap-lines" class="form-check-input" type="checkbox">
+      <label class="form-check-label" for="command-wrap-lines">Wrap lines</label>
+    </div>
     <div id="command-editor" class="border rounded" style="height: 20rem" hidden></div>
     <textarea id="command-data" name="data" data-kind="json" class="form-control font-monospace"
       rows="10" spellcheck="false" autocomplete="off" aria-describedby="config-status"></textarea>

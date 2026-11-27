@@ -155,6 +155,7 @@ test('platform skips invalid movement configuration and disposes instances on sh
     unregisterPlatformAccessories() {}, updatePlatformAccessories() {},
   };
   const platform = new BroadlinkRMPlatform(f.platform.log, { platform: 'BroadlinkRM', disableDiscovery: true,
+    hideLearnButton: true, hideScanFrequencyButton: true,
     accessories: [{ name: 'Invalid', type: 'window-covering' }, { name: 'Lock', type: 'lock' }] }, api);
   await handlers.didFinishLaunching();
   assert.equal(registered.length, 1);

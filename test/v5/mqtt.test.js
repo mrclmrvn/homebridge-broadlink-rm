@@ -294,6 +294,7 @@ test('invalid accessory startup logs do not dump MQTT credentials', async t => {
   const log = { info() {}, debug() {}, error() {}, warn(...args) { warnings.push(args); } };
   const api = { hap: { Service: f.S, Characteristic: f.C }, on(event, handler) { handlers[event] = handler; } };
   new BroadlinkRMPlatform(log, { platform: 'BroadlinkRM', disableDiscovery: true,
+    hideLearnButton: true, hideScanFrequencyButton: true,
     accessories: [{ mqttURL: 'mqtt://user:secret@broker.invalid', mqttPassword: 'secret' }] }, api);
   await handlers.didFinishLaunching();
   assert.equal(warnings.length, 1);
